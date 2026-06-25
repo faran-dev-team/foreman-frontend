@@ -23,7 +23,16 @@ npm install
 2. Copy `.env.example` to `.env.local`.
 3. Paste your **Publishable key** and **Secret key** from the Clerk dashboard.
 
-### 3. Run the dev server
+### 3. Configure API (optional for calendar UI)
+
+Add to `.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_DEFAULT_SHOP_ID=<shop-uuid-from-backend>
+```
+
+### 4. Run the dev server
 
 ```bash
 npm run dev
@@ -40,7 +49,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/sign-up` | Public | Clerk sign-up |
 | `/calls` | Protected | Calls list (placeholder) |
 | `/jobs` | Protected | Jobs & revenue (placeholder) |
-| `/settings` | Protected | Shop settings (placeholder) |
+| `/settings` | Protected | Shop settings + Google Calendar connect |
 
 ## Scripts
 
