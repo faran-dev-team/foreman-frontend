@@ -47,7 +47,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/` | Public | Redirects to `/calls` or `/sign-in` |
 | `/sign-in` | Public | Clerk sign-in |
 | `/sign-up` | Public | Clerk sign-up |
-| `/calls` | Protected | Calls list (placeholder) |
+| `/calls` | Protected | Calls table (time, caller, intent, outcome, est. value) |
 | `/jobs` | Protected | Jobs & revenue (placeholder) |
 | `/settings` | Protected | Shop settings + Google Calendar connect |
 
