@@ -30,3 +30,29 @@ export type CallsListResponse = {
   calls: CallListItem[];
   total?: number;
 };
+
+export type JobStatus =
+  | "booked"
+  | "completed"
+  | "cancelled"
+  | "no_show"
+  | "pending"
+  | "confirmed"
+  | "in_progress";
+
+/** Row returned by GET /api/v1/dashboard/jobs */
+export type JobListItem = {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  service: string;
+  scheduled_at?: string | null;
+  status?: JobStatus | string | null;
+  est_value_usd?: number | null;
+};
+
+export type JobsListResponse = {
+  jobs: JobListItem[];
+  revenue_captured_usd?: number;
+  total?: number;
+};

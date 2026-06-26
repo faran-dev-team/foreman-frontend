@@ -1,0 +1,239 @@
+"use client";
+
+import { useAuth } from "@clerk/nextjs";
+import { useCallback, useEffect, useState } from "react";
+
+import { JobStatusBadge } from "@/components/jobs/job-badges";
+import { RevenueCapturedCard } from "@/components/jobs/revenue-captured-card";
+import { ApiError } from "@/lib/api/client";
+import { getDefaultShopId } from "@/lib/api/config";
+import { fetchJobs } from "@/lib/api/jobs";
+import type { JobListItem } from "@/lib/api/types";
+
+type ViewState = "loading" | "ready" | "error";
+
+function formatScheduledTime(iso?: string | null): string {
+  if (!iso) {
+    return "—";
+  }
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatCurrency(value?: number | null): string {
+  if (value == null) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function JobsTableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="animate-pulse border-b border-slate-200 bg-slate-50 px-6 py-3">
+        <div className="h-4 w-full rounded bg-slate-200" />
+      </div>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={index}
+          className="flex gap-4 border-b border-slate-100 px-6 py-4 last:border-b-0"
+        >
+          <div className="h-4 w-28 rounded bg-slate-200" />
+          <div className="h-4 w-32 rounded bg-slate-200" />
+          <div className="h-4 w-24 rounded bg-slate-200" />
+          <div className="h-4 w-20 rounded bg-slate-200" />
+          <div className="h-4 w-16 rounded bg-slate-200" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function JobsEmptyState() {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+      <p className="text-base font-medium text-slate-900">No jobs booked yet</p>
+      <p className="mt-2 text-sm text-slate-500">
+        Jobs booked by Foreman during calls will appear here with service,
+        schedule, and estimated value.
+      </p>
+    </div>
+  );
+}
+
+export function JobsPanel() {
+  const { getToken } = useAuth();
+  const shopId = getDefaultShopId();
+
+  const [viewState, setViewState] = useState<ViewState>("loading");
+  const [jobs, setJobs] = useState<JobListItem[]>([]);
+  const [revenueCaptured, setRevenueCaptured] = useState<number>(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const loadJobs = useCallback(async () => {
+    if (!shopId) {
+      setViewState("error");
+      setErrorMessage(
+        "NEXT_PUBLIC_DEFAULT_SHOP_ID is not set. Add a test shop UUID to .env.local.",
+      );
+      return;
+    }
+
+    setViewState("loading");
+    setErrorMessage(null);
+
+    try {
+      const token = await getToken();
+      const response = await fetchJobs(shopId, token);
+      setJobs(response.jobs ?? []);
+      setRevenueCaptured(response.revenue_captured_usd ?? 0);
+      setViewState("ready");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        setJobs([]);
+        setRevenueCaptured(0);
+        setViewState("ready");
+        return;
+      }
+
+      setViewState("error");
+      if (error instanceof ApiError) {
+        setErrorMessage(error.message);
+      } else if (error instanceof TypeError) {
+        setErrorMessage(
+          "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
+        );
+      } else {
+        setErrorMessage("Failed to load jobs.");
+      }
+    }
+  }, [getToken, shopId]);
+
+  useEffect(() => {
+    void loadJobs();
+  }, [loadJobs]);
+
+  return (
+    <div className="space-y-6">
+      <RevenueCapturedCard
+        amount={revenueCaptured}
+        jobCount={jobs.length}
+        loading={viewState === "loading"}
+      />
+
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            {viewState === "ready"
+              ? `${jobs.length} job${jobs.length === 1 ? "" : "s"} booked`
+              : "Booked jobs"}
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadJobs()}
+            disabled={viewState === "loading"}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Refresh
+          </button>
+        </div>
+
+        {viewState === "loading" && <JobsTableSkeleton />}
+
+        {viewState === "error" && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
+            <p className="text-sm font-medium text-red-800">Unable to load jobs</p>
+            <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => void loadJobs()}
+              className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {viewState === "ready" && jobs.length === 0 && <JobsEmptyState />}
+
+        {viewState === "ready" && jobs.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 font-semibold text-slate-600">
+                    Scheduled
+                  </th>
+                  <th className="px-6 py-3 font-semibold text-slate-600">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 font-semibold text-slate-600">
+                    Service
+                  </th>
+                  <th className="px-6 py-3 font-semibold text-slate-600">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 font-semibold text-slate-600 text-right">
+                    Est. value
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {jobs.map((job) => (
+                  <tr
+                    key={job.id}
+                    className="transition hover:bg-slate-50/80"
+                  >
+                    <td className="whitespace-nowrap px-6 py-4 text-slate-900">
+                      {formatScheduledTime(job.scheduled_at)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-slate-900">
+                        {job.customer_name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {job.customer_phone}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-900">{job.service}</td>
+                    <td className="px-6 py-4">
+                      <JobStatusBadge status={job.status} />
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-slate-900">
+                      {formatCurrency(job.est_value_usd)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function JobsPanelFallback() {
+  return (
+    <div className="space-y-6">
+      <RevenueCapturedCard loading />
+      <JobsTableSkeleton />
+    </div>
+  );
+}
