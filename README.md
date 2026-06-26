@@ -48,7 +48,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/sign-in` | Public | Clerk sign-in |
 | `/sign-up` | Public | Clerk sign-up |
 | `/calls` | Protected | Calls table (time, caller, intent, outcome, est. value) |
-| `/jobs` | Protected | Jobs & revenue (placeholder) |
+| `/jobs` | Protected | Revenue Captured card + jobs table |
 | `/settings` | Protected | Shop settings + Google Calendar connect |
 
 ## Scripts
