@@ -5,6 +5,7 @@ import {
   GoogleCalendarConnect,
   GoogleCalendarConnectSkeleton,
 } from "@/components/settings/google-calendar-connect";
+import { ShopSettingsForms } from "@/components/settings/shop-settings-forms";
 
 export const metadata: Metadata = {
   title: "Settings | Foreman",
@@ -24,9 +25,7 @@ export default function SettingsPage() {
         <GoogleCalendarConnect />
       </Suspense>
 
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-        Business hours, services, service area, and agent greeting — coming next.
-      </div>
+      <ShopSettingsForms />
     </section>
   );
 }

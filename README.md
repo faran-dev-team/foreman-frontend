@@ -49,7 +49,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/sign-up` | Public | Clerk sign-up |
 | `/calls` | Protected | Calls table (time, caller, intent, outcome, est. value) |
 | `/jobs` | Protected | Revenue Captured card + jobs table |
-| `/settings` | Protected | Shop settings + Google Calendar connect |
+| `/settings` | Protected | Google Calendar connect + shop config forms |
 
 ## Scripts
 
