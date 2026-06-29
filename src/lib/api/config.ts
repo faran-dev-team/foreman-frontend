@@ -7,7 +7,14 @@ const DEFAULT_API_URL = "http://localhost:8000";
 /** Base URL for the Foreman FastAPI backend (no trailing slash). */
 export function getApiBaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_API_URL?.trim() || DEFAULT_API_URL;
-  return url.replace(/\/$/, "");
+  const resolved = url.replace(/\/$/, "");
+
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console -- intentional dev-only API URL visibility
+    console.info("[Foreman API] NEXT_PUBLIC_API_URL →", resolved);
+  }
+
+  return resolved;
 }
 
 /**
