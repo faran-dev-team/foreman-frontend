@@ -1,13 +1,9 @@
 import { UserButton } from "@clerk/nextjs";
-import Link from "next/link";
+
+import { DashboardMain } from "@/components/dashboard/dashboard-main";
+import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 
 export const dynamic = "force-dynamic";
-
-const navItems = [
-  { href: "/calls", label: "Calls" },
-  { href: "/jobs", label: "Jobs" },
-  { href: "/settings", label: "Settings" },
-] as const;
 
 export default function DashboardLayout({
   children,
@@ -24,17 +20,7 @@ export default function DashboardLayout({
           <h1 className="mt-1 text-lg font-semibold">Owner Dashboard</h1>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:text-white"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <DashboardNav />
 
         <div className="border-t border-slate-700 px-4 py-4">
           <UserButton
@@ -52,7 +38,7 @@ export default function DashboardLayout({
         <header className="border-b border-slate-200 bg-white px-8 py-4">
           <p className="text-sm text-slate-500">Foreman MVP · Owner portal</p>
         </header>
-        <main className="flex-1 px-8 py-8">{children}</main>
+        <DashboardMain>{children}</DashboardMain>
       </div>
     </div>
   );
