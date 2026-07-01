@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useState } from "react";
 
+import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import { RevenueCapturedCard } from "@/components/jobs/revenue-captured-card";
 import { ApiError } from "@/lib/api/client";
@@ -61,18 +62,6 @@ function JobsTableSkeleton() {
           <div className="h-4 w-16 rounded bg-slate-200" />
         </div>
       ))}
-    </div>
-  );
-}
-
-function JobsEmptyState() {
-  return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-      <p className="text-base font-medium text-slate-900">No jobs booked yet</p>
-      <p className="mt-2 text-sm text-slate-500">
-        Jobs booked by Foreman during calls will appear here with service,
-        schedule, and estimated value.
-      </p>
     </div>
   );
 }
@@ -170,7 +159,9 @@ export function JobsPanel() {
           </div>
         )}
 
-        {viewState === "ready" && jobs.length === 0 && <JobsEmptyState />}
+        {viewState === "ready" && jobs.length === 0 && (
+          <DashboardGettingStarted variant="jobs" />
+        )}
 
         {viewState === "ready" && jobs.length > 0 && (
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
