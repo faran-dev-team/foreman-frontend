@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useState } from "react";
 
 import { IntentBadge, OutcomeBadge } from "@/components/calls/call-badges";
+import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
 import { fetchCalls } from "@/lib/api/calls";
 import { ApiError } from "@/lib/api/client";
 import { getDefaultShopId } from "@/lib/api/config";
@@ -62,18 +63,6 @@ function CallsTableSkeleton() {
           <div className="h-4 w-16 rounded bg-slate-200" />
         </div>
       ))}
-    </div>
-  );
-}
-
-function CallsEmptyState() {
-  return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-      <p className="text-base font-medium text-slate-900">No calls yet</p>
-      <p className="mt-2 text-sm text-slate-500">
-        Inbound calls handled by Foreman will show up here with intent, outcome,
-        and estimated value.
-      </p>
     </div>
   );
 }
@@ -161,7 +150,9 @@ export function CallsTable() {
         </div>
       )}
 
-      {viewState === "ready" && calls.length === 0 && <CallsEmptyState />}
+      {viewState === "ready" && calls.length === 0 && (
+        <DashboardGettingStarted variant="calls" />
+      )}
 
       {viewState === "ready" && calls.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
