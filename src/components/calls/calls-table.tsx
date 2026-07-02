@@ -159,11 +159,11 @@ export function CallsTable() {
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 font-semibold text-slate-600">Time</th>
-                <th className="px-6 py-3 font-semibold text-slate-600">Caller</th>
-                <th className="px-6 py-3 font-semibold text-slate-600">Intent</th>
-                <th className="px-6 py-3 font-semibold text-slate-600">Outcome</th>
-                <th className="px-6 py-3 font-semibold text-slate-600 text-right">
+                <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Time</th>
+                <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Caller</th>
+                <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Intent</th>
+                <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Outcome</th>
+                <th className="px-3 py-2.5 font-semibold text-slate-600 text-right sm:px-6 sm:py-3">
                   Est. value
                 </th>
               </tr>
@@ -174,10 +174,10 @@ export function CallsTable() {
                   key={call.id}
                   className="transition hover:bg-slate-50/80"
                 >
-                  <td className="whitespace-nowrap px-6 py-4 text-slate-900">
+                  <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
                     {formatCallTime(call.started_at)}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <div className="font-medium text-slate-900">
                       {formatCaller(call)}
                     </div>
@@ -187,13 +187,13 @@ export function CallsTable() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <IntentBadge intent={call.intent} />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <OutcomeBadge outcome={call.outcome} />
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-slate-900">
+                  <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
                     {formatCurrency(call.est_value_usd)}
                   </td>
                 </tr>

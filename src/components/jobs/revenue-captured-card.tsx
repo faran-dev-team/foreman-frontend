@@ -19,7 +19,7 @@ export function RevenueCapturedCard({
 }: RevenueCapturedCardProps) {
   if (loading) {
     return (
-      <div className="animate-pulse rounded-xl bg-foreman-navy px-8 py-8 shadow-sm">
+      <div className="animate-pulse rounded-xl bg-foreman-navy px-5 py-6 shadow-sm sm:px-8 sm:py-8">
         <div className="h-4 w-32 rounded bg-slate-600" />
         <div className="mt-4 h-10 w-48 rounded bg-slate-600" />
         <div className="mt-3 h-4 w-64 rounded bg-slate-600" />
@@ -30,11 +30,11 @@ export function RevenueCapturedCard({
   const displayAmount = amount ?? 0;
 
   return (
-    <div className="rounded-xl bg-foreman-navy px-8 py-8 text-white shadow-sm">
-      <p className="text-sm font-semibold uppercase tracking-widest text-amber-400">
+    <div className="rounded-xl bg-foreman-navy px-5 py-6 text-white shadow-sm sm:px-8 sm:py-8">
+      <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 sm:text-sm">
         Revenue Captured
       </p>
-      <p className="mt-3 text-4xl font-bold tracking-tight">
+      <p className="mt-2 text-3xl font-bold tracking-tight sm:mt-3 sm:text-4xl">
         {formatCurrency(displayAmount)}
       </p>
       <p className="mt-2 text-sm text-slate-300">

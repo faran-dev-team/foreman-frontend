@@ -11,7 +11,10 @@ export function DashboardMain({ children }: DashboardMainProps) {
   const pathname = usePathname();
 
   return (
-    <main key={pathname} className="flex-1 px-8 py-8">
+    <main
+      key={pathname}
+      className="flex-1 px-4 py-6 sm:px-6 sm:py-7 lg:px-8 lg:py-8"
+    >
       {children}
     </main>
   );

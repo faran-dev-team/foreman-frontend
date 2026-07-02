@@ -14,8 +14,8 @@ export default function CallsPage() {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Calls</h2>
-        <p className="mt-2 text-slate-600">
+        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Calls</h2>
+        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
           Live and recent inbound calls — time, caller, intent, outcome, and
           estimated value.
         </p>

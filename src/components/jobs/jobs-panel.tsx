@@ -168,19 +168,19 @@ export function JobsPanel() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 font-semibold text-slate-600">
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
                     Scheduled
                   </th>
-                  <th className="px-6 py-3 font-semibold text-slate-600">
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
                     Customer
                   </th>
-                  <th className="px-6 py-3 font-semibold text-slate-600">
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
                     Service
                   </th>
-                  <th className="px-6 py-3 font-semibold text-slate-600">
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
                     Status
                   </th>
-                  <th className="px-6 py-3 font-semibold text-slate-600 text-right">
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 text-right sm:px-6 sm:py-3">
                     Est. value
                   </th>
                 </tr>
@@ -191,10 +191,10 @@ export function JobsPanel() {
                     key={job.id}
                     className="transition hover:bg-slate-50/80"
                   >
-                    <td className="whitespace-nowrap px-6 py-4 text-slate-900">
+                    <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
                       {formatScheduledTime(job.scheduled_at)}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <div className="font-medium text-slate-900">
                         {job.customer_name}
                       </div>
@@ -202,11 +202,11 @@ export function JobsPanel() {
                         {job.customer_phone}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-900">{job.service}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 text-slate-900 sm:px-6 sm:py-4">{job.service}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <JobStatusBadge status={job.status} />
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-slate-900">
+                    <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
                       {formatCurrency(job.est_value_usd)}
                     </td>
                   </tr>
