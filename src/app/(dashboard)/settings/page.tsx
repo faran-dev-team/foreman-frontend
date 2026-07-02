@@ -13,10 +13,10 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
   return (
-    <section className="space-y-8">
+    <section className="space-y-6 sm:space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
-        <p className="mt-2 text-slate-600">
+        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Settings</h2>
+        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
           Manage integrations and shop configuration for your Foreman agent.
         </p>
       </div>

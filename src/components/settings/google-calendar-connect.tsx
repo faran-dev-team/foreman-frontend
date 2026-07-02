@@ -144,7 +144,7 @@ export function GoogleCalendarConnect() {
   const isConnected = status?.connected === true;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">
@@ -264,7 +264,7 @@ export function GoogleCalendarConnect() {
 
 export function GoogleCalendarConnectSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="animate-pulse space-y-3">
         <div className="h-5 w-48 rounded bg-slate-200" />
         <div className="h-4 w-full max-w-md rounded bg-slate-200" />

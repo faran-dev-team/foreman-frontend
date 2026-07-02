@@ -66,10 +66,10 @@ export function DashboardGettingStarted({ variant }: DashboardGettingStartedProp
       : "When Foreman books a job during a call, it will show up here with schedule, service, and revenue.";
 
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 sm:px-10">
+    <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-lg">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <p className="text-lg font-semibold text-slate-900">{headline}</p>
+          <p className="text-base font-semibold text-slate-900 sm:text-lg">{headline}</p>
           {calendarBadge === "loading" && (
             <span className="inline-flex animate-pulse rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
               Checking calendar…
