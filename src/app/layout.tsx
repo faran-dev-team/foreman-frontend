@@ -6,8 +6,16 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Foreman",
-  description: "Owner dashboard for Foreman — calls, jobs, and revenue captured.",
+  title: {
+    default: "Foreman",
+    template: "%s | Foreman",
+  },
+  description:
+    "Foreman — AI front office for HVAC and trades. Never miss another job.",
+  icons: {
+    icon: "/foreman-app-icon-512.png",
+    apple: "/foreman-app-icon-512.png",
+  },
 };
 
 export default function RootLayout({

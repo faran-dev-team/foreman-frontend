@@ -1,14 +1,22 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+import { ForemanLanding } from "@/components/marketing/foreman-landing";
 
-export default async function HomePage() {
-  const { userId } = await auth();
+export const metadata: Metadata = {
+  title: {
+    absolute: "Foreman — Never Miss Another Job",
+  },
+  description:
+    "Foreman answers every missed call for HVAC and trades businesses, qualifies the job, and books it into your calendar automatically.",
+  openGraph: {
+    title: "Foreman — Never Miss Another Job",
+    description:
+      "The AI front office for HVAC and trades. Every call answered, every job booked.",
+    type: "website",
+    images: [{ url: "/foreman-lockup-dark.png" }],
+  },
+};
 
-  if (userId) {
-    redirect("/calls");
-  }
-
-  redirect("/sign-in");
+export default function HomePage() {
+  return <ForemanLanding />;
 }
