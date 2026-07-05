@@ -10,7 +10,12 @@ import {
   useInView,
   animate,
   AnimatePresence,
+  useReducedMotion,
+  useMotionValue,
+  useMotionTemplate,
+  useSpring,
 } from "framer-motion";
+import { ReactLenis } from "@studio-freight/react-lenis";
 
 import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 
@@ -28,17 +33,17 @@ const NAV_SECTIONS = [
 /*  Brand tokens                                                       */
 /* ------------------------------------------------------------------ */
 const C = {
-  charcoal: "#14202E",
-  charcoal2: "#1E3042",
-  charcoal3: "#0C1620",
-  steel: "#5B6B7E",
-  steelLight: "#8A9AAD",
-  orange: "#FF6B1A",
-  orangeDeep: "#D9540E",
-  concrete: "#F4F2ED",
-  concrete2: "#EAE7DF",
-  green: "#16A34A",
-  white: "#FFFFFF",
+  charcoal: "#0A0A0A",
+  charcoal2: "#171717",
+  charcoal3: "#050505",
+  steel: "#737373",
+  steelLight: "#A3A3A3",
+  orange: "#F5A623",
+  orangeDeep: "#D97706",
+  concrete: "#121212",
+  concrete2: "#262626",
+  green: "#10B981",
+  white: "#EDEDED",
 };
 
 /* ------------------------------------------------------------------ */
@@ -119,6 +124,76 @@ function CountUp({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Reusable: Tilt Card with Glow                                      */
+/* ------------------------------------------------------------------ */
+function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.06)" }: { children: React.ReactNode, className?: string, glowColor?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reducedMotion = useReducedMotion();
+  const [isHovered, setIsHovered] = useState(false);
+  
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  
+  const rx = useSpring(0, { damping: 20, stiffness: 300, mass: 0.5 });
+  const ry = useSpring(0, { damping: 20, stiffness: 300, mass: 0.5 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current || reducedMotion) return;
+    const { left, top, width, height } = ref.current.getBoundingClientRect();
+    const x = e.clientX - left;
+    const y = e.clientY - top;
+    mouseX.set(x);
+    mouseY.set(y);
+    rx.set(((y - height / 2) / height) * -12);
+    ry.set(((x - width / 2) / width) * 12);
+  };
+
+  const handleMouseEnter = () => setIsHovered(true);
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    rx.set(0);
+    ry.set(0);
+  };
+  
+  const background = useMotionTemplate`radial-gradient(400px circle at ${mouseX}px ${mouseY}px, ${glowColor}, transparent 80%)`;
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        position: "relative",
+        rotateX: rx,
+        rotateY: ry,
+        transformStyle: "preserve-3d",
+      }}
+      whileHover={reducedMotion ? {} : { scale: 1.02 }}
+    >
+      {!reducedMotion && (
+        <motion.div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            zIndex: 0,
+            pointerEvents: "none",
+            background,
+            opacity: isHovered ? 1 : 0,
+          }}
+          transition={{ duration: 0.3 }}
+        />
+      )}
+      <div style={{ position: "relative", zIndex: 1, transform: isHovered && !reducedMotion ? "translateZ(30px)" : "none", transition: "transform 0.3s" }}>
+        {children}
+      </div>
+    </motion.div>
+  );
+}
+
 /* ================================================================== */
 /*  NAV                                                                */
 /* ================================================================== */
@@ -147,9 +222,11 @@ function NavMenuIcon({ open }: { open: boolean }) {
 function NavAuthLinks({
   className,
   onNavigate,
+  renderDesktopItem,
 }: {
   className: string;
   onNavigate?: () => void;
+  renderDesktopItem?: (href: string, label: string) => React.ReactNode;
 }) {
   const { isSignedIn } = useAuth();
   const [mounted, setMounted] = useState(false);
@@ -161,26 +238,24 @@ function NavAuthLinks({
   if (!mounted || !isSignedIn) {
     return (
       <>
-        <Link href="/sign-in" className={className} onClick={onNavigate}>
-          Sign in
-        </Link>
-        <Link href="/sign-up" className={className} onClick={onNavigate}>
-          Sign up
-        </Link>
+        {renderDesktopItem ? renderDesktopItem("/sign-in", "Sign in") : <Link href="/sign-in" className={className} onClick={onNavigate}>Sign in</Link>}
+        {renderDesktopItem ? renderDesktopItem("/sign-up", "Sign up") : <Link href="/sign-up" className={className} onClick={onNavigate}>Sign up</Link>}
       </>
     );
   }
 
   return (
-    <Link href="/calls" className={className} onClick={onNavigate}>
-      Dashboard
-    </Link>
+    <>
+      {renderDesktopItem ? renderDesktopItem("/calls", "Dashboard") : <Link href="/calls" className={className} onClick={onNavigate}>Dashboard</Link>}
+    </>
   );
 }
 
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const reducedMotion = useReducedMotion();
 
   const closeMobile = useCallback(() => {
     setMobileOpen(false);
@@ -233,7 +308,7 @@ function Nav() {
           position: "sticky",
           top: 0,
           zIndex: 100,
-          background: scrolled ? "rgba(20,32,46,0.92)" : "rgba(20,32,46,0.5)",
+          background: scrolled ? "rgba(10,10,10,0.92)" : "rgba(10,10,10,0.5)",
           backdropFilter: "blur(12px)",
           borderBottom: `1px solid rgba(255,255,255,${scrolled ? 0.08 : 0})`,
           transition: "background .3s, border-color .3s",
@@ -245,7 +320,8 @@ function Nav() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            height: 72,
+            height: scrolled ? 64 : 88,
+            transition: "height 0.4s ease",
             gap: 16,
           }}
         >
@@ -254,7 +330,9 @@ function Nav() {
             style={{ display: "flex", alignItems: "center", gap: 12 }}
             onClick={closeMobile}
           >
-            <Logo size={38} />
+            <div style={{ transition: "transform 0.4s ease", transform: `scale(${scrolled ? 0.85 : 1})`, transformOrigin: "left center" }}>
+              <Logo size={38} />
+            </div>
             <span
               style={{
                 fontFamily: "Archivo, sans-serif",
@@ -268,21 +346,29 @@ function Nav() {
             </span>
           </a>
 
-          <div className="fm-nav-desktop">
+          <div className="fm-nav-desktop" onMouseLeave={() => setHoveredId(null)}>
             {NAV_SECTIONS.map((item) => (
-              <a key={item.href} href={item.href} className="fm-navlink">
-                {item.label}
+              <a key={item.href} href={item.href} className="fm-navlink" onMouseEnter={() => setHoveredId(item.href)} style={{ position: "relative", padding: "8px 16px" }}>
+                <span style={{ position: "relative", zIndex: 2 }}>{item.label}</span>
+                {hoveredId === item.href && !reducedMotion && (
+                  <motion.div layoutId="navHover" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.08)", borderRadius: 999, zIndex: 1 }} transition={{ type: "spring", stiffness: 500, damping: 35 }} />
+                )}
               </a>
             ))}
-            <NavAuthLinks className="fm-navlink" />
-            <motion.a
-              href="#pilot"
-              className="fm-btn fm-btn-primary fm-nav-cta"
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-            >
+            <NavAuthLinks 
+              className="fm-navlink" 
+              renderDesktopItem={(href, label) => (
+                <Link key={href} href={href} className="fm-navlink" onMouseEnter={() => setHoveredId(href)} style={{ position: "relative", padding: "8px 16px" }}>
+                  <span style={{ position: "relative", zIndex: 2 }}>{label}</span>
+                  {hoveredId === href && !reducedMotion && (
+                    <motion.div layoutId="navHover" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.08)", borderRadius: 999, zIndex: 1 }} transition={{ type: "spring", stiffness: 500, damping: 35 }} />
+                  )}
+                </Link>
+              )}
+            />
+            <MagneticButton href="#pilot" className="fm-btn fm-btn-primary fm-nav-cta">
               Book a pilot call
-            </motion.a>
+            </MagneticButton>
           </div>
 
           <button
@@ -342,21 +428,63 @@ const heroCalls = [
   { name: "After-hours call, 8:47pm", sub: "Answered while you were off the clock" },
 ];
 
+function MagneticButton({ children, href, className, target, rel }: { children: React.ReactNode, href: string, className?: string, target?: string, rel?: string }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const reducedMotion = useReducedMotion();
+
+  const handleMouse = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (reducedMotion) return;
+    const { clientX, clientY } = e;
+    const { height, width, left, top } = ref.current!.getBoundingClientRect();
+    const middleX = clientX - (left + width / 2);
+    const middleY = clientY - (top + height / 2);
+    setPosition({ x: middleX * 0.2, y: middleY * 0.2 });
+  };
+
+  const reset = () => {
+    setPosition({ x: 0, y: 0 });
+  };
+
+  return (
+    <motion.a
+      ref={ref}
+      href={href}
+      target={target}
+      rel={rel}
+      className={className}
+      animate={{ x: position.x, y: position.y }}
+      transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }}
+      onMouseMove={handleMouse}
+      onMouseLeave={reset}
+      whileHover={reducedMotion ? {} : { scale: 1.04, boxShadow: "0 12px 34px rgba(245,166,35,0.4)" }}
+      whileTap={{ scale: 0.97 }}
+      style={{ position: "relative" }}
+    >
+      {children}
+    </motion.a>
+  );
+}
+
 function Hero() {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const yGlow = useTransform(scrollYProgress, [0, 1], [0, 160]);
   const yGrid = useTransform(scrollYProgress, [0, 1], [0, 60]);
+  const reducedMotion = useReducedMotion();
 
   return (
-    <header id="top" ref={ref} style={{ background: C.charcoal, color: C.white, position: "relative", overflow: "hidden", padding: "96px 0 108px" }}>
-      {/* animated grid */}
+    <header id="top" ref={ref} style={{ background: C.charcoal, color: C.white, position: "relative", overflow: "hidden", padding: "120px 0 140px" }}>
+      {/* 3D animated grid */}
       <motion.div
         aria-hidden
         style={{
-          position: "absolute", inset: 0, y: yGrid, opacity: 0.05, zIndex: 0,
+          position: "absolute", inset: 0, top: "40%", y: yGrid, opacity: 0.08, zIndex: 0,
           backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)",
-          backgroundSize: "48px 48px",
+          backgroundSize: "60px 60px",
+          transform: "perspective(1000px) rotateX(70deg)",
+          transformOrigin: "top center",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent, black 10%, black 70%, transparent)",
         }}
       />
       {/* moving glow */}
@@ -364,9 +492,9 @@ function Hero() {
         aria-hidden
         style={{
           position: "absolute", top: -200, right: -180, width: 620, height: 620, y: yGlow, zIndex: 0,
-          background: "radial-gradient(circle, rgba(255,107,26,0.20), transparent 70%)",
+          background: "radial-gradient(circle, rgba(245,166,35,0.15), transparent 70%)",
         }}
-        animate={{ scale: [1, 1.12, 1], opacity: [0.8, 1, 0.8] }}
+        animate={reducedMotion ? {} : { scale: [1, 1.12, 1], opacity: [0.8, 1, 0.8] }}
         transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
       />
       <div className="fm-wrap fm-hero-grid" style={{ position: "relative", zIndex: 2 }}>
@@ -379,13 +507,13 @@ function Hero() {
             {["Never miss", "another "].map((line, i) => (
               <motion.span
                 key={i}
-                style={{ display: "block", overflow: "hidden" }}
+                style={{ display: "block", overflow: "hidden", paddingBottom: "0.1em" }}
               >
                 <motion.span
                   style={{ display: "inline-block" }}
-                  initial={{ y: "110%" }}
-                  animate={{ y: 0 }}
-                  transition={{ duration: 0.7, delay: 0.15 + i * 0.12, ease: [0.33, 1, 0.68, 1] }}
+                  initial={{ y: "120%", rotate: reducedMotion ? 0 : 3 }}
+                  animate={{ y: 0, rotate: 0 }}
+                  transition={{ duration: 0.8, delay: 0.15 + i * 0.15, ease: [0.21, 0.5, 0.25, 1] }}
                 >
                   {line}
                   {i === 1 && <span style={{ color: C.orange }}>job.</span>}
@@ -397,10 +525,10 @@ function Hero() {
             Foreman answers every missed call, qualifies the job, and books it into your calendar automatically. You only pay when we book you real work.
           </motion.p>
           <motion.div className="fm-hero-cta" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.62 }}>
-            <motion.a href="#pilot" className="fm-btn fm-btn-primary" whileHover={{ scale: 1.04, boxShadow: "0 12px 34px rgba(255,107,26,0.4)" }} whileTap={{ scale: 0.97 }}>
+            <MagneticButton href="#pilot" className="fm-btn fm-btn-primary">
               Book your free pilot
-            </motion.a>
-            <motion.a href="#how" className="fm-btn fm-btn-ghost" whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+            </MagneticButton>
+            <motion.a href="#how" className="fm-btn fm-btn-ghost" whileHover={reducedMotion ? {} : { scale: 1.04 }} whileTap={{ scale: 0.97 }}>
               See how it works
             </motion.a>
           </motion.div>
@@ -413,7 +541,7 @@ function Hero() {
           </motion.div>
         </div>
         {/* right: live call card */}
-        <motion.div initial={{ opacity: 0, x: 40, rotate: 2 }} animate={{ opacity: 1, x: 0, rotate: 0 }} transition={{ delay: 0.4, duration: 0.8, ease: [0.21, 0.5, 0.25, 1] }}>
+        <motion.div initial={{ opacity: 0, x: 40, rotate: reducedMotion ? 0 : 3, y: 20 }} animate={{ opacity: 1, x: 0, rotate: 0, y: 0 }} transition={{ delay: 0.4, duration: 1, ease: [0.21, 0.5, 0.25, 1] }}>
           <CallCard />
         </motion.div>
       </div>
@@ -422,8 +550,20 @@ function Hero() {
 }
 
 function CallCard() {
+  const reducedMotion = useReducedMotion();
   return (
-    <div className="fm-callcard">
+    <motion.div 
+      className="fm-callcard" 
+      style={{
+        background: "rgba(23,23,23,0.6)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "0 40px 100px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)"
+      }}
+      animate={reducedMotion ? {} : { y: [-5, 5] }}
+      transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <span className="fm-mono" style={{ fontSize: 12, letterSpacing: 2, color: C.steelLight }}>INCOMING CALLS</span>
         <motion.span className="fm-badge fm-badge-live" animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1.6, repeat: Infinity }}>
@@ -463,7 +603,7 @@ function CallCard() {
       >
         3 jobs booked today
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -471,6 +611,11 @@ function CallCard() {
 /*  STAT BAR                                                           */
 /* ================================================================== */
 function StatBar() {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const yBg = useTransform(scrollYProgress, [0, 1], [-40, 40]);
+  const reducedMotion = useReducedMotion();
+
   const stats = [
     { render: () => <><CountUp to={30} />%</>, lbl: "of calls go unanswered", pre: "20-" },
     { render: () => <><CountUp to={8} suffix="K" /></>, lbl: "lost per missed job", pre: "$400-" },
@@ -478,16 +623,23 @@ function StatBar() {
     { render: () => <CountUp to={50} prefix="$" />, lbl: "you pay per booking", pre: "" },
   ];
   return (
-    <div style={{ background: C.orange, color: C.charcoal, padding: "44px 0" }}>
-      <div className="fm-wrap fm-statgrid">
+    <div ref={ref} style={{ background: C.charcoal2, color: C.white, padding: "64px 0", position: "relative", overflow: "hidden", borderTop: `1px solid ${C.concrete2}`, borderBottom: `1px solid ${C.concrete2}` }}>
+      {/* parallax background elements */}
+      {!reducedMotion && (
+         <motion.div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, y: yBg, opacity: 0.3, zIndex: 0, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", top: "10%", left: "15%", width: 200, height: 200, background: "radial-gradient(circle, rgba(245,166,35,0.1), transparent 70%)" }} />
+            <div style={{ position: "absolute", bottom: "10%", right: "15%", width: 300, height: 300, background: "radial-gradient(circle, rgba(16,185,129,0.05), transparent 70%)" }} />
+         </motion.div>
+      )}
+      <div className="fm-wrap fm-statgrid" style={{ position: "relative", zIndex: 1 }}>
         {stats.map((s, i) => (
           <Reveal key={i} delay={i * 0.08}>
             <div style={{ textAlign: "center" }}>
-              <div className="fm-statnum">
+              <div className="fm-statnum" style={{ color: C.orange }}>
                 {s.pre}
                 {s.render()}
               </div>
-              <div style={{ fontSize: 14, fontWeight: 500, opacity: 0.85 }}>{s.lbl}</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: C.steelLight, marginTop: 4 }}>{s.lbl}</div>
             </div>
           </Reveal>
         ))}
@@ -516,11 +668,11 @@ function Problem() {
         <div className="fm-3grid">
           {cards.map((c, i) => (
             <Reveal key={i} delay={i * 0.12}>
-              <motion.div className="fm-probcard" whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300 }}>
+              <TiltCard className="fm-probcard" glowColor="rgba(245,166,35,0.08)">
                 <div className="fm-probic">{c.icon}</div>
                 <h3 className="fm-cardh3">{c.t}</h3>
                 <p className="fm-cardp">{c.p}</p>
-              </motion.div>
+              </TiltCard>
             </Reveal>
           ))}
         </div>
@@ -530,40 +682,136 @@ function Problem() {
 }
 
 /* ================================================================== */
+/* ------------------------------------------------------------------ */
+/*  Z-Pattern Mockups                                                  */
+/* ------------------------------------------------------------------ */
+function IncomingCallMockup() {
+  return (
+    <motion.div
+      initial={{ x: 40, opacity: 0 }}
+      whileInView={{ x: 0, opacity: 1 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+      style={{ background: C.charcoal2, borderRadius: 24, padding: 32, border: `1px solid ${C.concrete2}`, boxShadow: "0 20px 40px rgba(0,0,0,0.4)", width: "100%", maxWidth: 400, margin: "0 auto", position: "relative", overflow: "hidden" }}
+    >
+      <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div style={{ width: 80, height: 80, borderRadius: "50%", background: C.charcoal3, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>👤</div>
+        <div style={{ color: C.white, fontSize: 24, fontWeight: 600 }}>Emergency AC Repair</div>
+        <div style={{ color: C.steelLight, fontSize: 15, marginTop: 4 }}>Incoming Call...</div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "0 24px" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(239,68,68,0.15)", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <PhoneOff size={28} />
+        </div>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(34,197,94,0.15)", color: "#22c55e", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <PhoneIcon size={28} />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function TranscriptMockup() {
+  return (
+    <motion.div
+      initial={{ x: -40, opacity: 0 }}
+      whileInView={{ x: 0, opacity: 1 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+      style={{ background: C.charcoal2, borderRadius: 24, padding: 24, border: `1px solid ${C.concrete2}`, boxShadow: "0 20px 40px rgba(0,0,0,0.4)", width: "100%", maxWidth: 400, margin: "0 auto" }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ background: C.charcoal3, padding: "12px 16px", borderRadius: 16, borderBottomLeftRadius: 4, alignSelf: "flex-start", color: C.steelLight, maxWidth: "80%", fontSize: 14 }}>
+          Hi, my AC just started blowing warm air and I have a newborn at home.
+        </div>
+        <div style={{ background: "rgba(245,166,35,0.1)", border: `1px solid rgba(245,166,35,0.2)`, padding: "12px 16px", borderRadius: 16, borderBottomRightRadius: 4, alignSelf: "flex-end", color: C.orange, maxWidth: "80%", fontSize: 14 }}>
+          I can definitely help with that. What is your address?
+        </div>
+        <div style={{ background: C.charcoal3, padding: "12px 16px", borderRadius: 16, borderBottomLeftRadius: 4, alignSelf: "flex-start", color: C.steelLight, maxWidth: "80%", fontSize: 14 }}>
+          1234 Maple Street.
+        </div>
+        <motion.div 
+          initial={{ scale: 0.95, opacity: 0 }}
+          whileInView={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, delay: 0.4 }}
+          viewport={{ once: true }}
+          style={{ marginTop: 8, padding: 12, background: C.charcoal, borderRadius: 12, border: `1px solid ${C.concrete2}` }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.white, fontSize: 14 }}><Check size={16} o /> Name: Sarah Jenkins</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.white, fontSize: 14, marginTop: 4 }}><Check size={16} o /> Issue: No cool air</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.white, fontSize: 14, marginTop: 4 }}><Check size={16} o /> Priority: Emergency</div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+function CalendarMockup() {
+  return (
+    <motion.div
+      initial={{ x: 40, opacity: 0 }}
+      whileInView={{ x: 0, opacity: 1 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ type: "spring", stiffness: 200, damping: 20 }}
+      style={{ background: C.charcoal2, borderRadius: 24, padding: 24, border: `1px solid ${C.concrete2}`, boxShadow: "0 20px 40px rgba(0,0,0,0.4)", width: "100%", maxWidth: 400, margin: "0 auto" }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ color: C.white, fontWeight: 600, fontSize: 18 }}>Tuesday, Aug 14</div>
+        <div style={{ color: C.steelLight, fontSize: 14 }}>Today</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "relative" }}>
+        <div style={{ height: 60, background: C.charcoal3, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", color: C.steelLight, fontSize: 14 }}>8:00 AM</div>
+        <motion.div 
+          initial={{ scale: 0.95, opacity: 0, y: -20 }}
+          whileInView={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 200, delay: 0.4 }}
+          viewport={{ once: true }}
+          style={{ height: 80, background: "rgba(245,166,35,0.15)", borderLeft: `4px solid ${C.orange}`, borderRadius: 8, padding: "12px 16px" }}
+        >
+          <div style={{ color: C.white, fontWeight: 600, fontSize: 15 }}>Emergency AC Repair</div>
+          <div style={{ color: C.orange, fontSize: 13, marginTop: 4 }}>9:00 AM • 1234 Maple St</div>
+        </motion.div>
+        <div style={{ height: 60, background: C.charcoal3, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", color: C.steelLight, fontSize: 14 }}>11:00 AM</div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ================================================================== */
 /*  HOW IT WORKS                                                       */
 /* ================================================================== */
 function How() {
   const steps = [
-    { n: "1", t: "Answers instantly", p: "Every call picked up in seconds, 24/7, nights, weekends, whenever you cannot get to the phone." },
-    { n: "2", t: "Qualifies the caller", p: "Foreman finds out the job, the urgency, and the location, and answers questions like your best front-desk person." },
-    { n: "3", t: "Books the job", p: "The job drops straight into your calendar, ready to go. No voicemail, no lost lead, no callbacks to chase." },
+    { n: "1", t: "Answers instantly", p: "Every call picked up in seconds, 24/7, nights, weekends, whenever you cannot get to the phone.", mockup: <IncomingCallMockup /> },
+    { n: "2", t: "Qualifies the caller", p: "Foreman finds out the job, the urgency, and the location, and answers questions like your best front-desk person.", mockup: <TranscriptMockup /> },
+    { n: "3", t: "Books the job", p: "The job drops straight into your calendar, ready to go. No voicemail, no lost lead, no callbacks to chase.", mockup: <CalendarMockup /> },
   ];
   return (
-    <section id="how" style={{ padding: "96px 0" }}>
+    <section id="how" style={{ padding: "120px 0" }}>
       <div className="fm-wrap">
-        <Reveal className="fm-sechead">
+        <Reveal className="fm-sechead" style={{ marginBottom: 100 }}>
           <div className="fm-eyebrow">MISSED CALL TO BOOKED JOB</div>
           <h2 className="fm-h2">How Foreman works</h2>
           <p className="fm-secsub">Three steps. Fully automatic. You keep working.</p>
         </Reveal>
-        <div className="fm-3grid fm-how">
-          {steps.map((s, i) => (
-            <Reveal key={i} delay={i * 0.15}>
-              <div className="fm-step">
-                <motion.div
-                  className="fm-stepnum"
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ type: "spring", stiffness: 200, delay: i * 0.15 }}
-                >
-                  {s.n}
-                </motion.div>
-                <h3 className="fm-cardh3" style={{ fontSize: 24 }}>{s.t}</h3>
-                <p className="fm-cardp" style={{ fontSize: 16 }}>{s.p}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 120 }}>
+          {steps.map((s, i) => {
+            const isEven = i % 2 !== 0;
+            return (
+              <div key={i} className={`fm-z-row ${isEven ? "fm-z-reverse" : ""}`}>
+                <div className="fm-z-text">
+                  <Reveal delay={0.1}>
+                    <div className="fm-stepnum" style={{ marginBottom: 24 }}>{s.n}</div>
+                    <h3 className="fm-h2" style={{ fontSize: 32, marginBottom: 16 }}>{s.t}</h3>
+                    <p className="fm-secsub" style={{ fontSize: 18, lineHeight: 1.6 }}>{s.p}</p>
+                  </Reveal>
+                </div>
+                <div className="fm-z-mockup">
+                  {s.mockup}
+                </div>
               </div>
-            </Reveal>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
@@ -593,11 +841,11 @@ function Features() {
         <div className="fm-3grid">
           {feats.map((f, i) => (
             <Reveal key={i} delay={(i % 3) * 0.1}>
-              <motion.div className="fm-featcard" whileHover={{ y: -6, borderColor: "rgba(255,107,26,0.45)" }} transition={{ type: "spring", stiffness: 300 }}>
+              <TiltCard className="fm-featcard" glowColor="rgba(16,185,129,0.08)">
                 <div className="fm-featic">{f.icon}</div>
-                <h3 className="fm-cardh3" style={{ color: C.white }}>{f.t}</h3>
-                <p className="fm-cardp" style={{ color: C.steelLight }}>{f.p}</p>
-              </motion.div>
+                <h3 className="fm-cardh3">{f.t}</h3>
+                <p className="fm-cardp">{f.p}</p>
+              </TiltCard>
             </Reveal>
           ))}
         </div>
@@ -610,6 +858,7 @@ function Features() {
 /*  PRICING                                                            */
 /* ================================================================== */
 function Pricing() {
+  const reducedMotion = useReducedMotion();
   const items = [
     "Free base for month 1, you only pay per booking during the pilot",
     "Every call answered, qualified and booked",
@@ -627,6 +876,20 @@ function Pricing() {
         <Reveal>
           <motion.div className="fm-pricecard" whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 200 }}>
             <div className="fm-priceglow" />
+            {!reducedMotion && (
+              <motion.div
+                aria-hidden
+                style={{
+                  position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+                  background: "linear-gradient(60deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%)",
+                  backgroundSize: "300% 100%"
+                }}
+                initial={{ backgroundPosition: "100% 0" }}
+                whileInView={{ backgroundPosition: "-100% 0" }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 1.5, ease: "easeInOut", delay: 0.3 }}
+              />
+            )}
             <div style={{ position: "relative", zIndex: 2 }}>
               <span className="fm-pricebadge">PILOT, LIMITED SPOTS</span>
               <div className="fm-pricemain">$500<span className="fm-priceper">/mo</span></div>
@@ -653,25 +916,35 @@ function Pricing() {
 /* ================================================================== */
 function FinalCTA() {
   return (
-    <section id="pilot" style={{ background: C.orange, color: C.charcoal, padding: "96px 0", textAlign: "center" }}>
-      <div className="fm-wrap">
+    <section id="pilot" style={{ background: C.charcoal, color: C.white, padding: "160px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      {/* Background ambient glow */}
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: "100%",
+        maxWidth: 1000,
+        height: 600,
+        background: "radial-gradient(circle, rgba(245,166,35,0.08), transparent 70%)",
+        pointerEvents: "none",
+        zIndex: 0
+      }} />
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 1, maxWidth: 840 }}>
         <Reveal>
-          <h2 className="fm-h2" style={{ fontSize: 52 }}>Ready to stop losing jobs to voicemail?</h2>
-          <p className="fm-secsub" style={{ color: C.charcoal, opacity: 0.9, margin: "0 auto 36px" }}>
+          <h2 className="fm-h2" style={{ fontSize: 56, letterSpacing: "-1.5px" }}>Ready to stop losing jobs to voicemail?</h2>
+          <p className="fm-secsub" style={{ color: C.steelLight, margin: "24px auto 48px", fontSize: 20, lineHeight: 1.6, maxWidth: 640 }}>
             Grab one of our pilot spots. 15-minute call, no pressure. We will show you exactly what Foreman captures for a shop like yours.
           </p>
-          <motion.a
+          <MagneticButton
             href={CALENDLY_LINK}
             target="_blank"
             rel="noopener noreferrer"
-            className="fm-btn fm-btn-dark"
-            style={{ fontSize: 18, padding: "18px 40px" }}
-            whileHover={{ scale: 1.05, boxShadow: "0 14px 40px rgba(20,32,46,0.35)" }}
-            whileTap={{ scale: 0.97 }}
+            className="fm-btn fm-btn-primary"
           >
-            Book your pilot call
-          </motion.a>
-          <div style={{ marginTop: 22, fontFamily: "IBM Plex Mono, monospace", fontSize: 14, opacity: 0.7 }}>
+            <span style={{ fontSize: 18, padding: "4px 16px" }}>Book your pilot call</span>
+          </MagneticButton>
+          <div style={{ marginTop: 32, fontFamily: "IBM Plex Mono, monospace", fontSize: 14, color: C.steelLight }}>
             or DM us &quot;PILOT&quot; on Instagram @foreman.ai_
           </div>
         </Reveal>
@@ -738,7 +1011,7 @@ function FAQ() {
 /* ================================================================== */
 function Footer() {
   return (
-    <footer style={{ background: C.charcoal3, color: C.steelLight, padding: "56px 0 40px" }}>
+    <footer style={{ background: C.charcoal3, color: C.steelLight, padding: "56px 0 40px", borderTop: `1px solid ${C.concrete2}` }}>
       <div className="fm-wrap">
         <div className="fm-footinner">
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -831,25 +1104,27 @@ function Bolt() {
 /* ================================================================== */
 export function ForemanLanding() {
   return (
-    <main
-      className="fm-landing"
-      style={{
-        fontFamily: "Inter, sans-serif",
-        color: C.charcoal,
-        background: C.white,
-        overflowX: "hidden",
-      }}
-    >
-      <Nav />
-      <Hero />
-      <StatBar />
-      <Problem />
-      <How />
-      <Features />
-      <Pricing />
-      <FinalCTA />
-      <FAQ />
-      <Footer />
-    </main>
+    <ReactLenis root options={{ lerp: 0.1, duration: 1.2, smoothWheel: true }}>
+      <main
+        className="fm-landing"
+        style={{
+          fontFamily: "Inter, sans-serif",
+          color: C.white,
+          background: C.charcoal,
+          overflowX: "hidden",
+        }}
+      >
+        <Nav />
+        <Hero />
+        <StatBar />
+        <Problem />
+        <How />
+        <Features />
+        <Pricing />
+        <FinalCTA />
+        <FAQ />
+        <Footer />
+      </main>
+    </ReactLenis>
   );
 }
