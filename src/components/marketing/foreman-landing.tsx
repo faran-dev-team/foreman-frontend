@@ -1077,7 +1077,7 @@ function IntegrationsRow() {
     <section className="fm-island" style={{ background: C.bgPrimary, padding: "96px 0", zIndex: 6, overflow: "hidden" }}>
       <div style={{ textAlign: "center" }}>
         <Reveal style={{ position: "relative" }}>
-          <style>{`
+          <style dangerouslySetInnerHTML={{ __html: `
             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Libre+Baskerville:wght@400;700&display=swap');
             
             @keyframes fm-roller {
@@ -1098,7 +1098,7 @@ function IntegrationsRow() {
               overflow: hidden;
               z-index: 1;
             }
-          `}</style>
+          `}} />
 
           <div style={{ marginBottom: 64, position: "relative" }}>
             <h2 style={{
