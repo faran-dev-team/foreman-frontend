@@ -18,5 +18,5 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return <ForemanLanding />;
+  return <ForemanLanding mode="main" />;
 }

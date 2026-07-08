@@ -3,11 +3,11 @@
 /* ================================================================== */
 /*  foreman-illustrations.tsx                                           */
 /*                                                                      */
-/*  Premium editorial illustration system — dark-native.               */
+/*  Premium editorial illustration system â€” dark-native.               */
 /*  Designed for use on #0A0F1C and #141C30 dark backgrounds.          */
 /*  Inspired by: Wispr Flow, Linear, Arc, Slack, Dropbox.              */
 /*                                                                      */
-/*  API unchanged — all exports, names, and props preserved.           */
+/*  API unchanged â€” all exports, names, and props preserved.           */
 /* ================================================================== */
 
 import React from "react";
@@ -43,13 +43,13 @@ type IllustrationProps = {
 };
 
 /* ================================================================== */
-/*  SharedDefs — gradients, filters, keyframe animations               */
+/*  SharedDefs â€” gradients, filters, keyframe animations               */
 /*  Each SVG renders its own <SharedDefs /> so IDs stay in scope.      */
 /* ================================================================== */
 function SharedDefs() {
   return (
     <defs>
-      {/* ── Gradients ── */}
+      {/* â”€â”€ Gradients â”€â”€ */}
       <linearGradient id="g-orange" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%"   stopColor="#FFB27A" />
         <stop offset="100%" stopColor="#F97A35" />
@@ -90,7 +90,7 @@ function SharedDefs() {
         <stop offset="100%" stopColor="#1E2A42" />
       </linearGradient>
 
-      {/* ── Filters ── */}
+      {/* â”€â”€ Filters â”€â”€ */}
       {/* Soft drop shadow for floating effect */}
       <filter id="f-shadow" x="-25%" y="-15%" width="150%" height="160%">
         <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#000000" floodOpacity="0.55" />
@@ -122,7 +122,7 @@ function SharedDefs() {
         </feMerge>
       </filter>
 
-      {/* Soft general glow — proper bloom: blur then merge over source */}
+      {/* Soft general glow â€” proper bloom: blur then merge over source */}
       <filter id="f-glow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
         <feMerge>
@@ -131,7 +131,7 @@ function SharedDefs() {
         </feMerge>
       </filter>
 
-      {/* ── CSS Animations ──
+      {/* â”€â”€ CSS Animations â”€â”€
            Guard: only inject once even when multiple SVGs are on the same page.
            The empty :where() prevents specificity issues with fm-landing animation reset. */}
       <style>{`
@@ -197,7 +197,7 @@ function SharedDefs() {
 
 /* ================================================================== */
 /*  DoodleTechnicianOnCall                                              */
-/*  Smiling cartoon technician — dark-native, orange helmet,           */
+/*  Smiling cartoon technician â€” dark-native, orange helmet,           */
 /*  phone in hand, speech bubble, cream outline on dark bg.            */
 /* ================================================================== */
 export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) {
@@ -209,7 +209,7 @@ export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) 
       <ellipse cx="80" cy="155" rx="48" ry="8" fill="black" opacity="0.45" />
 
       <g className="il-float">
-        {/* ── Torso ── */}
+        {/* â”€â”€ Torso â”€â”€ */}
         <path d="M50 120 Q46 104 50 96 Q60 86 80 86 Q100 86 110 96 Q114 104 110 120 Q100 138 80 140 Q60 138 50 120 Z"
           fill="url(#g-orange)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinejoin="round" filter="url(#f-shadow)" />
         {/* shirt detail */}
@@ -218,7 +218,7 @@ export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) 
         <rect x="72" y="104" width="16" height="12" rx="4" fill={C.navy} opacity="0.6" />
         <path d="M75 110 L78 113 L83 107" stroke={C.orange} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 
-        {/* ── Left arm / phone ── */}
+        {/* â”€â”€ Left arm / phone â”€â”€ */}
         <path d="M50 100 Q34 110 30 122 Q28 130 38 134"
           fill="none" stroke="url(#g-skin)" strokeWidth="15" strokeLinecap="round" />
         <path d="M50 100 Q34 110 30 122 Q28 130 38 134"
@@ -230,20 +230,20 @@ export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) 
         <rect x="21" y="120" width="16" height="22" rx="2" fill="url(#g-orangeV)" opacity="0.35" />
         <circle cx="29" cy="143" r="2" fill="rgba(255,255,255,0.5)" />
 
-        {/* ── Right arm ── */}
+        {/* â”€â”€ Right arm â”€â”€ */}
         <path d="M110 100 Q126 110 130 120 Q132 130 124 134"
           fill="none" stroke="url(#g-skin)" strokeWidth="15" strokeLinecap="round" />
         <path d="M110 100 Q126 110 130 120 Q132 130 124 134"
           fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" strokeLinecap="round" />
 
-        {/* ── Head ── */}
+        {/* â”€â”€ Head â”€â”€ */}
         <ellipse cx="80" cy="58" rx="30" ry="32"
           fill="url(#g-skin)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" filter="url(#f-shadow)" />
         {/* ear */}
         <ellipse cx="50" cy="60" rx="6" ry="9" fill="url(#g-skin)" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
         <ellipse cx="110" cy="60" rx="6" ry="9" fill="url(#g-skin)" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
 
-        {/* ── Hard hat ── */}
+        {/* â”€â”€ Hard hat â”€â”€ */}
         <path d="M46 60 Q44 26 80 22 Q116 26 114 60 Z"
           fill="url(#g-orange)" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinejoin="round" />
         <rect x="42" y="58" width="76" height="11" rx="5.5"
@@ -254,7 +254,7 @@ export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) 
         {/* center fin */}
         <path d="M80 22 V62" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" strokeLinecap="round" />
 
-        {/* ── Eyes — dark irises blink, white shines stay fixed ── */}
+        {/* â”€â”€ Eyes â€” dark irises blink, white shines stay fixed â”€â”€ */}
         <g className="il-blink">
           <ellipse cx="68" cy="64" rx="5.5" ry="6.5" fill={C.navy} />
           <ellipse cx="92" cy="64" rx="5.5" ry="6.5" fill={C.navy} />
@@ -266,17 +266,17 @@ export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) 
         <circle cx="69" cy="65" r="1.5" fill="rgba(0,0,0,0.55)" />
         <circle cx="93" cy="65" r="1.5" fill="rgba(0,0,0,0.55)" />
 
-        {/* ── Nose ── */}
+        {/* â”€â”€ Nose â”€â”€ */}
         <path d="M78 72 Q80 76 82 72" stroke={C.skinDark} strokeWidth="2.5" strokeLinecap="round" fill="none" />
 
-        {/* ── Smile — use skinDark; navy on warm-skin tone is invisible ── */}
+        {/* â”€â”€ Smile â€” use skinDark; navy on warm-skin tone is invisible â”€â”€ */}
         <path d="M68 78 Q80 90 92 78" stroke="rgba(160,90,40,0.7)" strokeWidth="3.5" strokeLinecap="round" fill="none" />
 
         {/* cheeks */}
         <ellipse cx="60" cy="76" rx="7" ry="5" fill="#FF8080" opacity="0.32" />
         <ellipse cx="100" cy="76" rx="7" ry="5" fill="#FF8080" opacity="0.32" />
 
-        {/* ── Speech bubble ── */}
+        {/* â”€â”€ Speech bubble â”€â”€ */}
         <rect x="96" y="14" width="54" height="36" rx="14"
           fill="url(#g-slate)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" filter="url(#f-shadowSm)" />
         <path d="M106 50 L100 64 L122 50 Z"
@@ -289,7 +289,7 @@ export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) 
         <rect x="111" y="35" width="4" height="3" rx="1" fill={C.orange} opacity="0.6" />
       </g>
 
-      {/* ── Floating accent dots ── */}
+      {/* â”€â”€ Floating accent dots â”€â”€ */}
       <g className="il-pulse" style={{ animationDelay: "0.3s" }}>
         <circle cx="14" cy="36" r="4" fill={C.orange} opacity="0.6" />
         <circle cx="8"  cy="46" r="2" fill={C.orange} opacity="0.4" />
@@ -310,7 +310,7 @@ export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) 
 
 /* ================================================================== */
 /*  DoodleServiceVan                                                    */
-/*  Cartoon van — dark card body, orange stripe, glowing headlights    */
+/*  Cartoon van â€” dark card body, orange stripe, glowing headlights    */
 /* ================================================================== */
 export function DoodleServiceVan({ className, style }: IllustrationProps) {
   return (
@@ -321,7 +321,7 @@ export function DoodleServiceVan({ className, style }: IllustrationProps) {
       <ellipse cx="110" cy="132" rx="88" ry="9" fill="black" opacity="0.5" />
 
       <g className="il-floatSlow">
-        {/* ── Van body ── */}
+        {/* â”€â”€ Van body â”€â”€ */}
         <path d="M14 96 V56 Q14 42 30 42 H128 L164 68 H202 Q210 68 210 80 V96 Z"
           fill="url(#g-slate)" stroke="rgba(255,255,255,0.22)" strokeWidth="2" strokeLinejoin="round" filter="url(#f-shadow)" />
 
@@ -343,7 +343,7 @@ export function DoodleServiceVan({ className, style }: IllustrationProps) {
         {/* door divider */}
         <path d="M76 42 V96" stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round" />
 
-        {/* ── Wheels ── */}
+        {/* â”€â”€ Wheels â”€â”€ */}
         <circle cx="54"  cy="98" r="22" fill={C.navy} stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
         <circle cx="54"  cy="98" r="14" fill="#0E1520" stroke="rgba(255,255,255,0.15)" strokeWidth="2" />
         <circle cx="54"  cy="98" r="6"  fill={C.orange} filter="url(#f-glowOrange)" />
@@ -369,7 +369,7 @@ export function DoodleServiceVan({ className, style }: IllustrationProps) {
         <path d="M24 58 Q110 48 190 58" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.1" fill="none" />
       </g>
 
-      {/* ── Motion lines ── */}
+      {/* â”€â”€ Motion lines â”€â”€ */}
       <g className="il-pulse" style={{ animationDelay: "0.2s" }}>
         <path d="M0 78 H14" stroke={C.orange} strokeWidth="3.5" strokeLinecap="round" opacity="0.5" />
         <path d="M0 88 H12" stroke={C.orange} strokeWidth="2.5" strokeLinecap="round" opacity="0.35" />
@@ -389,79 +389,93 @@ export function DoodleServiceVan({ className, style }: IllustrationProps) {
 
 /* ================================================================== */
 /*  DoodleRingingPhone                                                  */
-/*  Modern smartphone — dark body, glowing orange notification,        */
+/*  Modern smartphone â€” dark body, glowing orange notification,        */
 /*  pulse rings, bouncing                                               */
 /* ================================================================== */
 export function DoodleRingingPhone({ className, style }: IllustrationProps) {
   return (
-    <svg className={className} style={style} width="110" height="130" viewBox="0 0 110 130" fill="none" aria-hidden>
-      <SharedDefs />
+    <svg className={className} style={style} width="140" height="140" viewBox="0 0 200 200" fill="none" aria-hidden>
+      <defs>
+        <clipPath id="avatar-clip">
+          <circle cx="85" cy="70" r="22" />
+        </clipPath>
+      </defs>
+      
+      {/* Floor Shadow */}
+      <ellipse cx="100" cy="175" rx="55" ry="10" fill="#EADDF4" />
 
-      <ellipse cx="55" cy="126" rx="28" ry="6" fill="black" opacity="0.45" />
+      {/* Tilted Phone Group */}
+      <g transform="translate(100, 95) rotate(-12) translate(-100, -95)" className="il-floatSlow">
+        
+        {/* Left Buttons */}
+        <path d="M 40 50 L 32 50 L 32 70 L 40 70 Z" fill="#EADDF4" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+        <path d="M 40 80 L 32 80 L 32 100 L 40 100 Z" fill="#EADDF4" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
 
-      {/* pulse rings */}
-      <circle cx="55" cy="62" r="34" stroke={C.orange} strokeWidth="3" opacity="0.4" className="il-ringPulse" />
-      <circle cx="55" cy="62" r="34" stroke={C.orange} strokeWidth="2" opacity="0.3" className="il-ringPulse" style={{ animationDelay: "0.6s" }} />
+        {/* Phone Body Base */}
+        <rect x="40" y="20" width="90" height="150" rx="15" fill="#EADDF4" stroke="#111" strokeWidth="6" strokeLinejoin="round" />
+        
+        {/* Screen Base */}
+        <rect x="46" y="26" width="78" height="138" rx="10" fill="#FFFBF0" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+        
+        {/* Notch */}
+        <rect x="65" y="26" width="40" height="12" rx="6" fill="#111" />
 
-      <g className="il-bounce">
-        {/* phone body */}
-        <rect x="22" y="14" width="66" height="110" rx="17"
-          fill="url(#g-card)" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" filter="url(#f-shadow)" />
+        {/* Avatar Area */}
+        <circle cx="85" cy="70" r="22" fill="#EADDF4" stroke="#111" strokeWidth="5" />
+        <g clipPath="url(#avatar-clip)">
+          <circle cx="85" cy="62" r="8" fill="#FFFBF0" stroke="#111" strokeWidth="4" />
+          <path d="M 60 90 C 60 75, 110 75, 110 90 Z" fill="#FFFBF0" stroke="#111" strokeWidth="4" strokeLinejoin="round" />
+        </g>
+        <circle cx="85" cy="70" r="22" fill="none" stroke="#111" strokeWidth="5" />
 
-        {/* screen bg */}
-        <rect x="28" y="26" width="54" height="86" rx="11" fill="#0A1628" />
-        {/* screen shimmer */}
-        <rect x="28" y="26" width="54" height="86" rx="11" fill="url(#g-orangeV)" opacity="0.12" />
+        {/* Text Lines */}
+        <line x1="62" y1="105" x2="108" y2="105" stroke="#111" strokeWidth="5" strokeLinecap="round" />
+        <line x1="68" y1="116" x2="102" y2="116" stroke="#B3B3B3" strokeWidth="5" strokeLinecap="round" />
 
-        {/* dynamic island / notch */}
-        <rect x="38" y="19" width="28" height="9" rx="4.5" fill="#050A14" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
-        <circle cx="60" cy="23" r="2.5" fill="#111827" />
-
-        {/* home indicator */}
-        <rect x="40" y="117" width="28" height="4" rx="2" fill="rgba(255,255,255,0.3)" />
-
-        {/* ── Notification card ── */}
-        <rect x="30" y="46" width="50" height="40" rx="10" fill="url(#g-slate)" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
-        {/* orange icon circle */}
-        <circle cx="44" cy="66" r="9" fill="url(#g-orange)" filter="url(#f-glowOrange)" />
-        <path d="M40 66 L43 69 L48 61" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        {/* text lines */}
-        <path d="M56 60 H74" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M56 68 H70" stroke="rgba(255,255,255,0.25)" strokeWidth="2"   strokeLinecap="round" />
-        <path d="M56 75 H66" stroke="rgba(255,255,255,0.18)" strokeWidth="2"   strokeLinecap="round" />
-
-        {/* ── Call button ── */}
-        <rect x="30" y="94" width="50" height="16" rx="8" fill="url(#g-green)" />
-        {/* phone icon on button */}
-        <path d="M42 102 Q44 98 46 100 Q47 102 45 104 Q48 107 51 106 Q53 104 55 105 Q57 107 54 110 Q50 112 46 108 Q42 106 42 102 Z"
-          fill="white" opacity="0.9" />
-        <path d="M62 100 H72" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
-        <path d="M62 106 H68" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.4" />
-
-        {/* ── Side buttons ── */}
-        <rect x="14" y="46" width="8" height="20" rx="4" fill="url(#g-slate)" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
-        <rect x="14" y="70" width="8" height="14" rx="4" fill="url(#g-slate)" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
-        <rect x="88" y="54" width="8" height="22" rx="4" fill="url(#g-slate)" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+        {/* Green Accept Button */}
+        <circle cx="65" cy="140" r="14" fill="#70A653" stroke="#111" strokeWidth="4" />
+        {/* Green button icon (tilted receiver) */}
+        <path d="M 59 144 C 57 136, 67 134, 71 136" fill="none" stroke="#FFF" strokeWidth="4" strokeLinecap="round" />
+        
+        {/* Orange Decline Button */}
+        <circle cx="105" cy="140" r="14" fill="#F89235" stroke="#111" strokeWidth="4" />
+        {/* Orange button icon (horizontal receiver) */}
+        <path d="M 98 140 C 98 135, 112 135, 112 140" fill="none" stroke="#FFF" strokeWidth="4" strokeLinecap="round" />
       </g>
 
-      {/* sparkles */}
-      <g className="il-pulse" style={{ animationDelay: "0.1s" }}>
-        <circle cx="8"  cy="24" r="4" fill={C.orange} opacity="0.6" />
-        <circle cx="14" cy="15" r="2" fill={C.orange} opacity="0.4" />
+      {/* Ringing Waves Left */}
+      <g stroke="#111" strokeWidth="4" strokeLinecap="round" fill="none" className="il-pulseSlow">
+        <path d="M 40 120 C 30 130, 30 150, 40 160" />
+        <path d="M 30 125 C 20 135, 20 145, 30 155" />
       </g>
-      <g className="il-pulse" style={{ animationDelay: "0.5s" }}>
-        <circle cx="102" cy="22" r="3.5" fill={C.green} opacity="0.65" />
-        <circle cx="108" cy="32" r="2"   fill={C.green} opacity="0.45" />
+      
+      {/* Ringing Waves Right */}
+      <g stroke="#111" strokeWidth="4" strokeLinecap="round" fill="none" className="il-pulseSlow" style={{ animationDelay: "0.2s" }}>
+        <path d="M 150 110 C 160 120, 160 140, 150 150" />
+        <path d="M 160 115 C 170 125, 170 135, 160 145" />
       </g>
-      <circle cx="6"  cy="76" r="2.5" fill={C.purple} opacity="0.55" />
-      <circle cx="104" cy="80" r="2"  fill={C.sky}    opacity="0.55" />
+
+      {/* Orange Sunbursts Left */}
+      <g stroke="#F89235" strokeWidth="5" strokeLinecap="round" className="il-pulseSlow" style={{ animationDelay: "0.4s" }}>
+        <line x1="45" y1="80" x2="28" y2="90" />
+        <line x1="42" y1="58" x2="25" y2="62" />
+        <line x1="55" y1="38" x2="40" y2="30" />
+      </g>
+      
+      {/* Orange Sunbursts Right */}
+      <g stroke="#F89235" strokeWidth="5" strokeLinecap="round" className="il-pulseSlow" style={{ animationDelay: "0.6s" }}>
+        <line x1="135" y1="40" x2="152" y2="25" />
+        <line x1="145" y1="60" x2="168" y2="52" />
+        <line x1="148" y1="82" x2="168" y2="88" />
+      </g>
+
     </svg>
   );
 }
 
 /* ================================================================== */
 /*  DoodleHardHat                                                       */
-/*  Construction helmet — orange gradient dome, green check badge      */
+/*  Construction helmet â€” orange gradient dome, green check badge      */
 /* ================================================================== */
 export function DoodleHardHat({ className, style }: IllustrationProps) {
   return (
@@ -495,7 +509,7 @@ export function DoodleHardHat({ className, style }: IllustrationProps) {
           fill="url(#g-card)" stroke="rgba(255,255,255,0.22)" strokeWidth="2" />
         <path d="M58 84 H72" stroke={C.orange} strokeWidth="2.5" strokeLinecap="round" opacity="0.55" />
 
-        {/* ── Green check badge ── */}
+        {/* â”€â”€ Green check badge â”€â”€ */}
         <circle cx="98" cy="86" r="22"
           fill="url(#g-green)" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" filter="url(#f-glowGreen)" />
         <path d="M88 86 L95 93 L108 79" stroke="white" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -519,87 +533,162 @@ export function DoodleHardHat({ className, style }: IllustrationProps) {
 
 /* ================================================================== */
 /*  DoodleClipboard                                                     */
-/*  Rounded clipboard — dark card body, orange clip,                   */
+/*  Rounded clipboard â€” dark card body, orange clip,                   */
 /*  green checks, pencil detail                                         */
 /* ================================================================== */
 export function DoodleClipboard({ className, style }: IllustrationProps) {
   return (
-    <svg className={className} style={style} width="140" height="170" viewBox="0 0 140 170" fill="none" aria-hidden>
-      <SharedDefs />
-
-      <ellipse cx="70" cy="165" rx="50" ry="8" fill="black" opacity="0.45" />
-
-      <g className="il-floatSlow">
-        {/* board body */}
-        <rect x="14" y="20" width="112" height="138" rx="18"
-          fill="url(#g-slate)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" filter="url(#f-shadow)" />
-        {/* inner paper */}
-        <rect x="20" y="26" width="100" height="126" rx="14" fill="rgba(255,255,255,0.04)" />
-
-        {/* orange clip */}
-        <rect x="42" y="8"  width="56" height="24" rx="10"
-          fill="url(#g-orange)" stroke="rgba(255,255,255,0.22)" strokeWidth="2" />
-        {/* clip fastener */}
-        <rect x="54" y="4"  width="32" height="14" rx="7"
-          fill="url(#g-card)" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />
-        {/* clip holes */}
-        <circle cx="64" cy="11" r="3" fill="rgba(0,0,0,0.3)" />
-        <circle cx="76" cy="11" r="3" fill="rgba(0,0,0,0.3)" />
-
-        {/* ── Check items ── */}
-        {/* row 1 — checked */}
-        <rect x="30" y="54" width="22" height="22" rx="7"
-          fill="url(#g-green)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" filter="url(#f-glowGreen)" />
-        <path d="M34 65 L39 70 L51 58" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M60 65 H108" stroke="rgba(255,255,255,0.22)" strokeWidth="2.5" strokeLinecap="round" />
-
-        {/* row 2 — checked */}
-        <rect x="30" y="82" width="22" height="22" rx="7"
-          fill="url(#g-green)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" filter="url(#f-glowGreen)" />
-        <path d="M34 93 L39 98 L51 86" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M60 93 H108" stroke="rgba(255,255,255,0.22)" strokeWidth="2.5" strokeLinecap="round" />
-
-        {/* row 3 — unchecked */}
-        <rect x="30" y="110" width="22" height="22" rx="7"
-          fill="rgba(255,255,255,0.05)" stroke={C.orange} strokeWidth="2.5" />
-        <path d="M60 121 H96" stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round" />
-
-        {/* row 4 — unchecked faded */}
-        <rect x="30" y="132" width="22" height="18" rx="7"
-          fill="rgba(255,255,255,0.03)" stroke="rgba(249,122,53,0.45)" strokeWidth="2" />
-        <path d="M60 141 H86" stroke="rgba(255,255,255,0.14)" strokeWidth="2.5" strokeLinecap="round" />
-
-        {/* ── Pencil ── */}
-        <g className="il-wiggle" style={{ transformOrigin: "118px 148px" }}>
-          <path d="M104 128 L122 146 Q124 148 122 150 L118 154 Q116 156 114 154 L96 136 Z"
-            fill={C.yellow} stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinejoin="round" />
-          <path d="M100 132 L118 150" stroke="rgba(0,0,0,0.2)" strokeWidth="2" strokeLinecap="round" />
-          <path d="M96 136 L90 158 L114 154 Z"
-            fill={C.navy} stroke="rgba(255,255,255,0.22)" strokeWidth="2.5" strokeLinejoin="round" />
-          <circle cx="100" cy="156" r="4" fill="#FF6666" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
+    <svg className={className} style={style} width="140" height="170" viewBox="0 0 200 200" fill="none" aria-hidden>
+      {/* Board Group with rotation */}
+      <g transform="rotate(-6 100 100) translate(0, 5)" className="il-floatSlow">
+        {/* Board Background */}
+        <rect x="40" y="30" width="100" height="130" rx="12" fill="#EADDF4" stroke="#111" strokeWidth="5" filter="drop-shadow(0 15px 25px rgba(0,0,0,0.3))" />
+        
+        {/* Paper */}
+        <rect x="50" y="45" width="80" height="110" rx="8" fill="#FFFBF0" stroke="#111" strokeWidth="5" />
+        
+        {/* Checkboxes */}
+        <g stroke="#111" strokeWidth="5" fill="#FFFBF0">
+           <rect x="60" y="55" width="14" height="14" rx="3" />
+           <rect x="60" y="77" width="14" height="14" rx="3" />
+           <rect x="60" y="99" width="14" height="14" rx="3" />
+           <rect x="60" y="121" width="14" height="14" rx="3" />
         </g>
 
-        {/* board shine */}
-        <path d="M22 32 Q70 26 118 32" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeLinecap="round" fill="none" />
+        {/* Lines */}
+        <g stroke="#111" strokeWidth="5" strokeLinecap="round">
+           <line x1="84" y1="62" x2="114" y2="62" />
+           <line x1="84" y1="84" x2="120" y2="84" />
+           <line x1="84" y1="106" x2="122" y2="106" />
+           <line x1="84" y1="128" x2="114" y2="128" />
+        </g>
+
+        {/* Purple Checkmarks */}
+        <g stroke="#9161D3" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" fill="none">
+           <polyline points="63,62 67,66 77,50" />
+           <polyline points="63,84 67,88 77,72" />
+        </g>
+
+        {/* Orange Clip Base */}
+        <path d="M 65 45 L 65 35 A 10 10 0 0 1 75 25 L 80 25 L 80 15 A 10 10 0 0 1 100 15 L 100 25 L 105 25 A 10 10 0 0 1 115 35 L 115 45 Z" fill="#F89235" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+        <circle cx="90" cy="18" r="4" fill="#FFFBF0" stroke="#111" strokeWidth="4" />
+
+        {/* Pen Strapped to Right */}
+        <g transform="translate(135, 55) rotate(15)">
+           <path d="M6 -5 L14 -5 L14 5 L6 5 Z" fill="#FFFBF0" stroke="#111" strokeWidth="4" strokeLinejoin="round" />
+           <path d="M4 5 L16 5 L16 15 L4 15 Z" fill="#F89235" stroke="#111" strokeWidth="4" strokeLinejoin="round" />
+           <path d="M2 15 L18 15 L18 90 L10 105 L2 90 Z" fill="#EADDF4" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+           <path d="M2 90 L18 90 L10 105 Z" fill="#111" />
+           <path d="M18 25 L24 25 L24 60 L18 60" fill="none" stroke="#111" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
       </g>
 
-      {/* sparkles */}
-      <g className="il-pulse" style={{ animationDelay: "0.4s" }}>
-        <circle cx="8"  cy="44" r="4" fill={C.green} opacity="0.6" />
-        <circle cx="4"  cy="54" r="2" fill={C.green} opacity="0.4" />
+      {/* Outer Accents */}
+      <g stroke="#F89235" strokeWidth="4" strokeLinecap="round" fill="none" className="il-pulseSlow">
+        <line x1="30" y1="70" x2="16" y2="76" />
+        <line x1="32" y1="88" x2="12" y2="88" />
+        <line x1="32" y1="106" x2="16" y2="112" />
+        <path d="M 160 145 C 168 145, 172 150, 166 155 C 160 160, 168 165, 166 170" />
       </g>
-      <g className="il-pulse" style={{ animationDelay: "0.8s" }}>
-        <circle cx="134" cy="28" r="3.5" fill={C.orange}      opacity="0.6" />
-        <circle cx="138" cy="38" r="2"   fill={C.orangeLight} opacity="0.45" />
+      
+      <g stroke="#111" strokeWidth="4" strokeLinecap="round" className="il-pulseSlow" style={{ animationDelay: "1s" }}>
+        <line x1="140" y1="40" x2="148" y2="25" />
+        <line x1="150" y1="52" x2="162" y2="38" />
+        <line x1="155" y1="68" x2="170" y2="58" />
       </g>
-      <circle cx="16" cy="158" r="2.5" fill={C.purple} opacity="0.5" />
+      
+      <line x1="45" y1="180" x2="155" y2="170" stroke="#111" strokeWidth="4" strokeLinecap="round" opacity="0.3" />
+    </svg>
+  );
+}
+
+/* ================================================================== */
+/*  DoodleIntegrations                                                */
+/*  App nodes syncing data to a central hub, representing tools       */
+/* ================================================================== */
+export function DoodleIntegrations({ className, style }: IllustrationProps) {
+  return (
+    <svg className={className} style={style} width="220" height="150" viewBox="0 0 220 150" fill="none" aria-hidden>
+      
+      {/* Floor Shadow */}
+      <ellipse cx="110" cy="140" rx="70" ry="10" fill="#EADDF4" />
+
+      {/* Connections */}
+      <g stroke="#111" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="10 10" className="il-pulseSlow">
+        {/* Left to Center */}
+        <path d="M 50 60 Q 60 100 90 110" />
+        {/* Top to Center */}
+        <path d="M 110 40 L 110 90" />
+        {/* Right to Center */}
+        <path d="M 170 60 Q 160 100 130 110" />
+      </g>
+      
+      {/* Moving data packets (dots) */}
+      <g stroke="#111" strokeWidth="3" className="il-pulse">
+        <circle cx="68" cy="88" r="5" fill="#70A653" />
+        <circle cx="110" cy="65" r="5" fill="#EADDF4" />
+        <circle cx="152" cy="88" r="5" fill="#F89235" />
+      </g>
+
+      {/* Central Hub */}
+      <g transform="translate(110, 115) translate(-110, -115)" className="il-floatSlow">
+        <rect x="80" y="85" width="60" height="60" rx="14" fill="#FFFBF0" stroke="#111" strokeWidth="5" />
+        <circle cx="110" cy="115" r="16" fill="#F89235" stroke="#111" strokeWidth="5" />
+        <circle cx="110" cy="115" r="6" fill="#FFFBF0" stroke="#111" strokeWidth="4" />
+        <path d="M 90 135 L 100 135 M 120 135 L 130 135" stroke="#111" strokeWidth="4" strokeLinecap="round" opacity="0.3" />
+      </g>
+
+      {/* Left Node (Calendar) */}
+      <g transform="translate(45, 50) translate(-45, -50)" className="il-floatSlow" style={{ animationDelay: "0.2s" }}>
+        <rect x="25" y="30" width="40" height="40" rx="10" fill="#FFFBF0" stroke="#111" strokeWidth="5" />
+        <path d="M 25 42 L 65 42" stroke="#111" strokeWidth="5" />
+        <rect x="33" y="24" width="6" height="12" rx="3" fill="#F89235" stroke="#111" strokeWidth="4" />
+        <rect x="51" y="24" width="6" height="12" rx="3" fill="#F89235" stroke="#111" strokeWidth="4" />
+        <rect x="33" y="50" width="10" height="10" rx="3" fill="#EADDF4" />
+        <rect x="47" y="50" width="10" height="10" rx="3" fill="#EADDF4" />
+      </g>
+
+      {/* Top Node (Gear) */}
+      <g transform="translate(110, 20) translate(-110, -20)" className="il-floatSlow" style={{ animationDelay: "0.7s" }}>
+        <rect x="90" y="0" width="40" height="40" rx="10" fill="#FFFBF0" stroke="#111" strokeWidth="5" />
+        <circle cx="110" cy="20" r="10" fill="#EADDF4" stroke="#111" strokeWidth="5" />
+        <circle cx="110" cy="20" r="3" fill="#FFFBF0" stroke="#111" strokeWidth="4" />
+        <path d="M 110 5 L 110 10 M 110 30 L 110 35 M 95 20 L 100 20 M 120 20 L 125 20" stroke="#111" strokeWidth="4" strokeLinecap="round" />
+      </g>
+
+      {/* Right Node (Message) */}
+      <g transform="translate(175, 50) translate(-175, -50)" className="il-floatSlow" style={{ animationDelay: "0.4s" }}>
+        <rect x="155" y="30" width="40" height="40" rx="10" fill="#FFFBF0" stroke="#111" strokeWidth="5" />
+        <path d="M 163 48 Q 163 38 175 38 Q 187 38 187 48 Q 187 58 178 58 L 173 64 L 173 58 Q 163 58 163 48 Z" fill="#EADDF4" stroke="#111" strokeWidth="4" strokeLinejoin="round" />
+        <path d="M 169 48 L 181 48" stroke="#111" strokeWidth="4" strokeLinecap="round" />
+      </g>
+      
+      {/* Accents & Sparkles */}
+      <g stroke="#F89235" strokeWidth="4" strokeLinecap="round" className="il-pulseSlow">
+        <line x1="20" y1="30" x2="12" y2="22" />
+        <line x1="15" y1="50" x2="5" y2="50" />
+      </g>
+      <g stroke="#EADDF4" strokeWidth="4" strokeLinecap="round" className="il-pulseSlow" style={{ animationDelay: "0.2s" }}>
+        <line x1="85" y1="10" x2="75" y2="5" />
+        <line x1="135" y1="10" x2="145" y2="5" />
+      </g>
+      <g stroke="#F89235" strokeWidth="4" strokeLinecap="round" className="il-pulseSlow" style={{ animationDelay: "0.4s" }}>
+        <line x1="195" y1="40" x2="205" y2="35" />
+        <line x1="190" y1="65" x2="200" y2="75" />
+      </g>
+      
+      <g stroke="#111" strokeWidth="4" strokeLinecap="round" className="il-pulseSlow">
+        <path d="M 20 110 L 20 120 M 15 115 L 25 115" />
+        <path d="M 200 115 L 200 125 M 195 120 L 205 120" style={{ animationDelay: "0.6s" }} />
+      </g>
+
     </svg>
   );
 }
 
 /* ================================================================== */
 /*  DoodleWrenchGear                                                    */
-/*  Large orange wrench + dark spinning gear — mechanical but cute     */
+/*  Large orange wrench + dark spinning gear â€” mechanical but cute     */
 /* ================================================================== */
 export function DoodleWrenchGear({ className, style }: IllustrationProps) {
   return (
@@ -609,7 +698,7 @@ export function DoodleWrenchGear({ className, style }: IllustrationProps) {
       <ellipse cx="65" cy="124" rx="40" ry="7" fill="black" opacity="0.45" />
 
       <g className="il-float">
-        {/* ── Spinning gear ── */}
+        {/* â”€â”€ Spinning gear â”€â”€ */}
         <g className="il-spinSlow" style={{ transformOrigin: "88px 42px" }}>
           {[0,45,90,135,180,225,270,315].map((angle, i) => (
             <rect key={i} x="83" y="15" width="10" height="14" rx="4"
@@ -623,7 +712,7 @@ export function DoodleWrenchGear({ className, style }: IllustrationProps) {
           <path d="M88 30 V54 M76 42 H100" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeLinecap="round" />
         </g>
 
-        {/* ── Wrench ── */}
+        {/* â”€â”€ Wrench â”€â”€ */}
         <g className="il-wiggle" style={{ transform: "rotate(-38deg)", transformOrigin: "50px 74px" }}>
           {/* handle */}
           <rect x="38" y="56" width="24" height="72" rx="12"
@@ -661,82 +750,102 @@ export function DoodleWrenchGear({ className, style }: IllustrationProps) {
 }
 
 /* ================================================================== */
+/*  DoodleSunburst                                                      */
+/*  Hand-drawn radiating sunburst rays                                  */
+/* ================================================================== */
+export function DoodleSunburst({ className, style, color = "#F97A35" }: IllustrationProps & { color?: string }) {
+  return (
+    <svg className={className} style={style} width="120" height="120" viewBox="0 0 120 120" fill="none" aria-hidden>
+      <g stroke={color} strokeWidth="7" strokeLinecap="round" opacity="0.9" className="il-wiggle">
+        <line x1="32" y1="88" x2="20" y2="98" />
+        <line x1="25" y1="65" x2="10" y2="70" />
+        <line x1="30" y1="40" x2="18" y2="28" />
+        <line x1="45" y1="25" x2="38" y2="10" />
+        <line x1="65" y1="20" x2="68" y2="5" />
+        <line x1="85" y1="30" x2="98" y2="20" />
+        <line x1="95" y1="50" x2="112" y2="55" />
+      </g>
+    </svg>
+  );
+}
+
+/* ================================================================== */
 /*  DoodleHouseCheck                                                    */
-/*  Friendly house — dark card body, orange roof, glowing green badge  */
+/*  Friendly house â€” dark card body, orange roof, glowing green badge  */
 /* ================================================================== */
 export function DoodleHouseCheck({ className, style }: IllustrationProps) {
   return (
-    <svg className={className} style={style} width="140" height="140" viewBox="0 0 140 140" fill="none" aria-hidden>
-      <SharedDefs />
+    <svg className={className} style={style} width="140" height="140" viewBox="0 0 200 200" fill="none" aria-hidden>
+      <g transform="translate(5, 10)">
+        
+        {/* Smoke */}
+        <path d="M 136 10 C 136 -5, 150 -10, 156 -5 C 165 2, 145 10, 145 0 C 145 -10, 160 -15, 166 -20" fill="none" stroke="#111" strokeWidth="5" strokeLinecap="round" className="il-floatSlow" />
 
-      <ellipse cx="70" cy="133" rx="56" ry="9" fill="black" opacity="0.45" />
+        {/* Chimney */}
+        <g className="il-floatSlow">
+          <rect x="125" y="15" width="22" height="40" fill="#FFFBF0" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+          <rect x="121" y="12" width="30" height="10" rx="3" fill="#EADDF4" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+        </g>
+        
+        {/* House Body */}
+        <path d="M 35 170 L 35 85 L 90 30 L 145 85 L 145 170 Z" fill="#FFFBF0" stroke="#111" strokeWidth="5" strokeLinejoin="round" className="il-floatSlow" />
+        
+        {/* Roof */}
+        <g className="il-floatSlow">
+          <path d="M 20 100
+                   L 86 34 Q 90 30 94 34
+                   L 160 100
+                   A 12 12 0 0 0 176 84
+                   L 98 6 Q 90 -2 82 6
+                   L 4 84
+                   A 12 12 0 0 0 20 100 Z" fill="#F89235" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+                   
+          {/* Roof Highlights */}
+          <g stroke="#FFFBF0" strokeWidth="4" strokeLinecap="round">
+            <line x1="28" y1="84" x2="38" y2="74" />
+            <line x1="46" y1="66" x2="80" y2="32" />
+          </g>
+        </g>
 
-      <g className="il-floatSlow">
-        {/* ── Walls ── */}
-        <rect x="22" y="72" width="96" height="60" rx="10"
-          fill="url(#g-slate)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" filter="url(#f-shadow)" />
+        {/* Door & Window */}
+        <g className="il-floatSlow">
+          <path d="M 50 170 L 50 105 A 10 10 0 0 1 60 95 L 70 95 A 10 10 0 0 1 80 105 L 80 170 Z" fill="#EADDF4" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+          <circle cx="72" cy="140" r="3.5" fill="#111" />
+          
+          <rect x="95" y="95" width="35" height="35" rx="6" fill="#EADDF4" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+          <line x1="95" y1="112.5" x2="130" y2="112.5" stroke="#111" strokeWidth="5" />
+          <line x1="112.5" y1="95" x2="112.5" y2="130" stroke="#111" strokeWidth="5" />
+          
+          <rect x="90" y="132" width="45" height="6" rx="3" fill="#FFFBF0" stroke="#111" strokeWidth="5" strokeLinejoin="round" />
+        </g>
+        
+        {/* Bush */}
+        <path d="M 125 170 
+                 A 12 12 0 0 1 135 145
+                 A 16 16 0 0 1 165 145
+                 A 14 14 0 0 1 180 160
+                 A 10 10 0 0 1 182 170 Z" fill="#111" stroke="#111" strokeWidth="4" strokeLinejoin="round" className="il-floatSlow" />
+                 
+        {/* Ground & Grass */}
+        <g className="il-floatSlow">
+          <line x1="20" y1="170" x2="185" y2="170" stroke="#111" strokeWidth="5" strokeLinecap="round" />
+          <path d="M 25 170 L 21 158 M 32 170 L 35 162" stroke="#111" strokeWidth="4" strokeLinecap="round" />
+        </g>
 
-        {/* ── Roof ── */}
-        <path d="M10 76 L70 18 L130 76 Z"
-          fill="url(#g-orange)" stroke="rgba(255,255,255,0.22)" strokeWidth="2" strokeLinejoin="round" />
-        {/* shingle lines */}
-        <path d="M28 64 Q70 34 112 64" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-        <path d="M18 72 Q70 38 122 72" stroke="rgba(255,255,255,0.15)" strokeWidth="2"   strokeLinecap="round" fill="none" />
-        {/* roof highlight */}
-        <path d="M34 50 Q70 30 106 50" stroke="rgba(255,255,255,0.22)" strokeWidth="3" strokeLinecap="round" fill="none" />
-
-        {/* chimney */}
-        <rect x="92" y="22" width="14" height="24" rx="4"
-          fill="url(#g-card)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-        {/* smoke puffs */}
-        <circle cx="99" cy="12" r="6" fill="rgba(255,255,255,0.1)" className="il-pulseSlow" />
-        <circle cx="107" cy="8" r="4" fill="rgba(255,255,255,0.07)" className="il-pulseSlow" style={{ animationDelay: "0.5s" }} />
-
-        {/* ── Left window ── */}
-        <rect x="28" y="80" width="32" height="28" rx="8"
-          fill="url(#g-sky)" opacity="0.25" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-        <path d="M44 80 V108" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" />
-        <path d="M28 94 H60"  stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" />
-        {/* window sill */}
-        <rect x="24" y="106" width="40" height="5" rx="2.5" fill="rgba(255,255,255,0.18)" />
-        {/* window glow */}
-        <rect x="30" y="82" width="12" height="10" rx="3" fill={C.yellow} opacity="0.12" />
-
-        {/* ── Door ── */}
-        <rect x="58" y="96" width="24" height="36" rx="8"
-          fill="url(#g-card)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-        <circle cx="76" cy="116" r="3.5" fill={C.orange} filter="url(#f-glowOrange)" />
-
-        {/* ── Right window ── */}
-        <rect x="80" y="80" width="32" height="28" rx="8"
-          fill="url(#g-sky)" opacity="0.25" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-        <path d="M96 80 V108"  stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" />
-        <path d="M80 94 H112" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" />
-        <rect x="80" y="106" width="36" height="5" rx="2.5" fill="rgba(255,255,255,0.18)" />
-        <rect x="82" y="82" width="12" height="10" rx="3" fill={C.yellow} opacity="0.12" />
-
-        {/* ── Check badge ── */}
-        <circle cx="112" cy="64" r="24"
-          fill="url(#g-green)" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" filter="url(#f-glowGreen)" />
-        <path d="M101 64 L109 72 L124 54" stroke="white" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Accents (Sunburst) */}
+        <g stroke="#111" strokeWidth="5" strokeLinecap="round" className="il-pulseSlow">
+          <line x1="18" y1="66" x2="28" y2="69" />
+          <line x1="24" y1="46" x2="34" y2="54" />
+          <line x1="40" y1="28" x2="45" y2="42" />
+        </g>
       </g>
-
-      {/* sparkles */}
-      <g className="il-pulse" style={{ animationDelay: "0.3s" }}>
-        <circle cx="6"  cy="42" r="4.5" fill={C.orange} opacity="0.6" />
-        <circle cx="2"  cy="52" r="2.5" fill={C.orange} opacity="0.4" />
-      </g>
-      <g className="il-pulse" style={{ animationDelay: "0.7s" }}>
-        <circle cx="132" cy="110" r="3.5" fill={C.green} opacity="0.6" />
-      </g>
-      <circle cx="136" cy="30" r="3" fill={C.purple} opacity="0.5" />
     </svg>
   );
 }
 
 /* ================================================================== */
 /*  DoodleToolbox                                                       */
-/*  Orange toolbox — hammer, wrench, screwdriver sticking out          */
+/*  Orange toolbox â€” hammer, wrench, screwdriver sticking out          */
 /* ================================================================== */
 export function DoodleToolbox({ className, style }: IllustrationProps) {
   return (
@@ -746,7 +855,7 @@ export function DoodleToolbox({ className, style }: IllustrationProps) {
       <ellipse cx="80" cy="114" rx="62" ry="8" fill="black" opacity="0.45" />
 
       <g className="il-float">
-        {/* ── Tools poking out ── */}
+        {/* â”€â”€ Tools poking out â”€â”€ */}
         {/* hammer */}
         <g style={{ transform: "rotate(-18deg)", transformOrigin: "38px 54px" }}>
           <rect x="31" y="18" width="14" height="40" rx="7"
@@ -772,7 +881,7 @@ export function DoodleToolbox({ className, style }: IllustrationProps) {
             fill={C.navy} stroke="rgba(255,255,255,0.22)" strokeWidth="2" />
         </g>
 
-        {/* ── Box body ── */}
+        {/* â”€â”€ Box body â”€â”€ */}
         <rect x="10" y="54" width="140" height="58" rx="16"
           fill="url(#g-orange)" stroke="rgba(255,255,255,0.22)" strokeWidth="2" filter="url(#f-shadow)" />
 
@@ -816,7 +925,7 @@ export function DoodleToolbox({ className, style }: IllustrationProps) {
 
 /* ================================================================== */
 /*  DoodleThumbsUp                                                      */
-/*  Cartoon thumbs up — skin-tone hand, orange sleeve, star sparkles   */
+/*  Cartoon thumbs up â€” skin-tone hand, orange sleeve, star sparkles   */
 /* ================================================================== */
 export function DoodleThumbsUp({ className, style }: IllustrationProps) {
   return (
@@ -850,7 +959,7 @@ export function DoodleThumbsUp({ className, style }: IllustrationProps) {
         <path d="M40 120 H82" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" strokeLinecap="round" />
       </g>
 
-      {/* ── Star sparkles ── */}
+      {/* â”€â”€ Star sparkles â”€â”€ */}
       <g className="il-pulse" style={{ animationDelay: "0s" }}>
         <path d="M94 22 L96 14 L98 22 L106 24 L98 26 L96 34 L94 26 L86 24 Z"
           fill={C.orange} filter="url(#f-glowOrange)" opacity="0.9" />
@@ -871,7 +980,7 @@ export function DoodleThumbsUp({ className, style }: IllustrationProps) {
 
 /* ================================================================== */
 /*  DoodleSignalBars                                                    */
-/*  Animated signal arcs — orange glow, pulsing                        */
+/*  Animated signal arcs â€” orange glow, pulsing                        */
 /* ================================================================== */
 export function DoodleSignalBars({ className, style }: IllustrationProps) {
   return (
@@ -915,7 +1024,7 @@ export function DoodleSignalBars({ className, style }: IllustrationProps) {
 
 /* ================================================================== */
 /*  DoodleQuestion                                                      */
-/*  Two speech bubbles — orange question, green answer                 */
+/*  Two speech bubbles â€” orange question, green answer                 */
 /* ================================================================== */
 export function DoodleQuestion({ className, style }: IllustrationProps) {
   return (
@@ -925,7 +1034,7 @@ export function DoodleQuestion({ className, style }: IllustrationProps) {
       <ellipse cx="75" cy="116" rx="58" ry="6" fill="black" opacity="0.4" />
 
       <g className="il-floatSlow">
-        {/* ── Large orange bubble ── */}
+        {/* â”€â”€ Large orange bubble â”€â”€ */}
         <rect x="30" y="8" width="112" height="72" rx="22"
           fill="url(#g-orange)" stroke="rgba(255,255,255,0.22)" strokeWidth="2" filter="url(#f-shadow)" />
         {/* bubble shine */}
@@ -934,12 +1043,12 @@ export function DoodleQuestion({ className, style }: IllustrationProps) {
         <path d="M56 80 L44 104 L74 80 Z"
           fill="url(#g-orange)" stroke="rgba(255,255,255,0.22)" strokeWidth="2" strokeLinejoin="round" />
 
-        {/* ── Question mark ── */}
+        {/* â”€â”€ Question mark â”€â”€ */}
         <path d="M80 26 C80 18 98 18 98 32 C98 46 88 46 88 58"
           stroke="rgba(255,255,255,0.95)" strokeWidth="9" strokeLinecap="round" fill="none" />
         <circle cx="88" cy="70" r="6.5" fill="rgba(255,255,255,0.95)" />
 
-        {/* ── Small green bubble ── */}
+        {/* â”€â”€ Small green bubble â”€â”€ */}
         <rect x="8" y="68" width="62" height="44" rx="16"
           fill="url(#g-green)" stroke="rgba(255,255,255,0.22)" strokeWidth="2" filter="url(#f-glowGreen)" />
         <path d="M34 112 L22 124 L46 112 Z"
@@ -964,12 +1073,12 @@ export function DoodleQuestion({ className, style }: IllustrationProps) {
 }
 
 /* ================================================================== */
-/*  ─── NICHE TRADE ILLUSTRATION ICONS ───                             */
-/*  Miniature editorial illustrations — dark-native.                   */
-/*  Rendered at 70px × 70px in the trade selector animation.           */
+/*  â”€â”€â”€ NICHE TRADE ILLUSTRATION ICONS â”€â”€â”€                             */
+/*  Miniature editorial illustrations â€” dark-native.                   */
+/*  Rendered at 70px Ã— 70px in the trade selector animation.           */
 /* ================================================================== */
 
-/* ── NicheHVAC ── snowflake + AC unit */
+/* â”€â”€ NicheHVAC â”€â”€ snowflake + AC unit */
 export function NicheHVAC({ className, style }: IllustrationProps) {
   return (
     <svg className={className} style={style} width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden>
@@ -987,7 +1096,7 @@ export function NicheHVAC({ className, style }: IllustrationProps) {
       {/* vent slot */}
       <rect x="14" y="52" width="52" height="6" rx="3" fill={C.orange} opacity="0.5" />
 
-      {/* ── Snowflake ── */}
+      {/* â”€â”€ Snowflake â”€â”€ */}
       <g className="il-spinSlow" style={{ transformOrigin: "40px 40px" }}>
         <path d="M40 22 V58 M24 31 L56 49 M24 49 L56 31"
           stroke={C.sky} strokeWidth="4" strokeLinecap="round" />
@@ -1008,7 +1117,7 @@ export function NicheHVAC({ className, style }: IllustrationProps) {
   );
 }
 
-/* ── NichePlumbing ── pipe + bouncing water drop + wrench */
+/* â”€â”€ NichePlumbing â”€â”€ pipe + bouncing water drop + wrench */
 export function NichePlumbing({ className, style }: IllustrationProps) {
   return (
     <svg className={className} style={style} width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden>
@@ -1044,7 +1153,7 @@ export function NichePlumbing({ className, style }: IllustrationProps) {
   );
 }
 
-/* ── NicheElectrical ── lightning bolt + glow */
+/* â”€â”€ NicheElectrical â”€â”€ lightning bolt + glow */
 export function NicheElectrical({ className, style }: IllustrationProps) {
   return (
     <svg className={className} style={style} width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden>
@@ -1078,7 +1187,7 @@ export function NicheElectrical({ className, style }: IllustrationProps) {
   );
 }
 
-/* ── NicheRoofing ── house roof + hammer + sun */
+/* â”€â”€ NicheRoofing â”€â”€ house roof + hammer + sun */
 export function NicheRoofing({ className, style }: IllustrationProps) {
   return (
     <svg className={className} style={style} width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden>
@@ -1115,7 +1224,7 @@ export function NicheRoofing({ className, style }: IllustrationProps) {
   );
 }
 
-/* ── NichePest ── green shield + defeated bug */
+/* â”€â”€ NichePest â”€â”€ green shield + defeated bug */
 export function NichePest({ className, style }: IllustrationProps) {
   return (
     <svg className={className} style={style} width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden>
@@ -1147,7 +1256,7 @@ export function NichePest({ className, style }: IllustrationProps) {
   );
 }
 
-/* ── NicheGarage ── garage door + car peek */
+/* â”€â”€ NicheGarage â”€â”€ garage door + car peek */
 export function NicheGarage({ className, style }: IllustrationProps) {
   return (
     <svg className={className} style={style} width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden>
@@ -1188,7 +1297,7 @@ export function NicheGarage({ className, style }: IllustrationProps) {
   );
 }
 
-/* ── NicheLocksmith ── padlock + shackle + wiggling key */
+/* â”€â”€ NicheLocksmith â”€â”€ padlock + shackle + wiggling key */
 export function NicheLocksmith({ className, style }: IllustrationProps) {
   return (
     <svg className={className} style={style} width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden>
@@ -1225,7 +1334,7 @@ export function NicheLocksmith({ className, style }: IllustrationProps) {
   );
 }
 
-/* ── NicheAppliance ── washing machine + spinning drum + sparkles */
+/* â”€â”€ NicheAppliance â”€â”€ washing machine + spinning drum + sparkles */
 export function NicheAppliance({ className, style }: IllustrationProps) {
   return (
     <svg className={className} style={style} width="80" height="80" viewBox="0 0 80 80" fill="none" aria-hidden>

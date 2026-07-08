@@ -1,5 +1,7 @@
 "use client";
 
+export type LandingMode = "main" | "hvac" | "plumbing" | "restoration" | "property-management";
+
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,6 +39,8 @@ import {
   NicheGarage,
   NicheLocksmith,
   NicheAppliance,
+  DoodleIntegrations,
+  DoodleSunburst,
 } from "./foreman-illustrations";
 
 import "./foreman-landing.css";
@@ -298,7 +302,7 @@ function Nav() {
         <div className="fm-wrap fm-nav-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: scrolled ? 64 : 88, transition: "height 0.45s cubic-bezier(0.16,1,0.3,1)", gap: 16 }}>
           <a href="#top" style={{ display: "flex", alignItems: "center", gap: 12 }} onClick={closeMobile}>
             <div style={{ transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1)", transform: `scale(${scrolled ? 0.85 : 1})`, transformOrigin: "left center" }}><Logo size={38} /></div>
-            <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 22, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
+            <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 22, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
           </a>
           <div className="fm-nav-desktop" onMouseLeave={() => setHoveredId(null)}>
             {NAV_SECTIONS.map((item) => (
@@ -414,7 +418,7 @@ function CallCard() {
         </motion.div>
       ))}
       <motion.div
-        style={{ textAlign: "center", marginTop: 18, fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 20, color: C.accentOrange, position: "relative" }}
+        style={{ textAlign: "center", marginTop: 18, fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 20, color: C.accentOrange, position: "relative" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1 }}
@@ -433,11 +437,45 @@ function CallCard() {
   );
 }
 
-function Hero() {
+const HERO_COPY: Record<LandingMode, { eyebrow: string; headline: string[]; headlineItalic: string; sub: string }> = {
+  main: {
+    eyebrow: "THE AI FRONT OFFICE FOR THE TRADES",
+    headline: ["Your phone stops", "costing you "],
+    headlineItalic: "jobs.",
+    sub: "Foreman answers every call, qualifies the job, prices it, and books it into your calendar. It works nights, weekends, and in two languages. You only pay when it books you real work."
+  },
+  hvac: {
+    eyebrow: "THE AI FRONT OFFICE FOR HVAC",
+    headline: ["In a heat wave, every", "missed call is a lost "],
+    headlineItalic: "install.",
+    sub: "When the AC dies at 9 PM, the homeowner calls whoever answers first. Foreman answers every time, qualifies the job, gives a price range, and books it, even when you're on a roof."
+  },
+  plumbing: {
+    eyebrow: "THE AI FRONT OFFICE FOR PLUMBERS",
+    headline: ["The 2 AM burst pipe", "goes to whoever answers. Make it "],
+    headlineItalic: "you.",
+    sub: "Plumbing emergencies don't wait for business hours. Foreman answers instantly, qualifies the job, and books it, so the panicked homeowner calls you and stays with you."
+  },
+  restoration: {
+    eyebrow: "THE AI FRONT OFFICE FOR RESTORATION",
+    headline: ["The first company to answer", "wins the job. Be first, every "],
+    headlineItalic: "time.",
+    sub: "In water and fire restoration, speed decides everything. Foreman answers every emergency call instantly, 24/7/365, captures the details, and books the assessment, so you never lose a five-figure job to voicemail."
+  },
+  "property-management": {
+    eyebrow: "THE AI FRONT OFFICE FOR PROPERTY MANAGEMENT",
+    headline: ["Every tenant call,", "answered and "],
+    headlineItalic: "handled.",
+    sub: "Your team is buried in maintenance calls. Foreman answers every one, triages routine from emergency, and books or dispatches the work order, day and night, fully branded as you."
+  }
+};
+
+function Hero({ mode = "main" }: { mode?: LandingMode }) {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const yGlow = useTransform(scrollYProgress, [0, 1], [0, 160]);
   const reducedMotion = useReducedMotion();
+  const content = HERO_COPY[mode] || HERO_COPY.main;
 
   return (
     <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "160px 0 140px", position: "relative", overflow: "hidden" }}>
@@ -446,7 +484,7 @@ function Hero() {
         aria-hidden
         style={{
           position: "absolute", top: -200, right: -180, width: 620, height: 620, y: yGlow, zIndex: 0,
-          background: "radial-gradient(circle, rgba(242,105,28,0.15), transparent 70%)",
+          background: `radial-gradient(circle, ${C.accentOrange}25, transparent 70%)`,
         }}
         animate={reducedMotion ? {} : { scale: [1, 1.12, 1], opacity: [0.8, 1, 0.8] }}
         transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
@@ -454,10 +492,10 @@ function Hero() {
       <div className="fm-wrap fm-hero-grid" style={{ position: "relative", zIndex: 2 }}>
         <div>
           <motion.div className="fm-eyebrow" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            AI FRONT OFFICE FOR HVAC &amp; TRADES
+            {content.eyebrow}
           </motion.div>
           <h1 className="fm-h1">
-            {["Never miss", "another "].map((line, i) => (
+            {content.headline.map((line, i) => (
               <motion.span key={i} style={{ display: "block", overflow: "hidden", paddingBottom: "0.4em", marginBottom: "-0.4em" }}>
                 <motion.span
                   style={{ display: "inline-block", paddingBottom: "0.1em" }}
@@ -468,7 +506,7 @@ function Hero() {
                   {line}
                   {i === 1 && (
                     <span className="fm-serif-italic" style={{ color: C.accentOrange, WebkitTextFillColor: C.accentOrange, position: "relative", display: "inline-block" }}>
-                      job.
+                      {content.headlineItalic}
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -484,7 +522,7 @@ function Hero() {
             ))}
           </h1>
           <motion.p className="fm-hero-sub" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-            Foreman answers every missed call, qualifies the job, and books it into your calendar automatically. You only pay when we book you real work.
+            {content.sub}
           </motion.p>
           <motion.div className="fm-hero-cta" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.62 }}>
             <MagneticButton href="#pilot" className="fm-btn fm-btn-primary">Book your free pilot</MagneticButton>
@@ -587,7 +625,7 @@ function TradeSelector() {
                     border: `1px solid ${isActive ? C.accentOrange : C.borderPrimary}`,
                     borderRadius: 999,
                     padding: "10px 20px",
-                    fontFamily: "Inter, sans-serif",
+                    fontFamily: "var(--font-outfit), sans-serif",
                     fontWeight: 600,
                     fontSize: 15,
                     cursor: "pointer",
@@ -672,8 +710,38 @@ function TradeSelector() {
 /* ================================================================== */
 /*  STAT COMPARISON BLOCK                                              */
 /* ================================================================== */
-function StatComparison() {
+const PROBLEM_COPY: Record<LandingMode, { eyebrow: string; headline: string; body: string }> = {
+  main: {
+    eyebrow: "THE QUIET KILLER IN THE TRADES",
+    headline: "1 in 4 calls goes unanswered. Every one is a job.",
+    body: "You can't answer with your hands in a furnace or under a sink. Voicemail loses 80% of callers to the next name on Google. That's not a phone problem, that's revenue walking out the door, every single day."
+  },
+  hvac: {
+    eyebrow: "THE QUIET KILLER IN HVAC",
+    headline: "Peak-season overload.",
+    body: "In a heat wave the calls never stop and neither do the missed ones. Each is a repair or install gone to the next shop. You can't answer mid-job. Foreman does, every time."
+  },
+  plumbing: {
+    eyebrow: "THE QUIET KILLER IN PLUMBING",
+    headline: "The money is after hours.",
+    body: "Burst pipes and backups hit at 2 AM. Whoever answers wins. A flooding homeowner calls the next plumber if you don't answer. Foreman always answers."
+  },
+  restoration: {
+    eyebrow: "THE QUIET KILLER IN RESTORATION",
+    headline: "First to answer wins.",
+    body: "These jobs go to whoever picks up first. A missed call is a five-figure loss in seconds. Disasters don't keep hours. Floods and fires hit at 3 AM. Foreman answers when no one is at the desk."
+  },
+  "property-management": {
+    eyebrow: "THE QUIET KILLER IN PROPERTY MANAGEMENT",
+    headline: "Relentless call volume.",
+    body: "Every leak, lockout, and broken AC is a call. Across hundreds of units, your team can't keep up. Missed calls mean angry tenants and compliance risk. Foreman answers and logs every single one."
+  }
+};
+
+function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
   const reducedMotion = useReducedMotion();
+  const pCopy = PROBLEM_COPY[mode] || PROBLEM_COPY.main;
+
   return (
     <section className="fm-island" style={{ background: C.bgPrimary, padding: "96px 0", zIndex: 4 }}>
       {/* Optional faint scrolling ribbon */}
@@ -691,6 +759,12 @@ function StatComparison() {
       </motion.div>
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 64 }}>
+          <div className="fm-eyebrow">{pCopy.eyebrow}</div>
+          <h2 className="fm-h2" style={{ fontSize: 40 }}>{pCopy.headline}</h2>
+          <p className="fm-secsub" style={{ maxWidth: 700, margin: "0 auto" }}>{pCopy.body}</p>
+        </Reveal>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}>
           <Reveal style={{ position: "relative" }}>
             <div className="fm-hoverlift" style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 28, padding: 48, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", zIndex: 2 }}>
@@ -744,91 +818,140 @@ function StatComparison() {
 /* ================================================================== */
 /*  ANNOTATED PROOF SECTION                                            */
 /* ================================================================== */
-function AnnotatedProof() {
+function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
   return (
-    <section className="fm-island" style={{ background: C.bgCard, padding: "120px 0", zIndex: 5 }}>
+    <section className="fm-island" style={{ position: "relative", background: C.bgCard, padding: "120px 0", zIndex: 5 }}>
       <div className="fm-wrap">
         <Reveal className="fm-sechead" style={{ marginBottom: 80 }}>
-          <div className="fm-eyebrow">SEE IT IN ACTION</div>
-          <h2 className="fm-h2">Every detail handled.</h2>
+          <div className="fm-eyebrow">MISSED CALL TO BOOKED JOB IN UNDER A MINUTE</div>
+          <div style={{ margin: "24px 0", position: "relative", display: "inline-block" }}>
+            <h2 style={{
+              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontSize: "clamp(32px, 5vw, 48px)",
+              lineHeight: 1.1,
+              fontWeight: 400,
+              letterSpacing: "-0.02em",
+              color: C.textHeading,
+              position: "relative",
+              display: "inline-block"
+            }}>
+              <span style={{ position: "absolute", top: -15, left: -30, zIndex: -1, pointerEvents: "none" }}>
+                <DoodleSunburst style={{ width: 80, height: 80 }} />
+              </span>
+              1. Answers. 2. Qualifies. 3. Books.
+            </h2>
+          </div>
           <p className="fm-secsub">Foreman doesn't just take messages. It qualifies the caller and puts them on your schedule.</p>
         </Reveal>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 80, alignItems: "center" }}>
-          {/* Card 1 */}
-          <Reveal style={{ position: "relative", width: "100%", maxWidth: 500 }}>
-            <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
-              <div className="fm-callrow">
-                <div className="fm-callic" style={{ background: "transparent" }}><DoodleFace /></div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>John Doe</div>
-                  <div style={{ fontSize: 13, color: C.textBody }}>Furnace blowing cold air, verified address 123 Main St</div>
-                </div>
-              </div>
-            </div>
-            {/* Callout Bubble */}
+        <div style={{ position: "relative", maxWidth: 1000, margin: "0 auto", padding: "40px 0" }}>
+          {/* Central Animated Timeline Line */}
+          <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 2, background: "rgba(255,255,255,0.05)", transform: "translateX(-50%)", zIndex: 0 }}>
             <motion.div
-              initial={{ scale: 0, opacity: 0, rotate: 10 }}
-              whileInView={{ scale: 1, opacity: 1, rotate: 8 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.5, type: "spring" }}
-              whileHover={{ scale: 1.08, rotate: 0 }}
-              style={{ position: "absolute", top: -20, right: -40, background: C.accentOrange, color: C.bgPrimary, padding: "8px 24px", borderRadius: 999, fontWeight: 800, fontSize: 14, border: "4px solid white", boxShadow: "0 10px 20px rgba(0,0,0,0.2)", zIndex: 10 }}
-            >
-              Auto-qualified in 40s!
-            </motion.div>
-          </Reveal>
+              style={{ width: "100%", height: 120, background: `linear-gradient(to bottom, transparent, ${C.accentOrange}, transparent)` }}
+              animate={{ y: [-100, 1000] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            />
+          </div>
 
-          {/* Card 2 */}
-          <Reveal delay={0.1} style={{ position: "relative", width: "100%", maxWidth: 500 }}>
-            <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
-              <div className="fm-callrow">
-                <div className="fm-callic"><Calendar o /></div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>Service Appointment</div>
-                  <div style={{ fontSize: 13, color: C.textBody }}>Scheduled for Tomorrow at 9:00 AM</div>
+          {/* Step 1: Answers */}
+          <div className="fm-timeline-row left">
+            <Reveal className="fm-timeline-content" style={{ position: "relative" }}>
+              <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
+                <div className="fm-callrow">
+                  <div className="fm-callic" style={{ background: "transparent" }}><DoodleFace /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>John Doe</div>
+                    <div style={{ fontSize: 13, color: C.textBody }}>Furnace blowing cold air, verified address 123 Main St</div>
+                  </div>
                 </div>
-                <span className="fm-badge fm-badge-booked">BOOKED</span>
               </div>
+              {/* Callout Bubble */}
+              <motion.div
+                initial={{ scale: 0, opacity: 0, rotate: 10 }}
+                whileInView={{ scale: 1, opacity: 1, rotate: 5 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.5, type: "spring" }}
+                whileHover={{ scale: 1.08, rotate: 0 }}
+                style={{ position: "absolute", top: -20, right: -20, background: C.accentOrange, color: C.bgPrimary, padding: "8px 24px", borderRadius: 999, fontWeight: 800, fontSize: 14, border: "4px solid white", boxShadow: "0 10px 20px rgba(0,0,0,0.2)", zIndex: 10 }}
+              >
+                Auto-qualified in 40s!
+              </motion.div>
+            </Reveal>
+            <div className="fm-timeline-visual">
+              <Reveal delay={0.2}>
+                <motion.div animate={{ y: [-5, 5] }} transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}>
+                  <DoodleRingingPhone style={{ width: 140, height: 140, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.3))" }} />
+                </motion.div>
+              </Reveal>
             </div>
-            <motion.div
-              initial={{ scale: 0, opacity: 0, rotate: -15 }}
-              whileInView={{ scale: 1, opacity: 1, rotate: -10 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.6, type: "spring" }}
-              whileHover={{ scale: 1.08, rotate: 0 }}
-              style={{ position: "absolute", bottom: -20, left: -40, background: C.accentOrange, color: C.bgPrimary, padding: "8px 24px", borderRadius: 999, fontWeight: 800, fontSize: 14, border: "4px solid white", boxShadow: "0 10px 20px rgba(0,0,0,0.2)", zIndex: 10, display: "flex", alignItems: "center" }}
-            >
-              <div style={{ position: "absolute", top: -30, left: -20, width: 50, height: 50, filter: "drop-shadow(0 8px 12px rgba(0,0,0,0.3))" }}>
-                <DoodleHouseCheck style={{ width: "100%", height: "100%" }} />
-              </div>
-              <span style={{ marginLeft: 30 }}>Synced to your calendar!</span>
-            </motion.div>
-          </Reveal>
+          </div>
 
-          {/* Card 3 */}
-          <Reveal delay={0.2} style={{ position: "relative", width: "100%", maxWidth: 500 }}>
-            <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
-              <div className="fm-callrow">
-                <div className="fm-callic" style={{ background: "transparent" }}><DoodleFace /></div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>Unknown Caller</div>
-                  <div style={{ fontSize: 13, color: C.textBody }}>Emergency pipe burst at 8:47 PM</div>
+          {/* Step 2: Qualifies & Books */}
+          <div className="fm-timeline-row right">
+            <Reveal delay={0.1} className="fm-timeline-content" style={{ position: "relative" }}>
+              <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
+                <div className="fm-callrow">
+                  <div className="fm-callic"><Calendar o /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>Service Appointment</div>
+                    <div style={{ fontSize: 13, color: C.textBody }}>Scheduled for Tomorrow at 9:00 AM</div>
+                  </div>
+                  <span className="fm-badge fm-badge-booked">BOOKED</span>
                 </div>
-                <span className="fm-badge fm-badge-booked">BOOKED</span>
               </div>
+              <motion.div
+                initial={{ scale: 0, opacity: 0, rotate: -10 }}
+                whileInView={{ scale: 1, opacity: 1, rotate: -5 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.6, type: "spring" }}
+                whileHover={{ scale: 1.08, rotate: 0 }}
+                style={{ position: "absolute", bottom: -20, left: -20, background: C.accentOrange, color: C.bgPrimary, padding: "8px 24px", borderRadius: 999, fontWeight: 800, fontSize: 14, border: "4px solid white", boxShadow: "0 10px 20px rgba(0,0,0,0.2)", zIndex: 10 }}
+              >
+                Synced to your calendar!
+              </motion.div>
+            </Reveal>
+            <div className="fm-timeline-visual">
+              <Reveal delay={0.3}>
+                <motion.div animate={{ y: [-5, 5] }} transition={{ duration: 3.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 1 }}>
+                  <DoodleClipboard style={{ width: 140, height: 140, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.3))" }} />
+                </motion.div>
+              </Reveal>
             </div>
-            <motion.div
-              initial={{ scale: 0, opacity: 0, rotate: 5 }}
-              whileInView={{ scale: 1, opacity: 1, rotate: -4 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.7, type: "spring" }}
-              whileHover={{ scale: 1.08, rotate: 0 }}
-              style={{ position: "absolute", top: -20, right: -40, background: C.accentOrange, color: C.bgPrimary, padding: "8px 24px", borderRadius: 999, fontWeight: 800, fontSize: 14, border: "4px solid white", boxShadow: "0 10px 20px rgba(0,0,0,0.2)", zIndex: 10 }}
-            >
-              Recovered at 8:47pm!
-            </motion.div>
-          </Reveal>
+          </div>
+
+          {/* Step 3: Books */}
+          <div className="fm-timeline-row left">
+            <Reveal delay={0.2} className="fm-timeline-content" style={{ position: "relative" }}>
+              <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
+                <div className="fm-callrow">
+                  <div className="fm-callic" style={{ background: "transparent" }}><DoodleFace /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>Unknown Caller</div>
+                    <div style={{ fontSize: 13, color: C.textBody }}>Emergency pipe burst at 8:47 PM</div>
+                  </div>
+                  <span className="fm-badge fm-badge-booked">BOOKED</span>
+                </div>
+              </div>
+              <motion.div
+                initial={{ scale: 0, opacity: 0, rotate: 10 }}
+                whileInView={{ scale: 1, opacity: 1, rotate: 5 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.7, type: "spring" }}
+                whileHover={{ scale: 1.08, rotate: 0 }}
+                style={{ position: "absolute", top: -20, right: -20, background: C.accentOrange, color: C.bgPrimary, padding: "8px 24px", borderRadius: 999, fontWeight: 800, fontSize: 14, border: "4px solid white", boxShadow: "0 10px 20px rgba(0,0,0,0.2)", zIndex: 10 }}
+              >
+                Recovered at 8:47pm!
+              </motion.div>
+            </Reveal>
+            <div className="fm-timeline-visual">
+              <Reveal delay={0.4}>
+                <motion.div animate={{ y: [-5, 5] }} transition={{ duration: 4.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.5 }}>
+                  <DoodleHouseCheck style={{ width: 140, height: 140, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.3))" }} />
+                </motion.div>
+              </Reveal>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -845,26 +968,78 @@ function IntegrationsRow() {
     <section className="fm-island" style={{ background: C.bgPrimary, padding: "96px 0", zIndex: 6, overflow: "hidden" }}>
       <div style={{ textAlign: "center" }}>
         <Reveal style={{ position: "relative" }}>
-          <div className="fm-eyebrow" style={{ marginBottom: 48 }}>PLAYS NICE WITH YOUR TOOLS</div>
+          <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Libre+Baskerville:wght@400;700&display=swap');
+            
+            @keyframes fm-roller {
+              0% { offset-distance: 0%; }
+              100% { offset-distance: 100%; }
+            }
+            .fm-roller-pill {
+              position: absolute;
+              top: 0; left: 0;
+              offset-rotate: auto;
+              animation: fm-roller 25s linear infinite;
+            }
+            .fm-roller-track {
+              position: relative;
+              height: 250px;
+              width: 100%;
+              margin: 0 auto;
+              overflow: hidden;
+              z-index: 1;
+            }
+          `}</style>
 
-          <div className="fm-marquee-container" style={{ position: "relative", zIndex: 1 }}>
-            <div className="fm-marquee-content">
-              {[...logos, ...logos, ...logos].map((logo, i) => (
-                <div key={i} className="fm-logopill" style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 999, padding: "16px 32px", color: C.textHeading, fontWeight: 600, fontSize: 18, flexShrink: 0, whiteSpace: "nowrap" }}>
-                  {logo}
-                </div>
-              ))}
-            </div>
+          <div style={{ marginBottom: 64, position: "relative" }}>
+            <h2 style={{
+              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontSize: "clamp(40px, 6vw, 64px)",
+              lineHeight: 1.1,
+              fontWeight: 400,
+              letterSpacing: "-0.02em",
+              color: C.textHeading,
+              position: "relative",
+              display: "inline-block"
+            }}>
+              <span style={{ position: "absolute", top: -25, left: -40, zIndex: -1, pointerEvents: "none" }}>
+                <DoodleSunburst />
+              </span>
+              Plays nice with your tools
+            </h2>
+          </div>
+
+          <div className="fm-roller-track">
+            {[...logos, ...logos, ...logos, ...logos, ...logos].map((logo, i, arr) => (
+              <div
+                key={i}
+                className="fm-logopill fm-roller-pill"
+                style={{
+                  background: C.bgCard,
+                  border: `1px solid ${C.borderPrimary}`,
+                  borderRadius: 999,
+                  padding: "14px 28px",
+                  color: C.textHeading,
+                  fontWeight: 600,
+                  fontSize: 17,
+                  whiteSpace: "nowrap",
+                  offsetPath: "path('M -200 125 C 50 65, 450 185, 800 125 C 1050 65, 1450 185, 1800 125 C 2050 65, 2450 185, 2800 125 C 3050 65, 3450 185, 3800 125 C 4050 65, 4450 185, 4800 125')",
+                  animationDelay: `-${i * (25 / arr.length)}s`
+                }}
+              >
+                {logo}
+              </div>
+            ))}
           </div>
 
           {!reducedMotion && (
-            <div style={{ position: "relative", width: "100%", height: 150, marginTop: 40 }}>
+            <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center", marginTop: -40, zIndex: 0 }}>
               <motion.div
-                style={{ position: "absolute", bottom: 0, left: -300, width: 260, zIndex: 0, opacity: 0.8, filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.2))" }}
-                animate={{ x: [0, "calc(100vw + 600px)"] }}
-                transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+                style={{ width: 320, opacity: 0.9, filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.3))" }}
+                animate={{ y: [-8, 8] }}
+                transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
               >
-                <DoodleServiceVan style={{ width: "100%", height: "auto" }} />
+                <DoodleIntegrations style={{ width: "100%", height: "auto" }} />
               </motion.div>
             </div>
           )}
@@ -874,53 +1049,40 @@ function IntegrationsRow() {
   );
 }
 
-/* ================================================================== */
-/*  DISPATCH / TEAM SECTION                                            */
-/* ================================================================== */
-function DispatchSection() {
-  return (
-    <section className="fm-island" style={{ background: C.bgCard, padding: "96px 0", zIndex: 7 }}>
-      <div className="fm-wrap">
-        <Reveal>
-          <div className="fm-hoverlift" style={{ background: C.accentGreenBg, borderRadius: 32, padding: "64px 48px", textAlign: "center", border: `1px solid ${C.accentGreenText}`, position: "relative", overflow: "hidden" }}>
-            <motion.div
-              style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24, position: "relative", zIndex: 1 }}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <motion.div
-                animate={{ rotate: [-3, 3] }}
-                whileHover={{ scale: 1.12, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
-                transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-              >
-                <DoodleClipboard style={{ marginBottom: 16, filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.3))" }} />
-              </motion.div>
-              <h2 className="fm-h2" style={{ color: C.textHeading, margin: 0 }}>Your whole crew, always in the loop</h2>
-            </motion.div>
-            <p className="fm-secsub" style={{ color: C.accentGreenText, maxWidth: 600, margin: "0 auto", fontWeight: 500 }}>
-              Dispatch sees every booked job in real time. Techs get the address and notes automatically sent to their phones. No more messy text threads or lost sticky notes.
-            </p>
-          </div>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
 
 /* ================================================================== */
-/*  SOCIAL PROOF                                                       */
+/*  ADVANCED FEATURES GRID                                             */
 /* ================================================================== */
-function SocialProof() {
+function AdvancedFeatures() {
+  const features = [
+    { title: "Speaks English and Spanish", desc: "Serves your entire customer base automatically, no callers lost to a language barrier.", icon: <DoodleFace /> },
+    { title: "Detects emergencies", desc: "Flags 'no heat,' 'flooding,' 'gas smell' and prioritizes them with instant alerts.", icon: <Bolt /> },
+    { title: "Texts back missed callers", desc: "If someone hangs up before booking, Foreman sends them a booking link in seconds.", icon: <DoodleRingingPhone /> },
+    { title: "You listen live and take over", desc: "Jump into any call from your phone. You are always in control of your front desk.", icon: <DoodleSignalBars /> },
+    { title: "Shows you the money", desc: "A live dashboard of exactly how much revenue Foreman captured that you would have lost.", icon: <Dollar /> },
+    { title: "Grows your reviews", desc: "After each job, it asks happy customers for a Google review, so more calls come in.", icon: <Star /> }
+  ];
+
   return (
-    <section style={{ background: C.bgPrimary, padding: "80px 0", borderTopLeftRadius: 48, borderTopRightRadius: 48, marginTop: -48, position: "relative", zIndex: 8 }}>
+    <section id="features" className="fm-island" style={{ background: C.bgCard, padding: "96px 0", zIndex: 7 }}>
       <div className="fm-wrap">
-        <Reveal style={{ textAlign: "center", borderTop: `1px solid ${C.borderPrimary}`, borderBottom: `1px solid ${C.borderPrimary}`, padding: "40px 0" }}>
-          <div style={{ fontSize: 20, fontWeight: 600, color: C.textBody, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-            <Star /> Trusted by trade businesses answering every call, every time. <Star />
-          </div>
+        <Reveal className="fm-sechead" style={{ marginBottom: 64 }}>
+          <div className="fm-eyebrow">NOT ANOTHER ANSWERING SERVICE</div>
+          <h2 className="fm-h2">A full front office, not a voicemail box.</h2>
         </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
+          {features.map((feat, i) => (
+            <Reveal key={i} delay={i * 0.1}>
+              <div className="fm-featcard fm-hoverlift" style={{ height: "100%", background: C.bgPrimary, padding: 32, borderRadius: 24, border: `1px solid ${C.borderPrimary}` }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: `rgba(59,130,246,0.1)`, color: C.accentOrange, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                  <div style={{ transform: "scale(0.8)" }}>{feat.icon}</div>
+                </div>
+                <h3 className="fm-cardh3" style={{ fontSize: 18, marginBottom: 8, color: C.textHeading }}>{feat.title}</h3>
+                <p className="fm-cardp" style={{ fontSize: 14, color: C.textBody, margin: 0, lineHeight: 1.5 }}>{feat.desc}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -929,13 +1091,43 @@ function SocialProof() {
 /* ================================================================== */
 /*  FINAL CTA                                                          */
 /* ================================================================== */
-function FinalCTA() {
+const CTA_COPY: Record<LandingMode, { headline: string; sub: string; button: string }> = {
+  main: {
+    headline: "Stop paying for a phone that loses you jobs.",
+    sub: "Start a free pilot. See exactly what Foreman captures for a shop like yours in the first week.",
+    button: "Book your free pilot"
+  },
+  hvac: {
+    headline: "Stop missing the peak-season installs.",
+    sub: "Start your free pilot and see how many jobs Foreman captures on the first hot weekend.",
+    button: "Book your free HVAC pilot"
+  },
+  plumbing: {
+    headline: "Stop losing the midnight emergencies.",
+    sub: "Start your free pilot and let Foreman answer the next burst pipe call while you sleep.",
+    button: "Book your free plumbing pilot"
+  },
+  restoration: {
+    headline: "Be the first to answer, every time.",
+    sub: "Start your free pilot and see how many five-figure jobs you were missing overnight.",
+    button: "Book your free restoration pilot"
+  },
+  "property-management": {
+    headline: "Handle every tenant call automatically.",
+    sub: "Start a white-label demo to see how Foreman manages routine and emergency calls for your portfolio.",
+    button: "Book a white-label demo"
+  }
+};
+
+function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
+  const content = CTA_COPY[mode] || CTA_COPY.main;
+
   return (
     <section id="pilot" style={{ background: C.bgPrimary, padding: "160px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
       <div style={{
         position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         width: "100%", maxWidth: 1000, height: 600,
-        background: "radial-gradient(circle, rgba(242,105,28,0.1), transparent 70%)",
+        background: `radial-gradient(circle, ${C.accentOrange}25, transparent 70%)`,
         pointerEvents: "none", zIndex: 0
       }} />
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
@@ -952,13 +1144,14 @@ function FinalCTA() {
               whileHover={{ scale: 1.14, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
               transition={{ duration: 2.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
             >
-              <DoodleThumbsUp style={{ filter: "drop-shadow(0 15px 25px rgba(242,105,28,0.25))" }} />
+              <DoodleThumbsUp style={{ filter: `drop-shadow(0 15px 25px ${C.accentOrange}50)` }} />
             </motion.div>
           </motion.div>
-          <h2 className="fm-h2" style={{ fontSize: 56 }}>Ready to stop missing jobs?</h2>
+          <h2 className="fm-h2" style={{ fontSize: 56 }}>{content.headline}</h2>
+          <p className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto", marginTop: 16 }}>{content.sub}</p>
           <div className="fm-hero-cta" style={{ justifyContent: "center", marginTop: 40 }}>
             <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary">
-              Book your free pilot
+              {content.button}
             </MagneticButton>
             <motion.a href="#how" className="fm-btn fm-btn-ghost" whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
               See how it works
@@ -990,7 +1183,7 @@ function Footer() {
       {/* Oversized low-opacity wordmark graphic */}
       <div style={{ width: "100%", display: "flex", justifyContent: "center", opacity: 0.04, pointerEvents: "none", userSelect: "none", padding: "0 24px 20px" }}>
         <svg viewBox="0 0 1000 200" style={{ width: "100%", height: "auto", maxWidth: "1400px", overflow: "visible" }} aria-hidden>
-          <text x="50%" y="78%" textAnchor="middle" fill={C.textHeading} style={{ fontFamily: "Inter, sans-serif", fontWeight: 900, fontSize: "190px", letterSpacing: "-0.04em" }}>
+          <text x="50%" y="78%" textAnchor="middle" fill={C.textHeading} style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 900, fontSize: "190px", letterSpacing: "-0.04em" }}>
             FOREMAN
           </text>
         </svg>
@@ -1160,11 +1353,13 @@ function StickerEye({ style, className }: { style?: React.CSSProperties, classNa
 /* ================================================================== */
 function FAQ() {
   const qa = [
-    { q: "Is it a robot talking to my customers?", a: "It sounds like your best front-desk person, calm, clear, and to the point. It never wastes your customer's time, and it never sends anyone to voicemail. A great answered call beats a missed one every time." },
-    { q: "How much does it really cost?", a: "$500 per month for the system, plus $50 each time we book you a real, paying job. During the pilot the base is free, so you only pay per booking and see it work with zero risk. One $1,500 install pays for 30 bookings." },
-    { q: "I already have voicemail or an answering service.", a: "Voicemail loses about 80% of callers. Answering services just take a message and hand it back to you. Foreman actually qualifies the job and books it into your calendar. That is the difference between a note and a booked job." },
-    { q: "How long does setup take?", a: "You are live in about 24 hours. No new hardware. We connect to your existing business number and Foreman starts answering right away." },
-    { q: "What trades do you work with?", a: "HVAC, plumbing, electrical, roofing, garage doors, appliance repair, and other home-services trades. If your business runs on inbound calls, Foreman fits." },
+    { q: "Is it a robot talking to my customers?", a: "It sounds like your best front-desk person, calm, clear, and to the point. It never wastes a caller's time, and it never sends anyone to voicemail. You can also give it your shop's name and tone so it sounds like your team." },
+    { q: "Can I listen to calls or step in?", a: "Yes. Listen to any call live from your phone and take over instantly. You are always in control." },
+    { q: "Does it really speak Spanish?", a: "Fluently. It handles calls in English and Spanish automatically, so you never lose a caller to a language barrier." },
+    { q: "How much does it cost?", a: "$500 a month for the system plus $50 each time it books you a paying job. During your pilot the base is free, so you only pay per booking. One job usually pays for many bookings." },
+    { q: "I already have voicemail or an answering service.", a: "Voicemail loses about 80% of callers. Answering services take a message and hand it back to you. Foreman qualifies the job and books it into your calendar. That is the difference between a note and a booked job." },
+    { q: "How long does setup take?", a: "You're live in about 24 hours. No new hardware, we connect to your existing number." },
+    { q: "What happens after hours?", a: "That's when Foreman shines. Nights, weekends, and holidays are prime emergency hours, and it answers all of them." }
   ];
   const [open, setOpen] = useState<number | null>(0);
   return (
@@ -1211,27 +1406,26 @@ function FAQ() {
 /* ================================================================== */
 /*  PAGE                                                               */
 /* ================================================================== */
-export function ForemanLanding() {
+export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
   return (
     <ReactLenis root options={{ lerp: 0.05, duration: 1.6, smoothWheel: true }}>
       <main
         className="fm-landing"
         style={{
-          fontFamily: "Inter, sans-serif",
+          fontFamily: "var(--font-outfit), sans-serif",
           color: C.textHeading,
           background: C.navBg,
           overflowX: "hidden",
         }}
       >
         <Nav />
-        <Hero />
-        <TradeSelector />
-        <StatComparison />
-        <AnnotatedProof />
+        <Hero mode={mode} />
+        {mode === "main" && <TradeSelector />}
+        <StatComparison mode={mode} />
+        <AnnotatedProof mode={mode} />
         <IntegrationsRow />
-        <DispatchSection />
-        <SocialProof />
-        <FinalCTA />
+        <AdvancedFeatures />
+        <FinalCTA mode={mode} />
         <FAQ />
         <Footer />
         <PersistentWidget />

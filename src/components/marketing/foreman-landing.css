@@ -21,14 +21,14 @@
 }
 
 .fm-mono {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-mono), monospace;
 }
 
 .fm-eyebrow {
-  font-family: "Inter", sans-serif;
-  font-size: 13px;
+  font-family: var(--font-outfit), sans-serif;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 2.5px;
+  letter-spacing: 2px;
   text-transform: uppercase;
   color: #F2691C;
   margin-bottom: 18px;
@@ -50,7 +50,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-weight: 600;
   font-size: 16px;
   padding: 16px 30px;
@@ -80,7 +80,7 @@
 }
 
 .fm-h1 {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-weight: 800;
   font-size: clamp(42px, 6.4vw, 88px);
   line-height: 1.08;
@@ -101,7 +101,7 @@
 }
 
 .fm-hero-sub {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: clamp(16px, 1.4vw, 20px);
   line-height: 1.7;
   color: #B8BFCC;
@@ -120,7 +120,7 @@
   display: flex;
   gap: 24px;
   flex-wrap: wrap;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 14px;
   color: #B8BFCC;
 }
@@ -173,7 +173,7 @@
 }
 
 .fm-badge {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 11px;
   font-weight: 700;
   padding: 4px 10px;
@@ -198,7 +198,7 @@
 }
 
 .fm-statnum {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-weight: 800;
   font-size: clamp(38px, 5.6vw, 64px);
   letter-spacing: -0.02em;
@@ -212,7 +212,7 @@
 }
 
 .fm-h2 {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-weight: 800;
   font-size: clamp(30px, 4.2vw, 48px);
   letter-spacing: -0.02em;
@@ -225,7 +225,7 @@
 }
 
 .fm-secsub {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 18px;
   line-height: 1.65;
   color: #B8BFCC;
@@ -276,7 +276,7 @@
 }
 
 .fm-cardh3 {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-weight: 800;
   font-size: 22px;
   margin-bottom: 10px;
@@ -285,7 +285,7 @@
 }
 
 .fm-cardp {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 15px;
   line-height: 1.6;
   color: #B8BFCC;
@@ -329,7 +329,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-weight: 800;
   font-size: 28px;
   color: #F2691C;
@@ -381,7 +381,7 @@
 
 .fm-pricebadge {
   display: inline-block;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 2px;
@@ -393,7 +393,7 @@
 }
 
 .fm-pricemain {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-weight: 800;
   font-size: 56px;
   letter-spacing: -2px;
@@ -426,14 +426,14 @@
   gap: 12px;
   align-items: flex-start;
   padding: 9px 0;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 16px;
   line-height: 1.6;
   color: #B8BFCC;
 }
 
 .fm-pricenote {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 14px;
   color: #B8BFCC;
   margin-top: 18px;
@@ -462,7 +462,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-weight: 800;
   font-size: 19px;
   letter-spacing: -0.5px;
@@ -481,7 +481,7 @@
 }
 
 .fm-faqa {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   font-size: 16px;
   line-height: 1.65;
   color: #B8BFCC;
@@ -713,3 +713,52 @@
     transform: translateX(calc(-100% - 24px));
   }
 }
+.fm-timeline-row {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  margin-bottom: 120px;
+}
+.fm-timeline-row:last-child {
+  margin-bottom: 0;
+}
+.fm-timeline-content {
+  width: 45%;
+}
+.fm-timeline-visual {
+  width: 45%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.fm-timeline-row.left .fm-timeline-content {
+  margin-right: auto;
+}
+.fm-timeline-row.left .fm-timeline-visual {
+  position: absolute;
+  right: 0;
+}
+.fm-timeline-row.right .fm-timeline-content {
+  margin-left: auto;
+}
+.fm-timeline-row.right .fm-timeline-visual {
+  position: absolute;
+  left: 0;
+}
+@media (max-width: 900px) {
+  .fm-timeline-row {
+    flex-direction: column;
+    margin-bottom: 80px;
+  }
+  .fm-timeline-content, .fm-timeline-visual {
+    width: 100%;
+    position: static !important;
+  }
+  .fm-timeline-visual {
+    margin-bottom: 40px;
+    order: -1;
+  }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Libre+Baskerville:wght@400;700&display=swap');
