@@ -1,6 +1,6 @@
 "use client";
 
-export type LandingMode = "main" | "hvac" | "plumbing" | "restoration" | "property-management";
+export type LandingMode = "main" | "hvac" | "plumbing" | "restoration" | "property-management" | "electrical";
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
@@ -456,11 +456,17 @@ const HERO_COPY: Record<LandingMode, { eyebrow: string; headline: string[]; head
     headlineItalic: "you.",
     sub: "Plumbing emergencies don't wait for business hours. Foreman answers instantly, qualifies the job, and books it, so the panicked homeowner calls you and stays with you."
   },
+  electrical: {
+    eyebrow: "FOR ELECTRICAL CONTRACTORS",
+    headline: ["The AI front office", "for "],
+    headlineItalic: "electricians.",
+    sub: "Foreman answers every call, qualifies the issue (panel upgrades, outages, estimates), and books the job directly on your calendar."
+  },
   restoration: {
-    eyebrow: "THE AI FRONT OFFICE FOR RESTORATION",
-    headline: ["The first company to answer", "wins the job. Be first, every "],
-    headlineItalic: "time.",
-    sub: "In water and fire restoration, speed decides everything. Foreman answers every emergency call instantly, 24/7/365, captures the details, and books the assessment, so you never lose a five-figure job to voicemail."
+    eyebrow: "FOR RESTORATION CONTRACTORS",
+    headline: ["The AI front office", "for "],
+    headlineItalic: "restoration.",
+    sub: "Foreman answers every emergency call, captures insurance details, triages the issue, and books the assessment or dispatch."
   },
   "property-management": {
     eyebrow: "THE AI FRONT OFFICE FOR PROPERTY MANAGEMENT",
@@ -562,35 +568,90 @@ const TRADES = [
   { id: "roofing", label: "Roofing", example: "Missing shingles after storm, booked inspection Fri 10am" },
   { id: "pest", label: "Pest Control", example: "Termite evidence found, booked treatment Mon 8am" },
   { id: "garage", label: "Garage Door", example: "Spring broke, car stuck, booked emergency visit 4pm" },
-  { id: "locksmith", label: "Locksmith", example: "Locked out of house, booked immediate dispatch" },
-  { id: "appliance", label: "Appliance Repair", example: "Fridge not cooling, booked repair Thu 1pm" },
+  { id: "restoration", label: "Restoration", example: "Water damage, booked emergency dispatch" },
+  { id: "property-management", label: "Property Mgmt", example: "Tenant locked out, dispatched maintenance" },
 ];
 
+const NICHE_DETAILS: Record<string, { problemHeadline: string, problemBody: string, features: string[], ctaText: string }> = {
+  hvac: {
+    problemHeadline: "You can't answer with your hands in a furnace.",
+    problemBody: "In a heat wave the calls never stop, and neither do the missed ones. Foreman answers every time, gives a price range, and books it straight into your calendar.",
+    features: ["Detects emergencies like 'no cooling'", "Gives price ranges without over-committing", "Texts back missed callers instantly"],
+    ctaText: "Book your free HVAC pilot"
+  },
+  plumbing: {
+    problemHeadline: "You're under a sink, not by the phone.",
+    problemBody: "Burst pipes and backups hit at 2 AM. Whoever answers wins the job. Foreman catches every call so nothing slips away.",
+    features: ["Emergency triage for floods & burst pipes", "Prices leaks, clogs, and water heaters", "24/7 bilingual coverage"],
+    ctaText: "Book your free plumbing pilot"
+  },
+  electrical: {
+    problemHeadline: "First to answer wins the job.",
+    problemBody: "When a homeowner has no power, they don't leave a voicemail. Foreman answers every call, qualifies the issue, and books the job.",
+    features: ["Prioritizes outages and sparking panels", "Prices panel upgrades and troubleshooting", "Instant alerts on dangerous jobs"],
+    ctaText: "Book your free electrical pilot"
+  },
+  restoration: {
+    problemHeadline: "A missed call is a five-figure loss.",
+    problemBody: "Water and fire jobs go to whoever picks up first. Miss the call and a huge job is gone. Foreman answers when no one is at the desk.",
+    features: ["Instant answer on every emergency", "Immediate alerts on major water/fire jobs", "Gathers insurance-relevant info"],
+    ctaText: "Book your free restoration pilot"
+  },
+  "property-management": {
+    problemHeadline: "Hundreds of units. Endless calls.",
+    problemBody: "Every leak, lockout, and broken AC is a call. Foreman answers every one, triages routine from emergency, and books the work order.",
+    features: ["White-labeled with your brand & voice", "Smart triage based on your rules", "Portfolio-wide call dashboard"],
+    ctaText: "Book a white-label demo"
+  },
+  roofing: {
+    problemHeadline: "Missing shingles means massive volume.",
+    problemBody: "After a storm, your phone rings off the hook. Voicemail loses callers to the next roofer. Foreman captures every single lead.",
+    features: ["Handles storm-surge call volume", "Qualifies insurance vs out-of-pocket", "Books inspections directly"],
+    ctaText: "Book your free roofing pilot"
+  },
+  pest: {
+    problemHeadline: "Pests don't wait, and neither do callers.",
+    problemBody: "When a homeowner sees a termite, they want help immediately. Foreman answers instantly and schedules the treatment.",
+    features: ["Qualifies the type of pest problem", "Prices standard treatments", "Books the initial inspection"],
+    ctaText: "Book your free pest pilot"
+  },
+  garage: {
+    problemHeadline: "A trapped car is an emergency.",
+    problemBody: "When a spring breaks, the customer needs it fixed now. Foreman catches every panic call and dispatches your tech.",
+    features: ["Emergency triage for trapped cars", "Prices spring and opener repairs", "Instant booking and confirmation"],
+    ctaText: "Book your free garage pilot"
+  }
+};
+
 const tradeIconMap: Record<string, React.ReactNode> = {
-  hvac: <NicheHVAC />,
-  plumbing: <NichePlumbing />,
-  electrical: <NicheElectrical />,
-  roofing: <NicheRoofing />,
-  pest: <NichePest />,
-  garage: <NicheGarage />,
-  locksmith: <NicheLocksmith />,
-  appliance: <NicheAppliance />
+  hvac: <img src="/images/hvac.png" alt="HVAC" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  plumbing: <img src="/images/plumber.png" alt="Plumbing" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  electrical: <img src="/images/electrician.png" alt="Electrical" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  roofing: <img src="/images/roofting.png" alt="Roofing" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  pest: <img src="/images/pest.png" alt="Pest Control" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  garage: <img src="/images/garage.png" alt="Garage Door" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  restoration: <img src="/images/restore.png" alt="Restoration" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  "property-management": <img src="/images/property.png" alt="Property Management" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
 };
 
 function TradeSelector() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const activeTrade = TRADES[activeIndex];
+  const activeDetails = NICHE_DETAILS[activeTrade.id] || NICHE_DETAILS.hvac;
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (!isAutoPlaying) return;
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % TRADES.length);
     }, 3500);
     return () => clearInterval(timer);
-  }, []);
+  }, [isAutoPlaying]);
 
   const handleManualSelect = (index: number) => {
     setActiveIndex(index);
+    setIsAutoPlaying(false);
   };
 
   return (
@@ -692,7 +753,7 @@ function TradeSelector() {
                       animate={{ opacity: 1, scale: 1, rotate: 10 }}
                       exit={{ opacity: 0, scale: 0, rotate: 45 }}
                       transition={{ duration: 0.5, type: "spring", bounce: 0.5, delay: 0.2 }}
-                      style={{ position: "absolute", top: -30, right: -30, width: 70, height: 70, zIndex: 10, filter: "drop-shadow(0 10px 15px rgba(0,0,0,0.3))" }}
+                      style={{ position: "absolute", top: "50%", marginTop: -100, right: -220, width: 200, height: 200, zIndex: 10, filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}
                     >
                       {tradeIconMap[trade.id]}
                     </motion.div>
@@ -701,6 +762,39 @@ function TradeSelector() {
               </motion.div>
             );
           })}
+        </Reveal>
+
+        <Reveal delay={0.3} style={{ marginTop: 64, maxWidth: 900, margin: "64px auto 0" }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTrade.id}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              style={{ background: C.bgPrimary, borderRadius: 24, padding: 40, border: `1px solid ${C.borderPrimary}`, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}
+            >
+              <div>
+                <div style={{ color: C.accentOrange, fontWeight: 700, fontSize: 13, letterSpacing: 1, marginBottom: 12, textTransform: "uppercase" }}>
+                  WHY {activeTrade.label} SHOPS LOSE JOBS
+                </div>
+                <h3 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16, lineHeight: 1.2 }}>{activeDetails.problemHeadline}</h3>
+                <p style={{ color: C.textBody, fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>{activeDetails.problemBody}</p>
+                <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary" style={{ padding: "12px 24px", fontSize: 15 }}>
+                  {activeDetails.ctaText}
+                </MagneticButton>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ color: C.textHeading, fontWeight: 600, fontSize: 15, marginBottom: 4 }}>How Foreman handles it:</div>
+                {activeDetails.features.map((feat, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{ marginTop: 2 }}><Check /></div>
+                    <div style={{ color: C.textBody, fontSize: 15, lineHeight: 1.4 }}>{feat}</div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </Reveal>
       </div>
     </section>
@@ -726,10 +820,15 @@ const PROBLEM_COPY: Record<LandingMode, { eyebrow: string; headline: string; bod
     headline: "The money is after hours.",
     body: "Burst pipes and backups hit at 2 AM. Whoever answers wins. A flooding homeowner calls the next plumber if you don't answer. Foreman always answers."
   },
+  electrical: {
+    eyebrow: "THE QUIET KILLER IN ELECTRICAL",
+    headline: "First to answer wins.",
+    body: "When a homeowner has no power, they don't leave a voicemail. They call the next electrician on Google. If you don't answer first, you lose the job."
+  },
   restoration: {
     eyebrow: "THE QUIET KILLER IN RESTORATION",
     headline: "First to answer wins.",
-    body: "These jobs go to whoever picks up first. A missed call is a five-figure loss in seconds. Disasters don't keep hours. Floods and fires hit at 3 AM. Foreman answers when no one is at the desk."
+    body: "In water and fire restoration, speed decides everything. Foreman answers every emergency call instantly, 24/7/365, captures the details, and books the assessment, so you never lose a five-figure job to voicemail."
   },
   "property-management": {
     eyebrow: "THE QUIET KILLER IN PROPERTY MANAGEMENT",
@@ -818,12 +917,22 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
 /* ================================================================== */
 /*  ANNOTATED PROOF SECTION                                            */
 /* ================================================================== */
+const PROOF_COPY: Record<LandingMode, { eyebrow: string; headline: string; sub: string }> = {
+  main: { eyebrow: "MISSED CALL TO BOOKED JOB IN UNDER A MINUTE", headline: "1. Answers. 2. Qualifies. 3. Books.", sub: "Foreman doesn't just take messages. It qualifies the caller and puts them on your schedule." },
+  hvac: { eyebrow: "MISSED CALL TO BOOKED JOB", headline: "How Foreman works for HVAC", sub: "Answers instantly, qualifies and prices the job, then books and confirms." },
+  plumbing: { eyebrow: "MISSED CALL TO BOOKED JOB", headline: "How Foreman works for plumbing", sub: "Answers instantly, qualifies the job and flags emergencies, then books and confirms." },
+  electrical: { eyebrow: "MISSED CALL TO BOOKED JOB", headline: "How Foreman works for electrical", sub: "Answers instantly, qualifies the job and flags emergencies like sparking panels, then books and confirms." },
+  restoration: { eyebrow: "EMERGENCY CALL TO BOOKED ASSESSMENT", headline: "How Foreman works for restoration", sub: "Answers instantly, captures details and triages the emergency, then books and alerts your team." },
+  "property-management": { eyebrow: "TENANT CALL TO HANDLED WORK ORDER", headline: "How Foreman works for property management", sub: "Answers every call, triages the issue based on your escalation rules, then books or dispatches." }
+};
+
 function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
+  const pCopy = PROOF_COPY[mode] || PROOF_COPY.main;
   return (
     <section className="fm-island" style={{ position: "relative", background: C.bgCard, padding: "120px 0", zIndex: 5 }}>
       <div className="fm-wrap">
         <Reveal className="fm-sechead" style={{ marginBottom: 80 }}>
-          <div className="fm-eyebrow">MISSED CALL TO BOOKED JOB IN UNDER A MINUTE</div>
+          <div className="fm-eyebrow">{pCopy.eyebrow}</div>
           <div style={{ margin: "24px 0", position: "relative", display: "inline-block" }}>
             <h2 style={{
               fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
@@ -838,10 +947,10 @@ function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
               <span style={{ position: "absolute", top: -15, left: -30, zIndex: -1, pointerEvents: "none" }}>
                 <DoodleSunburst style={{ width: 80, height: 80 }} />
               </span>
-              1. Answers. 2. Qualifies. 3. Books.
+              {pCopy.headline}
             </h2>
           </div>
-          <p className="fm-secsub">Foreman doesn't just take messages. It qualifies the caller and puts them on your schedule.</p>
+          <p className="fm-secsub">{pCopy.sub}</p>
         </Reveal>
 
         <div style={{ position: "relative", maxWidth: 1000, margin: "0 auto", padding: "40px 0" }}>
@@ -1053,32 +1162,107 @@ function IntegrationsRow() {
 /* ================================================================== */
 /*  ADVANCED FEATURES GRID                                             */
 /* ================================================================== */
-function AdvancedFeatures() {
-  const features = [
-    { title: "Speaks English and Spanish", desc: "Serves your entire customer base automatically, no callers lost to a language barrier.", icon: <DoodleFace /> },
-    { title: "Detects emergencies", desc: "Flags 'no heat,' 'flooding,' 'gas smell' and prioritizes them with instant alerts.", icon: <Bolt /> },
-    { title: "Texts back missed callers", desc: "If someone hangs up before booking, Foreman sends them a booking link in seconds.", icon: <DoodleRingingPhone /> },
-    { title: "You listen live and take over", desc: "Jump into any call from your phone. You are always in control of your front desk.", icon: <DoodleSignalBars /> },
-    { title: "Shows you the money", desc: "A live dashboard of exactly how much revenue Foreman captured that you would have lost.", icon: <Dollar /> },
-    { title: "Grows your reviews", desc: "After each job, it asks happy customers for a Google review, so more calls come in.", icon: <Star /> }
-  ];
+const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; feats: {title:string, desc:string, icon:any}[] }> = {
+  main: {
+    eyebrow: "NOT ANOTHER ANSWERING SERVICE", headline: "A full front office, not a voicemail box.",
+    feats: [
+      { title: "Speaks English and Spanish", desc: "Serves your entire customer base automatically, no callers lost to a language barrier.", icon: <Globe /> },
+      { title: "Detects emergencies", desc: "Flags 'no heat,' 'flooding,' 'gas smell' and prioritizes them with instant alerts.", icon: <Bolt /> },
+      { title: "Texts back missed callers", desc: "If someone hangs up before booking, Foreman sends them a booking link in seconds.", icon: <MessageSquare /> },
+      { title: "You listen live and take over", desc: "Jump into any call from your phone. You are always in control of your front desk.", icon: <Headphones /> },
+      { title: "Shows you the money", desc: "A live dashboard of exactly how much revenue Foreman captured that you would have lost.", icon: <Dollar /> },
+      { title: "Grows your reviews", desc: "After each job, it asks happy customers for a Google review, so more calls come in.", icon: <Star /> }
+    ]
+  },
+  hvac: {
+    eyebrow: "NOT ANOTHER ANSWERING SERVICE", headline: "A full front office, tuned for HVAC.",
+    feats: [
+      { title: "Detects emergencies", desc: "'No cooling' in a heat wave or 'no heat' in winter gets prioritized, with instant alerts.", icon: <Bolt /> },
+      { title: "Prices the job", desc: "Gives ranges for tune-ups, repairs, and installs without over-committing to an exact quote.", icon: <Dollar /> },
+      { title: "Speaks English and Spanish", desc: "Never lose a caller to a language barrier.", icon: <Globe /> },
+      { title: "Texts back missed callers", desc: "If someone hangs up before booking, Foreman sends a booking link in seconds.", icon: <MessageSquare /> },
+      { title: "Shows you the money", desc: "A live dashboard of the exact revenue Foreman captured that you would have lost.", icon: <Dollar /> },
+      { title: "Grows your reviews", desc: "After each job, it asks happy customers for a Google review, so more calls come in.", icon: <Star /> },
+      { title: "You stay in control", desc: "Listen to any call live and take over from your phone, anytime.", icon: <Headphones /> }
+    ]
+  },
+  plumbing: {
+    eyebrow: "NOT ANOTHER ANSWERING SERVICE", headline: "A full front office, tuned for plumbing.",
+    feats: [
+      { title: "Emergency triage", desc: "Floods, burst pipes, and no-water calls get prioritized, with instant owner alerts on big jobs.", icon: <Bolt /> },
+      { title: "Prices the job", desc: "Ranges for leaks, clogs, water heaters, and installs without over-committing.", icon: <Dollar /> },
+      { title: "Speaks English and Spanish", desc: "Never lose a caller to a language barrier.", icon: <Globe /> },
+      { title: "Texts back missed callers", desc: "Sends a booking link to anyone who couldn't get through.", icon: <MessageSquare /> },
+      { title: "Shows you the money", desc: "A live dashboard of the revenue Foreman captured for you.", icon: <Dollar /> },
+      { title: "Grows your reviews", desc: "Asks happy customers for a Google review after each job.", icon: <Star /> },
+      { title: "You stay in control", desc: "Listen live and take over any call from your phone.", icon: <Headphones /> }
+    ]
+  },
+  restoration: {
+    eyebrow: "NOT ANOTHER ANSWERING SERVICE", headline: "A full front office, built for speed.",
+    feats: [
+      { title: "Built to be first", desc: "Instant answer on every emergency, day or night. The fastest response wins the job, and Foreman never misses.", icon: <Bolt /> },
+      { title: "Emergency-first handling", desc: "Immediate owner alerts on major water and fire jobs.", icon: <Headphones /> },
+      { title: "Captures the details", desc: "Gathers insurance-relevant information up front.", icon: <Globe /> },
+      { title: "Texts back missed callers", desc: "Sends a link to anyone who couldn't get through.", icon: <MessageSquare /> },
+      { title: "Speaks English and Spanish", desc: "Serves your entire service area.", icon: <Globe /> },
+      { title: "Shows you the money", desc: "A dashboard of every emergency captured and its value.", icon: <Dollar /> }
+    ]
+  },
+  electrical: {
+    eyebrow: "NOT ANOTHER ANSWERING SERVICE", headline: "A full front office, tuned for electrical.",
+    feats: [
+      { title: "Emergency triage", desc: "Outages and sparking panels get prioritized, with instant owner alerts on dangerous jobs.", icon: <Bolt /> },
+      { title: "Prices the job", desc: "Ranges for panel upgrades, EV chargers, and troubleshooting without over-committing.", icon: <Dollar /> },
+      { title: "Speaks English and Spanish", desc: "Never lose a caller to a language barrier.", icon: <Globe /> },
+      { title: "Texts back missed callers", desc: "Sends a booking link to anyone who couldn't get through.", icon: <MessageSquare /> },
+      { title: "Shows you the money", desc: "A live dashboard of the revenue Foreman captured for you.", icon: <Dollar /> },
+      { title: "Grows your reviews", desc: "Asks happy customers for a Google review after each job.", icon: <Star /> },
+      { title: "You stay in control", desc: "Listen live and take over any call from your phone.", icon: <Headphones /> }
+    ]
+  },
+  "property-management": {
+    eyebrow: "BUILT FOR PORTFOLIOS", headline: "A white-label front office for your whole portfolio.",
+    feats: [
+      { title: "Handles high volume", desc: "Answers every call across every unit and property, no matter how many come in at once.", icon: <MessageSquare /> },
+      { title: "Smart triage", desc: "Routine vs emergency, using rules you set. Urgent issues get dispatched immediately.", icon: <Bolt /> },
+      { title: "Fully white-labeled", desc: "Your brand, your number, your voice. Tenants never know it's us.", icon: <Globe /> },
+      { title: "Custom-trained", desc: "Built on your properties, policies, vendors, and escalation paths.", icon: <Headphones /> },
+      { title: "Portfolio-wide dashboard", desc: "Every call answered, categorized, and logged in one place.", icon: <Dollar /> },
+      { title: "Bilingual", desc: "Serves your entire tenant base in English and Spanish.", icon: <Globe /> }
+    ]
+  }
+};
+
+function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
+  const fCopy = FEATURES_COPY[mode] || FEATURES_COPY.main;
 
   return (
-    <section id="features" className="fm-island" style={{ background: C.bgCard, padding: "96px 0", zIndex: 7 }}>
+    <section id="features" className="fm-island" style={{ background: C.bgCard, padding: "112px 0", zIndex: 7 }}>
       <div className="fm-wrap">
-        <Reveal className="fm-sechead" style={{ marginBottom: 64 }}>
-          <div className="fm-eyebrow">NOT ANOTHER ANSWERING SERVICE</div>
-          <h2 className="fm-h2">A full front office, not a voicemail box.</h2>
+        <Reveal className="fm-sechead" style={{ marginBottom: 72 }}>
+          <div className="fm-eyebrow">{fCopy.eyebrow}</div>
+          <h2 style={{
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(36px, 5vw, 52px)",
+            lineHeight: 1.1,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            marginTop: 16
+          }}>
+            {fCopy.headline}
+          </h2>
         </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
-          {features.map((feat, i) => (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 32 }}>
+          {fCopy.feats.map((feat, i) => (
             <Reveal key={i} delay={i * 0.1}>
-              <div className="fm-featcard fm-hoverlift" style={{ height: "100%", background: C.bgPrimary, padding: 32, borderRadius: 24, border: `1px solid ${C.borderPrimary}` }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: `rgba(59,130,246,0.1)`, color: C.accentOrange, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-                  <div style={{ transform: "scale(0.8)" }}>{feat.icon}</div>
+              <div className="fm-featcard fm-hoverlift" style={{ height: "100%", background: C.bgPrimary, padding: 40, borderRadius: 24, border: `1px solid ${C.borderPrimary}` }}>
+                <div style={{ width: 56, height: 56, borderRadius: 14, background: `rgba(59,130,246,0.1)`, color: C.accentOrange, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                  <div style={{ transform: "scale(1.1)" }}>{feat.icon}</div>
                 </div>
-                <h3 className="fm-cardh3" style={{ fontSize: 18, marginBottom: 8, color: C.textHeading }}>{feat.title}</h3>
-                <p className="fm-cardp" style={{ fontSize: 14, color: C.textBody, margin: 0, lineHeight: 1.5 }}>{feat.desc}</p>
+                <h3 className="fm-cardh3" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 12, color: C.textHeading }}>{feat.title}</h3>
+                <p className="fm-cardp" style={{ fontSize: 16, color: C.textBody, margin: 0, lineHeight: 1.6 }}>{feat.desc}</p>
               </div>
             </Reveal>
           ))}
@@ -1111,6 +1295,11 @@ const CTA_COPY: Record<LandingMode, { headline: string; sub: string; button: str
     headline: "Be the first to answer, every time.",
     sub: "Start your free pilot and see how many five-figure jobs you were missing overnight.",
     button: "Book your free restoration pilot"
+  },
+  electrical: {
+    headline: "Stop losing the midnight emergencies.",
+    sub: "Start your free pilot and let Foreman answer the next outage call while you sleep.",
+    button: "Book your free electrical pilot"
   },
   "property-management": {
     headline: "Handle every tenant call automatically.",
@@ -1168,22 +1357,116 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
 /* ================================================================== */
 function Footer() {
   return (
-    <footer style={{ background: C.footerBg, color: C.textBody, paddingTop: 80, position: "relative", overflow: "hidden" }}>
+    <footer style={{ background: C.footerBg, color: C.textBody, paddingTop: 100, paddingBottom: 60, position: "relative", overflow: "hidden", borderTop: `1px solid ${C.borderPrimary}` }}>
+      
+      {/* Background glow effects */}
+      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, ${C.accentOrange}10, transparent 70%)`, pointerEvents: "none" }} />
+
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 40, marginBottom: 80 }}>
-          <div className="fm-footlinks" style={{ gap: 32 }}>
-            <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
-            <a href="/sign-in">Sign in</a>
-            <a href="#">Terms</a>
-            <a href="#">Privacy</a>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 60, marginBottom: 80, justifyContent: "space-between" }}>
+          
+          {/* Brand Column */}
+          <div style={{ flex: "2 1 300px", paddingRight: 40 }}>
+            <a href="#top" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, textDecoration: "none" }}>
+              <Logo size={36} />
+              <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 26, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
+            </a>
+            <p style={{ fontSize: 15, lineHeight: 1.6, color: C.textBody, marginBottom: 32, maxWidth: 360 }}>
+              The AI front office built exclusively for the trades. We answer the phone, qualify the lead, and book the job directly into your calendar so you can focus on the work.
+            </p>
+            <div style={{ display: "flex", gap: 16 }}>
+              {["twitter", "linkedin", "instagram"].map((social, i) => (
+                <motion.a 
+                  key={i} 
+                  href="#" 
+                  aria-label={social} 
+                  whileHover={{ scale: 1.1, y: -2, borderColor: C.accentOrange, color: C.accentOrange }} 
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  style={{ width: 44, height: 44, borderRadius: "50%", background: C.bgCard, border: `1px solid ${C.borderPrimary}`, color: C.textBody, display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  {social === "twitter" && <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>}
+                  {social === "linkedin" && <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/></svg>}
+                  {social === "instagram" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>}
+                </motion.a>
+              ))}
+            </div>
+          </div>
+
+          {/* Links Columns */}
+          <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", gap: 16 }}>
+            <h4 style={{ color: C.textHeading, fontWeight: 700, fontSize: 14, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>Product</h4>
+            {[
+              { label: "Features", href: "#features" },
+              { label: "How it works", href: "#how" },
+              { label: "Pricing", href: "#pricing" },
+              { label: "Integrations", href: "#" },
+              { label: "Book a Pilot", href: "#pilot" }
+            ].map((link) => (
+              <motion.a 
+                key={link.label} 
+                href={link.href} 
+                whileHover={{ x: 4, color: C.accentOrange }} 
+                style={{ fontSize: 15, color: C.textBody, textDecoration: "none", transition: "color 0.2s", fontWeight: 500, alignSelf: "flex-start" }}
+              >
+                {link.label}
+              </motion.a>
+            ))}
+          </div>
+
+          <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", gap: 16 }}>
+            <h4 style={{ color: C.textHeading, fontWeight: 700, fontSize: 14, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>Trades</h4>
+            {TRADES.slice(0, 5).map((trade) => (
+              <motion.a 
+                key={trade.id} 
+                href={trade.href || "#"} 
+                whileHover={{ x: 4, color: C.accentOrange }} 
+                style={{ fontSize: 15, color: C.textBody, textDecoration: "none", transition: "color 0.2s", fontWeight: 500, alignSelf: "flex-start" }}
+              >
+                {trade.label}
+              </motion.a>
+            ))}
+          </div>
+
+          <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", gap: 16 }}>
+            <h4 style={{ color: C.textHeading, fontWeight: 700, fontSize: 14, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>Company</h4>
+            {[
+              { label: "About Us", href: "#" },
+              { label: "Contact", href: "#" },
+              { label: "Sign In", href: "/sign-in" },
+              { label: "Terms of Service", href: "#" },
+              { label: "Privacy Policy", href: "#" }
+            ].map((link) => (
+              <motion.a 
+                key={link.label} 
+                href={link.href} 
+                whileHover={{ x: 4, color: C.accentOrange }} 
+                style={{ fontSize: 15, color: C.textBody, textDecoration: "none", transition: "color 0.2s", fontWeight: 500, alignSelf: "flex-start" }}
+              >
+                {link.label}
+              </motion.a>
+            ))}
           </div>
         </div>
+
+        {/* Bottom Bar */}
+        <div style={{ borderTop: `1px solid ${C.borderPrimary}`, paddingTop: 32, paddingBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24, position: "relative", zIndex: 2 }}>
+          <div style={{ fontSize: 14, color: C.textBody, fontWeight: 500 }}>
+            &copy; {new Date().getFullYear()} Foreman Inc. All rights reserved.
+          </div>
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: C.accentGreenText, background: `${C.accentGreenBg}40`, padding: "6px 12px", borderRadius: 999, border: `1px solid ${C.accentGreenText}40`, cursor: "pointer" }}
+          >
+            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.accentGreenText, boxShadow: `0 0 8px ${C.accentGreenText}` }} />
+            All systems operational
+          </motion.div>
+        </div>
       </div>
+
       {/* Oversized low-opacity wordmark graphic */}
-      <div style={{ width: "100%", display: "flex", justifyContent: "center", opacity: 0.04, pointerEvents: "none", userSelect: "none", padding: "0 24px 20px" }}>
-        <svg viewBox="0 0 1000 200" style={{ width: "100%", height: "auto", maxWidth: "1400px", overflow: "visible" }} aria-hidden>
-          <text x="50%" y="78%" textAnchor="middle" fill={C.textHeading} style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 900, fontSize: "190px", letterSpacing: "-0.04em" }}>
+      <div style={{ width: "100%", display: "flex", justifyContent: "center", opacity: 0.025, pointerEvents: "none", userSelect: "none", position: "absolute", bottom: -20, left: 0, zIndex: 0 }}>
+        <svg viewBox="0 0 1000 200" style={{ width: "100%", height: "auto", maxWidth: "1600px", overflow: "visible" }} aria-hidden>
+          <text x="50%" y="78%" textAnchor="middle" fill={C.textHeading} style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 900, fontSize: "220px", letterSpacing: "-0.04em" }}>
             FOREMAN
           </text>
         </svg>
@@ -1279,6 +1562,30 @@ function Bolt() {
     </svg>
   );
 }
+function Globe() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="10" stroke={C.accentOrange} strokeWidth="2" />
+      <ellipse cx="12" cy="12" rx="4" ry="10" stroke={C.accentOrange} strokeWidth="2" />
+      <path d="M2 12h20" stroke={C.accentOrange} strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function MessageSquare() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke={C.accentOrange} strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function Headphones() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M3 18v-6a9 9 0 0 1 18 0v6" stroke={C.accentOrange} strokeWidth="2" strokeLinecap="round" />
+      <path d="M21 19a2 2 0 0 1-2 2h-1v-6h3v4zM3 19a2 2 0 0 0 2 2h1v-6H3v4z" stroke={C.accentOrange} strokeWidth="2" />
+    </svg>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Doodles                                                            */
@@ -1351,8 +1658,8 @@ function StickerEye({ style, className }: { style?: React.CSSProperties, classNa
 /* ================================================================== */
 /*  FAQ                                                                */
 /* ================================================================== */
-function FAQ() {
-  const qa = [
+const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
+  main: [
     { q: "Is it a robot talking to my customers?", a: "It sounds like your best front-desk person, calm, clear, and to the point. It never wastes a caller's time, and it never sends anyone to voicemail. You can also give it your shop's name and tone so it sounds like your team." },
     { q: "Can I listen to calls or step in?", a: "Yes. Listen to any call live from your phone and take over instantly. You are always in control." },
     { q: "Does it really speak Spanish?", a: "Fluently. It handles calls in English and Spanish automatically, so you never lose a caller to a language barrier." },
@@ -1360,7 +1667,36 @@ function FAQ() {
     { q: "I already have voicemail or an answering service.", a: "Voicemail loses about 80% of callers. Answering services take a message and hand it back to you. Foreman qualifies the job and books it into your calendar. That is the difference between a note and a booked job." },
     { q: "How long does setup take?", a: "You're live in about 24 hours. No new hardware, we connect to your existing number." },
     { q: "What happens after hours?", a: "That's when Foreman shines. Nights, weekends, and holidays are prime emergency hours, and it answers all of them." }
-  ];
+  ],
+  hvac: [
+    { q: "Sounds like a robot?", a: "It sounds like your best front-desk hire, calm and clear, and it never sends anyone to voicemail." },
+    { q: "Don't trust AI with your customers?", a: "Listen to any call live and take over from your phone. You're always in control." },
+    { q: "What about after hours?", a: "That's when Foreman shines. Nights and weekends are prime emergency hours, and it works all of them." }
+  ],
+  plumbing: [
+    { q: "Sounds like a robot?", a: "It sounds like your best front-desk hire, and it never sends anyone to voicemail." },
+    { q: "Don't trust AI with your customers?", a: "Listen live and take over from your phone. You're always in control." },
+    { q: "What about after hours?", a: "That's when Foreman shines. Emergencies are prime plumbing hours, and it works all of them." }
+  ],
+  restoration: [
+    { q: "Sounds like a robot?", a: "It sounds like a calm, professional dispatcher, and it never sends an emergency to voicemail." },
+    { q: "Don't trust AI with emergencies?", a: "You're alerted instantly on major jobs and can take over any call live." },
+    { q: "What about the middle of the night?", a: "That's exactly when Foreman wins you jobs your competitors miss." }
+  ],
+  electrical: [
+    { q: "Sounds like a robot?", a: "It sounds like your best front-desk hire, and it never sends anyone to voicemail." },
+    { q: "Don't trust AI with your customers?", a: "Listen live and take over from your phone. You're always in control." },
+    { q: "What about after hours?", a: "That's when Foreman shines. Emergencies are prime electrical hours, and it works all of them." }
+  ],
+  "property-management": [
+    { q: "Will tenants know it's AI?", a: "It's fully white-labeled with your brand and voice, and it handles calls professionally, around the clock." },
+    { q: "Can we control what it does?", a: "You set the escalation rules. You're alerted on emergencies and can take over any call." },
+    { q: "What about our systems?", a: "We custom-integrate and train Foreman on your properties, vendors, and processes." }
+  ]
+};
+
+function FAQ({ mode = "main" }: { mode?: LandingMode }) {
+  const qa = FAQ_COPY[mode] || FAQ_COPY.main;
   const [open, setOpen] = useState<number | null>(0);
   return (
     <section id="faq" className="fm-island" style={{ background: C.bgCard, padding: "96px 0", zIndex: 8 }}>
@@ -1404,6 +1740,62 @@ function FAQ() {
 }
 
 /* ================================================================== */
+/*  SCROLL TO TOP BUTTON                                               */
+/* ================================================================== */
+function ScrollToTopButton() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setVisible(window.scrollY > 600);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: 20 }}
+          whileHover={{ scale: 1.1, y: -2 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={scrollToTop}
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 90,
+            width: 48,
+            height: 48,
+            borderRadius: "50%",
+            background: C.accentOrange,
+            color: C.bgPrimary,
+            border: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 10px 25px rgba(249,122,53,0.4)",
+            cursor: "pointer",
+          }}
+          aria-label="Scroll to top"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 19V5M5 12l7-7 7 7" />
+          </svg>
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ================================================================== */
 /*  PAGE                                                               */
 /* ================================================================== */
 export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
@@ -1424,11 +1816,12 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
         <StatComparison mode={mode} />
         <AnnotatedProof mode={mode} />
         <IntegrationsRow />
-        <AdvancedFeatures />
+        <AdvancedFeatures mode={mode} />
         <FinalCTA mode={mode} />
-        <FAQ />
+        <FAQ mode={mode} />
         <Footer />
         <PersistentWidget />
+        <ScrollToTopButton />
       </main>
     </ReactLenis>
   );
