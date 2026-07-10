@@ -196,114 +196,126 @@ function SharedDefs() {
 }
 
 /* ================================================================== */
-/*  DoodleTechnicianOnCall                                              */
-/*  Smiling cartoon technician â€” dark-native, orange helmet,           */
-/*  phone in hand, speech bubble, cream outline on dark bg.            */
+/*  DoodleTechnicianOnCall — Premium AI Workflow Badge                  */
+/*  Shows the core Foreman system: call → AI → book. Isometric-        */
+/*  tilted card with a headset glyph, orbiting workflow nodes, live     */
+/*  pulse rings, and a subtle data-flow path. Dark-native, brand        */
+/*  orange/green palette, no cartoon imagery.                           */
 /* ================================================================== */
 export function DoodleTechnicianOnCall({ className, style }: IllustrationProps) {
   return (
-    <svg className={className} style={style} width="160" height="160" viewBox="0 0 160 160" fill="none" aria-hidden>
+    <svg className={className} style={style} width="180" height="180" viewBox="0 0 180 180" fill="none" aria-hidden>
       <SharedDefs />
 
-      {/* ground shadow */}
-      <ellipse cx="80" cy="155" rx="48" ry="8" fill="black" opacity="0.45" />
+      {/* Ground shadow */}
+      <ellipse cx="90" cy="170" rx="52" ry="8" fill="black" opacity="0.35" />
 
       <g className="il-float">
-        {/* â”€â”€ Torso â”€â”€ */}
-        <path d="M50 120 Q46 104 50 96 Q60 86 80 86 Q100 86 110 96 Q114 104 110 120 Q100 138 80 140 Q60 138 50 120 Z"
-          fill="url(#g-orange)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinejoin="round" filter="url(#f-shadow)" />
-        {/* shirt detail */}
-        <path d="M64 90 Q80 100 96 90" stroke="rgba(255,255,255,0.35)" strokeWidth="3" strokeLinecap="round" fill="none" />
-        {/* logo patch */}
-        <rect x="72" y="104" width="16" height="12" rx="4" fill={C.navy} opacity="0.6" />
-        <path d="M75 110 L78 113 L83 107" stroke={C.orange} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Outer faint orbit track */}
+        <circle cx="90" cy="86" r="68" stroke="rgba(255,255,255,0.05)" strokeWidth="1" fill="none" strokeDasharray="4 8" />
 
-        {/* â”€â”€ Left arm / phone â”€â”€ */}
-        <path d="M50 100 Q34 110 30 122 Q28 130 38 134"
-          fill="none" stroke="url(#g-skin)" strokeWidth="15" strokeLinecap="round" />
-        <path d="M50 100 Q34 110 30 122 Q28 130 38 134"
-          fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" strokeLinecap="round" />
+        {/* Pulse rings — "system is live" */}
+        <circle cx="90" cy="86" r="50" stroke={C.orange} strokeWidth="1.5" opacity="0.18" fill="none" className="il-ringPulse" />
+        <circle
+          cx="90" cy="86" r="50" stroke={C.orange} strokeWidth="1.5" opacity="0.12" fill="none"
+          className="il-ringPulse"
+          style={{ animationDelay: "1.1s" }}
+        />
 
-        {/* Phone handset */}
-        <rect x="18" y="116" width="22" height="32" rx="5" fill="url(#g-card)" stroke="rgba(255,255,255,0.35)" strokeWidth="2" />
-        <rect x="21" y="120" width="16" height="22" rx="2" fill="url(#g-sky)" opacity="0.6" />
-        <rect x="21" y="120" width="16" height="22" rx="2" fill="url(#g-orangeV)" opacity="0.35" />
-        <circle cx="29" cy="143" r="2" fill="rgba(255,255,255,0.5)" />
+        {/* ── Workflow node connector lines ── */}
+        {/* Phone → center */}
+        <line x1="90" y1="26" x2="90" y2="52" stroke="rgba(249,122,53,0.25)" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" />
+        {/* AI center → Calendar */}
+        <line x1="146" y1="62" x2="120" y2="68" stroke="rgba(31,170,89,0.2)" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" />
+        {/* center → SMS */}
+        <line x1="140" y1="112" x2="118" y2="104" stroke="rgba(137,212,245,0.2)" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" />
+        {/* center → CRM */}
+        <line x1="40" y1="112" x2="62" y2="104" stroke="rgba(215,181,255,0.2)" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" />
 
-        {/* â”€â”€ Right arm â”€â”€ */}
-        <path d="M110 100 Q126 110 130 120 Q132 130 124 134"
-          fill="none" stroke="url(#g-skin)" strokeWidth="15" strokeLinecap="round" />
-        <path d="M110 100 Q126 110 130 120 Q132 130 124 134"
-          fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" strokeLinecap="round" />
-
-        {/* â”€â”€ Head â”€â”€ */}
-        <ellipse cx="80" cy="58" rx="30" ry="32"
-          fill="url(#g-skin)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" filter="url(#f-shadow)" />
-        {/* ear */}
-        <ellipse cx="50" cy="60" rx="6" ry="9" fill="url(#g-skin)" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
-        <ellipse cx="110" cy="60" rx="6" ry="9" fill="url(#g-skin)" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
-
-        {/* â”€â”€ Hard hat â”€â”€ */}
-        <path d="M46 60 Q44 26 80 22 Q116 26 114 60 Z"
-          fill="url(#g-orange)" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinejoin="round" />
-        <rect x="42" y="58" width="76" height="11" rx="5.5"
-          fill="url(#g-orange)" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
-        {/* hat highlight stripe */}
-        <path d="M52 52 Q80 44 108 52" stroke="rgba(255,255,255,0.3)" strokeWidth="3" strokeLinecap="round" fill="none" />
-        <path d="M62 38 Q80 30 98 38" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" fill="none" />
-        {/* center fin */}
-        <path d="M80 22 V62" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" strokeLinecap="round" />
-
-        {/* â”€â”€ Eyes â€” dark irises blink, white shines stay fixed â”€â”€ */}
-        <g className="il-blink">
-          <ellipse cx="68" cy="64" rx="5.5" ry="6.5" fill={C.navy} />
-          <ellipse cx="92" cy="64" rx="5.5" ry="6.5" fill={C.navy} />
+        {/* ── Orbiting workflow nodes ── */}
+        {/* Node: Phone (top — incoming call) */}
+        <g className="il-pulse" style={{ animationDelay: "0s" }}>
+          <rect x="72" y="10" width="36" height="26" rx="8" fill="rgba(10,15,28,0.9)" stroke="rgba(249,122,53,0.5)" strokeWidth="1.5" />
+          {/* Phone glyph */}
+          <path d="M83 16 q0-2 2-2h8q2 0 2 2v14q0 2-2 2h-8q-2 0-2-2z" stroke={C.orange} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <line x1="90" y1="28" x2="90" y2="29" stroke={C.orange} strokeWidth="1.5" strokeLinecap="round" />
         </g>
-        {/* shines outside blink group so they don't disappear mid-blink */}
-        <circle cx="70" cy="61" r="2"   fill="rgba(255,255,255,0.9)" />
-        <circle cx="94" cy="61" r="2"   fill="rgba(255,255,255,0.9)" />
-        {/* pupil micro-dot for depth */}
-        <circle cx="69" cy="65" r="1.5" fill="rgba(0,0,0,0.55)" />
-        <circle cx="93" cy="65" r="1.5" fill="rgba(0,0,0,0.55)" />
 
-        {/* â”€â”€ Nose â”€â”€ */}
-        <path d="M78 72 Q80 76 82 72" stroke={C.skinDark} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+        {/* Node: Calendar/booked (top right) */}
+        <g className="il-pulse" style={{ animationDelay: "0.4s" }}>
+          <rect x="138" y="48" width="34" height="28" rx="8" fill="rgba(10,15,28,0.9)" stroke="rgba(31,170,89,0.45)" strokeWidth="1.5" />
+          {/* Calendar glyph */}
+          <rect x="145" y="55" width="20" height="14" rx="3" stroke={C.green} strokeWidth="1.3" fill="none" />
+          <line x1="145" y1="59" x2="165" y2="59" stroke={C.green} strokeWidth="1.2" />
+          <line x1="150" y1="55" x2="150" y2="53" stroke={C.green} strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="160" y1="55" x2="160" y2="53" stroke={C.green} strokeWidth="1.5" strokeLinecap="round" />
+          {/* Check mark */}
+          <path d="M149 63.5l2.5 2.5 5-5" stroke={C.green} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
 
-        {/* â”€â”€ Smile â€” use skinDark; navy on warm-skin tone is invisible â”€â”€ */}
-        <path d="M68 78 Q80 90 92 78" stroke="rgba(160,90,40,0.7)" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+        {/* Node: SMS / notification (bottom right) */}
+        <g className="il-pulse" style={{ animationDelay: "0.8s" }}>
+          <rect x="132" y="99" width="36" height="26" rx="8" fill="rgba(10,15,28,0.9)" stroke="rgba(137,212,245,0.35)" strokeWidth="1.5" />
+          {/* Chat bubble glyph */}
+          <path d="M140 105 q0-2 2-2h16q2 0 2 2v8q0 2-2 2h-8l-4 4v-4h-4q-2 0-2-2z" stroke={C.sky} strokeWidth="1.3" fill="none" strokeLinejoin="round" />
+          <line x1="143" y1="109" x2="155" y2="109" stroke={C.sky} strokeWidth="1.2" strokeLinecap="round" />
+          <line x1="143" y1="112" x2="151" y2="112" stroke={C.sky} strokeWidth="1.2" strokeLinecap="round" />
+        </g>
 
-        {/* cheeks */}
-        <ellipse cx="60" cy="76" rx="7" ry="5" fill="#FF8080" opacity="0.32" />
-        <ellipse cx="100" cy="76" rx="7" ry="5" fill="#FF8080" opacity="0.32" />
+        {/* Node: CRM (bottom left) */}
+        <g className="il-pulse" style={{ animationDelay: "1.2s" }}>
+          <rect x="10" y="99" width="36" height="26" rx="8" fill="rgba(10,15,28,0.9)" stroke="rgba(215,181,255,0.35)" strokeWidth="1.5" />
+          {/* Database glyph */}
+          <ellipse cx="28" cy="107" rx="9" ry="3.5" stroke={C.purple} strokeWidth="1.3" fill="none" />
+          <line x1="19" y1="107" x2="19" y2="117" stroke={C.purple} strokeWidth="1.3" />
+          <line x1="37" y1="107" x2="37" y2="117" stroke={C.purple} strokeWidth="1.3" />
+          <ellipse cx="28" cy="117" rx="9" ry="3.5" stroke={C.purple} strokeWidth="1.3" fill="none" />
+          <path d="M19 112 q9 3.5 18 0" stroke={C.purple} strokeWidth="1" fill="none" />
+        </g>
 
-        {/* â”€â”€ Speech bubble â”€â”€ */}
-        <rect x="96" y="14" width="54" height="36" rx="14"
-          fill="url(#g-slate)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" filter="url(#f-shadowSm)" />
-        <path d="M106 50 L100 64 L122 50 Z"
-          fill="url(#g-slate)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinejoin="round" />
-        {/* lines in bubble */}
-        <path d="M108 26 H138" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M108 34 H128" stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round" />
-        {/* phone icon in bubble */}
-        <rect x="108" y="22" width="10" height="18" rx="3" fill="none" stroke={C.orange} strokeWidth="2" />
-        <rect x="111" y="35" width="4" height="3" rx="1" fill={C.orange} opacity="0.6" />
+        {/* ── Central badge card (isometric tilt) ── */}
+        <g transform="rotate(-5 90 86)">
+          {/* Card shadow layer */}
+          <rect x="44" y="48" width="92" height="82" rx="20" fill="rgba(0,0,0,0.4)" transform="translate(3, 5)" />
+          {/* Main card */}
+          <rect x="44" y="48" width="92" height="82" rx="20" fill="url(#g-slate)" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5" filter="url(#f-shadow)" />
+          {/* Inset bevel top highlight */}
+          <path d="M56 56 Q90 50 124 56" stroke="rgba(255,255,255,0.12)" strokeWidth="2" strokeLinecap="round" fill="none" />
+          {/* Subtle interior rule */}
+          <line x1="44" y1="74" x2="136" y2="74" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+
+          {/* Center orange plate */}
+          <rect x="62" y="60" width="56" height="56" rx="14" fill="url(#g-orange)" filter="url(#f-glowOrange)" />
+
+          {/* Headset glyph — clean, confident, professional */}
+          {/* Arc (headband) */}
+          <path d="M76 90 a14 14 0 0 1 28 0" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
+          {/* Left earpiece */}
+          <rect x="72" y="88" width="7" height="12" rx="3.5" fill="white" opacity="0.95" />
+          {/* Right earpiece */}
+          <rect x="101" y="88" width="7" height="12" rx="3.5" fill="white" opacity="0.95" />
+          {/* Boom mic */}
+          <path d="M109 100 v3 a7 7 0 0 1-7 7 h-6" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+          {/* Mic tip dot */}
+          <circle cx="96" cy="110" r="2" fill="white" opacity="0.7" />
+        </g>
+
+        {/* Status chip — bottom right of card */}
+        <g transform="translate(98, 134)">
+          <rect width="46" height="22" rx="11" fill="rgba(10,15,28,0.95)" stroke="rgba(255,255,255,0.15)" strokeWidth="1.2" filter="url(#f-shadowSm)" />
+          <circle cx="12" cy="11" r="3.5" fill={C.green} className="il-pulse" />
+          {/* Equalizer bars */}
+          <rect x="22" y="7" width="2.5" height="8"  rx="1.25" fill="rgba(255,255,255,0.5)"  className="il-bp1" />
+          <rect x="27" y="5" width="2.5" height="12" rx="1.25" fill="rgba(255,255,255,0.65)" className="il-bp2" />
+          <rect x="32" y="8" width="2.5" height="6"  rx="1.25" fill="rgba(255,255,255,0.5)"  className="il-bp3" />
+          <rect x="37" y="6" width="2.5" height="10" rx="1.25" fill="rgba(255,255,255,0.6)"  className="il-bp2" />
+        </g>
       </g>
 
-      {/* â”€â”€ Floating accent dots â”€â”€ */}
-      <g className="il-pulse" style={{ animationDelay: "0.3s" }}>
-        <circle cx="14" cy="36" r="4" fill={C.orange} opacity="0.6" />
-        <circle cx="8"  cy="46" r="2" fill={C.orange} opacity="0.4" />
-      </g>
-      <g className="il-pulse" style={{ animationDelay: "0.8s" }}>
-        <circle cx="150" cy="88" r="3.5" fill={C.green} opacity="0.7" />
-        <circle cx="156" cy="78" r="2"   fill={C.green} opacity="0.5" />
-      </g>
-      {/* sparkle stars */}
-      <g className="il-pulse" style={{ animationDelay: "0.5s" }}>
-        <path d="M146 18 L148 12 L150 18 L156 20 L150 22 L148 28 L146 22 L140 20 Z" fill={C.orange} opacity="0.55" />
-      </g>
-      <circle cx="16" cy="108" r="2"   fill={C.purple} opacity="0.5" />
-      <circle cx="148" cy="46" r="2"   fill={C.sky}    opacity="0.5" />
+      {/* Restrained ambient accents */}
+      <circle cx="14" cy="30" r="3" fill={C.orange} opacity="0.35" />
+      <circle cx="162" cy="148" r="3" fill={C.green} opacity="0.35" />
+      <circle cx="158" cy="34" r="2" fill={C.sky} opacity="0.4" />
     </svg>
   );
 }
