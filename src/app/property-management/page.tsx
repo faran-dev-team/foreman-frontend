@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-
-import { ForemanLanding } from "@/components/marketing/foreman-landing";
+import { IndustryPage } from "@/components/marketing/industry/industry-page";
 
 export const metadata: Metadata = {
-  title: {
-    absolute: "Foreman — AI Front Office for Property Management",
-  },
-  description:
-    "Every tenant call, answered and handled. Across your whole portfolio. Foreman answers every one, day and night.",
+  title: "Foreman — AI Front Office for Property Management",
+  description: "Stop missing jobs. Foreman answers every missed call, qualifies the job, and books it.",
 };
 
-export default function PropertyManagementPage() {
-  return <ForemanLanding mode="property-management" />;
+export default function Page() {
+  return <IndustryPage tradeId="property-management" />;
 }

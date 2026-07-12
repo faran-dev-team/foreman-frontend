@@ -81,7 +81,7 @@
 
 .fm-h1 {
   font-family: var(--font-outfit), sans-serif;
-  font-weight: 800;
+  font-weight: 500;
   font-size: clamp(42px, 6.4vw, 88px);
   line-height: 1.08;
   letter-spacing: -0.02em;
@@ -94,10 +94,11 @@
 }
 
 .fm-hero-grid {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  display: flex;
+  flex-direction: column;
   gap: 64px;
   align-items: center;
+  text-align: center;
 }
 
 .fm-hero-sub {
@@ -105,14 +106,15 @@
   font-size: clamp(16px, 1.4vw, 20px);
   line-height: 1.7;
   color: #B8BFCC;
-  margin-bottom: 38px;
-  max-width: 520px;
+  margin: 0 auto 38px auto;
+  max-width: 600px;
 }
 
 .fm-hero-cta {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
+  justify-content: center;
   margin-bottom: 28px;
 }
 
@@ -120,6 +122,7 @@
   display: flex;
   gap: 24px;
   flex-wrap: wrap;
+  justify-content: center;
   font-family: var(--font-outfit), sans-serif;
   font-size: 14px;
   color: #B8BFCC;
@@ -584,7 +587,6 @@
 
 @media (max-width: 900px) {
   .fm-hero-grid {
-    grid-template-columns: 1fr;
     gap: 40px;
   }
 

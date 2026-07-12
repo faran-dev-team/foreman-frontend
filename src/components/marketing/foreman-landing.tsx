@@ -56,7 +56,7 @@ const NAV_SECTIONS = [
 /* ------------------------------------------------------------------ */
 /*  Brand tokens                                                       */
 /* ------------------------------------------------------------------ */
-const C = {
+export const C = {
   navBg: "#8B96A6",
   bgPrimary: "#0A0F1C",
   bgCard: "#141C30",
@@ -73,7 +73,7 @@ const C = {
 /* ------------------------------------------------------------------ */
 /*  Reusable: F-monogram logo                                          */
 /* ------------------------------------------------------------------ */
-function Logo({ size = 40, bg = C.accentOrange, fg = C.bgPrimary }: { size?: number; bg?: string; fg?: string }) {
+export function Logo({ size = 40, bg = C.accentOrange, fg = C.bgPrimary }: { size?: number; bg?: string; fg?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden>
       <rect width="100" height="100" rx="24" fill={bg} />
@@ -87,7 +87,7 @@ function Logo({ size = 40, bg = C.accentOrange, fg = C.bgPrimary }: { size?: num
 /* ------------------------------------------------------------------ */
 /*  Reusable: scroll-reveal wrapper                                    */
 /* ------------------------------------------------------------------ */
-function Reveal({
+export function Reveal({
   children,
   delay = 0,
   y = 22,
@@ -261,7 +261,7 @@ function NavAuthLinks({ className, onNavigate, renderDesktopItem }: { className:
   );
 }
 
-function Nav() {
+export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -320,7 +320,7 @@ function Nav() {
                 </Link>
               )}
             />
-            <MagneticButton href="#pilot" className="fm-btn fm-btn-primary fm-nav-cta">Book a pilot call</MagneticButton>
+            <MagneticButton href={CALENDLY_LINK} className="fm-btn fm-btn-primary fm-nav-cta">Book a pilot call</MagneticButton>
           </div>
           <button type="button" className="fm-nav-toggle" aria-expanded={mobileOpen} aria-controls="fm-mobile-nav" onClick={() => setMobileOpen((open) => !open)}>
             <span className="sr-only">{mobileOpen ? "Close navigation menu" : "Open navigation menu"}</span>
@@ -331,7 +331,7 @@ function Nav() {
           <div className="fm-wrap fm-nav-mobile-inner">
             {NAV_SECTIONS.map((item) => <a key={item.href} href={item.href} className="fm-nav-mobile-link" onClick={closeMobile}>{item.label}</a>)}
             <NavAuthLinks className="fm-nav-mobile-link" onNavigate={closeMobile} />
-            <a href="#pilot" className="fm-btn fm-btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={closeMobile}>Book a pilot call</a>
+            <a href={CALENDLY_LINK} className="fm-btn fm-btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={closeMobile}>Book a pilot call</a>
           </div>
         </div>
       </motion.nav>
@@ -398,7 +398,7 @@ function CallCardAvatar({ initials, priority }: { initials: string; priority: "s
   );
 }
 
-function MagneticButton({ children, href, className, target, rel }: { children: React.ReactNode, href: string, className?: string, target?: string, rel?: string }) {
+export function MagneticButton({ children, href, className, target, rel, style }: { children: React.ReactNode, href: string, className?: string, target?: string, rel?: string, style?: React.CSSProperties }) {
   const ref = useRef<HTMLAnchorElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const reducedMotion = useReducedMotion();
@@ -419,7 +419,7 @@ function MagneticButton({ children, href, className, target, rel }: { children: 
       animate={{ x: position.x, y: position.y }} transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }}
       onMouseMove={handleMouse} onMouseLeave={reset}
       whileHover={reducedMotion ? {} : { scale: 1.04, boxShadow: "0 14px 38px rgba(242,105,28,0.38)" }} whileTap={{ scale: 0.97 }}
-      style={{ position: "relative" }}
+      style={{ position: "relative", ...style }}
     >
       {children}
     </motion.a>
@@ -456,7 +456,7 @@ function CallCard() {
         await new Promise(r => setTimeout(r, 900));
         if (cancelled) return;
         setCallStatus("booked");
-        setBookedRows(prev => new Set([...prev, i]));
+        setBookedRows(prev => new Set(prev).add(i));
         setTotalRevenue(prev => prev + HERO_CALLS[i].revenue);
         await new Promise(r => setTimeout(r, 1200));
       }
@@ -655,7 +655,7 @@ function CallCard() {
 const HERO_COPY: Record<LandingMode, { eyebrow: string; headline: string[]; headlineItalic: string; sub: string }> = {
   main: {
     eyebrow: "THE AI FRONT OFFICE FOR THE TRADES",
-    headline: ["Never miss a ", "call "],
+    headline: ["Never miss a call "],
     headlineItalic: "again.",
     sub: "Foreman answers every call, qualifies the job, prices it, and books it into your calendar. It works 24/7. Pay when it books a job."
   },
@@ -699,7 +699,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
   const content = HERO_COPY[mode] || HERO_COPY.main;
 
   return (
-    <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "160px 0 140px", position: "relative", overflow: "hidden" }}>
+    <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "80px 0 140px", position: "relative", overflow: "hidden" }}>
       {/* Primary radial glow — top right */}
       <motion.div
         aria-hidden
@@ -747,17 +747,9 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
                   transition={{ duration: 0.9, delay: 0.15 + i * 0.15, ease: [0.16, 1, 0.3, 1] }}
                 >
                   {line}
-                  {i === 1 && (
+                  {i === content.headline.length - 1 && (
                     <span className="fm-serif-italic" style={{ color: C.accentOrange, WebkitTextFillColor: C.accentOrange, position: "relative", display: "inline-block" }}>
                       {content.headlineItalic}
-                      <motion.div
-                        initial={{ opacity: 0, scaleX: 0 }}
-                        animate={{ opacity: 1, scaleX: 1 }}
-                        transition={{ delay: 1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                        style={{ position: "absolute", bottom: -8, left: -10, width: "120%", zIndex: -1, transformOrigin: "left" }}
-                      >
-                        <DoodleUnderline style={{ width: "100%", height: "auto" }} />
-                      </motion.div>
                     </span>
                   )}
                 </motion.span>
@@ -768,7 +760,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
             {content.sub}
           </motion.p>
           <motion.div className="fm-hero-cta" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.62 }}>
-            <MagneticButton href="#pilot" className="fm-btn fm-btn-primary">Book your free pilot</MagneticButton>
+            <MagneticButton href={CALENDLY_LINK} className="fm-btn fm-btn-primary">Book your free pilot</MagneticButton>
             <motion.a href="#how" className="fm-btn fm-btn-ghost" whileHover={reducedMotion ? {} : { scale: 1.04 }} whileTap={{ scale: 0.97 }}>See how it works</motion.a>
           </motion.div>
           <motion.div className="fm-hero-trust" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}>
@@ -877,18 +869,17 @@ const tradeIconMap: Record<string, React.ReactNode> = {
   hvac: <img src="/images/hvac.png" alt="HVAC" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
   plumbing: <img src="/images/plumber.png" alt="Plumbing" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
   electrical: <img src="/images/electrician.png" alt="Electrical" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  roofing: <img src="/images/roofting.png" alt="Roofing" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  roofing: <img src="/images/roofing (2).png" alt="Roofing" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
   pest: <img src="/images/pest.png" alt="Pest Control" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
   garage: <img src="/images/garage.png" alt="Garage Door" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  restoration: <img src="/images/restore.png" alt="Restoration" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  restoration: <img src="/images/restoration.png" alt="Restoration" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
   "property-management": <img src="/images/property.png" alt="Property Management" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
 };
 
-function TradeSelector() {
+export function TradeSelector() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const activeTrade = TRADES[activeIndex];
-  const activeDetails = NICHE_DETAILS[activeTrade.id] || NICHE_DETAILS.hvac;
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -899,13 +890,8 @@ function TradeSelector() {
     return () => clearInterval(timer);
   }, [isAutoPlaying]);
 
-  const handleManualSelect = (index: number) => {
-    setActiveIndex(index);
-    setIsAutoPlaying(false);
-  };
-
   return (
-    <section className="fm-island" style={{ background: C.bgCard, padding: "96px 0", zIndex: 3 }}>
+    <section className="fm-island" style={{ background: C.bgCard, padding: "40px 0", zIndex: 3 }}>
       <div className="fm-wrap">
         <Reveal className="fm-sechead" style={{ marginBottom: 40 }}>
           <motion.div
@@ -916,7 +902,32 @@ function TradeSelector() {
             <DoodleQuestion style={{ filter: "drop-shadow(0 15px 20px rgba(0,0,0,0.25))" }} />
           </motion.div>
           <div className="fm-eyebrow">BUILT FOR YOUR TRADE</div>
-          <h2 className="fm-h2" style={{ fontSize: 40 }}>Knows your trade. Asks the right questions. Books the job.</h2>
+          <h2 className="fm-h2" style={{ fontSize: 40 }}>
+            Knows your trade. Asks the right questions. Books the job.
+          </h2>
+        </Reveal>
+
+        <Reveal delay={0.05} style={{ maxWidth: 900, margin: "0 auto 48px" }}>
+          <div style={{
+            background: `linear-gradient(135deg, rgba(249,122,53,0.15) 0%, rgba(20,28,48,0.8) 100%)`,
+            border: `1px solid rgba(249,122,53,0.3)`,
+            borderRadius: 24,
+            padding: "32px 40px",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 24,
+            textAlign: "left",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.2)"
+          }}>
+            <h3 style={{ fontSize: 24, fontWeight: 700, color: C.textHeading, margin: 0, lineHeight: 1.3, flex: "1 1 300px" }}>
+              Book a free call with our AI Consultant today.
+            </h3>
+            <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary" style={{ flex: "0 0 auto", padding: "14px 24px", fontSize: 16 }}>
+              Book a free call with our AI Consultant
+            </MagneticButton>
+          </div>
         </Reveal>
 
         <Reveal delay={0.1}>
@@ -924,27 +935,29 @@ function TradeSelector() {
             {TRADES.map((t, index) => {
               const isActive = t.id === activeTrade.id;
               return (
-                <motion.button
-                  key={t.id}
-                  onClick={() => handleManualSelect(index)}
-                  whileHover={reducedMotion ? {} : { scale: 1.06, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  style={{
-                    background: isActive ? C.accentOrange : "transparent",
-                    color: isActive ? C.textHeading : C.textBody,
-                    border: `1px solid ${isActive ? C.accentOrange : C.borderPrimary}`,
-                    borderRadius: 999,
-                    padding: "10px 20px",
-                    fontFamily: "var(--font-outfit), sans-serif",
-                    fontWeight: 600,
-                    fontSize: 15,
-                    cursor: "pointer",
-                    transition: "background 300ms cubic-bezier(0.16,1,0.3,1), color 300ms cubic-bezier(0.16,1,0.3,1), border-color 300ms cubic-bezier(0.16,1,0.3,1)",
-                  }}
-                >
-                  {t.label}
-                </motion.button>
+                <Link key={t.id} href={`/${t.id}`} passHref legacyBehavior>
+                  <motion.a
+                    onMouseEnter={() => { setActiveIndex(index); setIsAutoPlaying(false); }}
+                    whileHover={reducedMotion ? {} : { scale: 1.06, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                    style={{
+                      background: isActive ? C.accentOrange : "transparent",
+                      color: isActive ? C.textHeading : C.textBody,
+                      border: `1px solid ${isActive ? C.accentOrange : C.borderPrimary}`,
+                      borderRadius: 999,
+                      padding: "10px 20px",
+                      fontFamily: "var(--font-outfit), sans-serif",
+                      fontWeight: 600,
+                      fontSize: 15,
+                      cursor: "pointer",
+                      textDecoration: "none",
+                      transition: "background 300ms cubic-bezier(0.16,1,0.3,1), color 300ms cubic-bezier(0.16,1,0.3,1), border-color 300ms cubic-bezier(0.16,1,0.3,1)",
+                    }}
+                  >
+                    {t.label}
+                  </motion.a>
+                </Link>
               );
             })}
           </div>
@@ -996,55 +1009,29 @@ function TradeSelector() {
                   <span className="fm-badge fm-badge-booked">BOOKED</span>
                 </div>
 
-                <AnimatePresence>
-                  {isFront && !reducedMotion && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0, rotate: -45 }}
-                      animate={{ opacity: 1, scale: 1, rotate: 10 }}
-                      exit={{ opacity: 0, scale: 0, rotate: 45 }}
-                      transition={{ duration: 0.5, type: "spring", bounce: 0.5, delay: 0.2 }}
-                      style={{ position: "absolute", top: "50%", marginTop: -100, right: -220, width: 200, height: 200, zIndex: 10, filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}
-                    >
-                      {tradeIconMap[trade.id]}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+
               </motion.div>
             );
           })}
-        </Reveal>
 
-        <Reveal delay={0.3} style={{ marginTop: 64, maxWidth: 900, margin: "64px auto 0" }}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTrade.id}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{ background: C.bgPrimary, borderRadius: 24, padding: 40, border: `1px solid ${C.borderPrimary}`, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}
-            >
-              <div>
-                <div style={{ color: C.accentOrange, fontWeight: 700, fontSize: 13, letterSpacing: 1, marginBottom: 12, textTransform: "uppercase" }}>
-                  WHY {activeTrade.label} SHOPS LOSE JOBS
-                </div>
-                <h3 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16, lineHeight: 1.2 }}>{activeDetails.problemHeadline}</h3>
-                <p style={{ color: C.textBody, fontSize: 16, lineHeight: 1.6, marginBottom: 24 }}>{activeDetails.problemBody}</p>
-                <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary" style={{ padding: "12px 24px", fontSize: 15 }}>
-                  {activeDetails.ctaText}
-                </MagneticButton>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div style={{ color: C.textHeading, fontWeight: 600, fontSize: 15, marginBottom: 4 }}>How Foreman handles it:</div>
-                {activeDetails.features.map((feat, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                    <div style={{ marginTop: 2 }}><Check /></div>
-                    <div style={{ color: C.textBody, fontSize: 15, lineHeight: 1.4 }}>{feat}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </AnimatePresence>
+          <div style={{ position: "absolute", top: "50%", marginTop: -100, left: -220, width: 200, height: 200, zIndex: 10, filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
+            <img src="/images/foreman.png" alt="Foreman" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          </div>
+
+          <div style={{ position: "absolute", top: "50%", marginTop: -100, right: -220, width: 200, height: 200, zIndex: 10, filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTrade.id}
+                initial={{ opacity: 0, scale: 0.8, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: -15 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
+              >
+                {tradeIconMap[activeTrade.id]}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </Reveal>
       </div>
     </section>
@@ -1092,20 +1079,7 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
   const pCopy = PROBLEM_COPY[mode] || PROBLEM_COPY.main;
 
   return (
-    <section className="fm-island" style={{ background: C.bgPrimary, padding: "96px 0", zIndex: 4 }}>
-      {/* Optional faint scrolling ribbon */}
-      <motion.div
-        aria-hidden
-        style={{
-          position: "absolute", top: "40%", left: 0, right: 0,
-          whiteSpace: "nowrap", fontSize: "160px", fontWeight: 900,
-          color: "rgba(255,255,255,0.02)", pointerEvents: "none", zIndex: 0
-        }}
-        animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-      >
-        ANSWERED QUALIFIED BOOKED ANSWERED QUALIFIED BOOKED
-      </motion.div>
+    <section className="fm-island" style={{ background: C.bgPrimary, padding: "48px 0", zIndex: 4, overflow: "hidden" }}>
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
         <Reveal className="fm-sechead" style={{ marginBottom: 64 }}>
@@ -1114,11 +1088,11 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
           <p className="fm-secsub" style={{ maxWidth: 700, margin: "0 auto" }}>{pCopy.body}</p>
         </Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch", maxWidth: 1000, margin: "0 auto" }}>
           <Reveal style={{ position: "relative" }}>
-            <div className="fm-hoverlift" style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 28, padding: 48, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", zIndex: 2 }}>
+            <div className="fm-hoverlift" style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 28, padding: 48, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", position: "relative", zIndex: 2 }}>
               <div style={{ fontSize: 16, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Missed calls without Foreman:</div>
-              <div className="fm-statnum" style={{ color: C.textBody }}>~40%</div>
+              <div className="fm-statnum" style={{ color: C.textBody }}>40%</div>
             </div>
             {!reducedMotion && (
               <motion.div
@@ -1127,12 +1101,12 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
                 whileHover={{ scale: 1.12, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
                 transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
               >
-                <DoodleRingingPhone style={{ width: "100%", height: "auto" }} />
+                <img src="/images/phone.png" alt="Phone" style={{ width: "100%", height: "auto" }} />
               </motion.div>
             )}
           </Reveal>
           <Reveal delay={0.1} style={{ position: "relative" }}>
-            <div className="fm-hoverlift" style={{ background: C.accentOrange, borderRadius: 28, padding: 48, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div className="fm-hoverlift" style={{ background: C.accentOrange, borderRadius: 28, padding: 48, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
               <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 600, marginBottom: 12 }}>Missed calls with Foreman:</div>
               <div className="fm-statnum" style={{ color: C.bgPrimary, position: "relative", display: "inline-block" }}>
                 0%
@@ -1141,25 +1115,124 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.5, type: "spring" }}
-                  style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "140%", height: "140%", pointerEvents: "none" }}
+                  style={{ position: "absolute", top: "55%", left: "50%", transform: "translate(-50%, -50%)", width: "170%", height: "170%", pointerEvents: "none" }}
                 >
                   <DoodleCircle style={{ width: "100%", height: "100%" }} />
                 </motion.div>
               </div>
             </div>
             {!reducedMotion && (
-              <motion.div
+              <div
                 style={{ position: "absolute", bottom: -45, right: -35, width: 100, zIndex: 3, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.35))" }}
-                animate={{ rotate: [-10, 10], y: [-4, 4] }}
-                whileHover={{ scale: 1.12, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
-                transition={{ duration: 4.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
               >
-                <DoodleWrenchGear style={{ width: "100%", height: "auto" }} />
-              </motion.div>
+                <img src="/images/zero.png" alt="Zero" style={{ width: "100%", height: "auto" }} />
+              </div>
             )}
           </Reveal>
         </div>
+
+        <Reveal delay={0.2} style={{ marginTop: 64, maxWidth: 1040, margin: "64px auto 0" }}>
+          <TiltCard
+            style={{
+              background: "rgba(20, 28, 48, 0.4)",
+              border: `1px solid ${C.accentOrange}40`,
+              borderRadius: 24,
+              padding: "32px 40px",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <h3 style={{
+                fontSize: 22, fontWeight: 700, letterSpacing: 2,
+                color: C.textHeading, textTransform: "uppercase"
+              }}>
+                <span style={{ color: C.accentOrange }}>AI</span> BUSINESS DASHBOARD
+              </h3>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
+              {/* Card 1 */}
+              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(249,122,53,0.1)", border: `1px solid rgba(249,122,53,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: C.accentOrange }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                </div>
+                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Calls Today</div>
+                <div style={{ fontSize: 36, fontWeight: 700, color: C.textHeading, marginBottom: 12 }}>24</div>
+                <div style={{ fontSize: 13, color: C.accentGreenText, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
+                  +18%
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(184,191,204,0.5)", marginTop: 4 }}>vs yesterday</div>
+              </div>
+
+              {/* Card 2 */}
+              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(167,139,250,0.1)", border: `1px solid rgba(167,139,250,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "#A78BFA" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4" /><path d="M5.5 21v-2a4.5 4.5 0 0 1 4.5-4.5h4a4.5 4.5 0 0 1 4.5 4.5v2" /><path d="M19 11a2 2 0 0 1 0 4" /><path d="M22 9a4 4 0 0 1 0 8" /></svg>
+                </div>
+                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Answer Rate</div>
+                <div style={{ fontSize: 36, fontWeight: 700, color: C.textHeading, marginBottom: 12 }}>98.6%</div>
+                <div style={{ fontSize: 13, color: C.accentGreenText, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
+                  +3.2%
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(184,191,204,0.5)", marginTop: 4 }}>vs yesterday</div>
+              </div>
+
+              {/* Card 3 */}
+              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(249,122,53,0.1)", border: `1px solid rgba(249,122,53,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: C.accentOrange }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><rect x="8" y="14" width="2" height="2" /><rect x="12" y="14" width="2" height="2" /><rect x="16" y="14" width="2" height="2" /></svg>
+                </div>
+                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Jobs Booked</div>
+                <div style={{ fontSize: 36, fontWeight: 700, color: C.textHeading, marginBottom: 12 }}>7</div>
+                <div style={{ fontSize: 13, color: C.accentGreenText, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
+                  +40%
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(184,191,204,0.5)", marginTop: 4 }}>vs yesterday</div>
+              </div>
+
+              {/* Card 4 */}
+              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(31,170,89,0.1)", border: `1px solid rgba(31,170,89,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: C.accentGreenText }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                </div>
+                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Revenue</div>
+                <div style={{ fontSize: 36, fontWeight: 700, color: C.textHeading, marginBottom: 12 }}>$4,250</div>
+                <div style={{ fontSize: 13, color: C.accentGreenText, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
+                  +28%
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(184,191,204,0.5)", marginTop: 4 }}>vs yesterday</div>
+              </div>
+
+              {/* Card 5 */}
+              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(31,170,89,0.05)", border: `1px solid rgba(31,170,89,0.2)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: C.accentGreenText, boxShadow: `0 0 12px ${C.accentGreenText}` }} />
+                </div>
+                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>AI Status</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: C.accentGreenText, marginBottom: 12, marginTop: 4 }}>Online</div>
+                <div style={{ fontSize: 13, color: "rgba(184,191,204,0.6)", fontWeight: 500, marginTop: "auto" }}>All Systems Go</div>
+              </div>
+            </div>
+          </TiltCard>
+        </Reveal>
       </div>
+
+      {/* Optional faint scrolling ribbon */}
+      <motion.div
+        aria-hidden
+        style={{
+          marginTop: 16,
+          whiteSpace: "nowrap", fontSize: "160px", fontWeight: 900,
+          color: "rgba(255,255,255,0.02)", pointerEvents: "none"
+        }}
+        animate={{ x: ["0%", "-50%"] }}
+        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+      >
+        ANSWERED QUALIFIED BOOKED ANSWERED QUALIFIED BOOKED
+      </motion.div>
     </section>
   );
 }
@@ -1179,9 +1252,9 @@ const PROOF_COPY: Record<LandingMode, { eyebrow: string; headline: string; sub: 
 function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
   const pCopy = PROOF_COPY[mode] || PROOF_COPY.main;
   return (
-    <section className="fm-island" style={{ position: "relative", background: C.bgCard, padding: "120px 0", zIndex: 5 }}>
+    <section className="fm-island" style={{ position: "relative", background: C.bgCard, padding: "60px 0", zIndex: 5 }}>
       <div className="fm-wrap">
-        <Reveal className="fm-sechead" style={{ marginBottom: 80 }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 40 }}>
           <div className="fm-eyebrow">{pCopy.eyebrow}</div>
           <div style={{ margin: "24px 0", position: "relative", display: "inline-block" }}>
             <h2 style={{
@@ -1216,7 +1289,7 @@ function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
           {/* Step 1: Answers */}
           <div className="fm-timeline-row left">
             <Reveal className="fm-timeline-content" style={{ position: "relative" }}>
-              <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
+              <div className="fm-callcard fm-hoverlift" style={{ background: `${C.accentOrange}15`, border: `1px solid ${C.accentOrange}30` }}>
                 <div className="fm-callrow">
                   <div className="fm-callic" style={{ background: "transparent" }}><DoodleFace /></div>
                   <div style={{ flex: 1 }}>
@@ -1249,7 +1322,7 @@ function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
           {/* Step 2: Qualifies & Books */}
           <div className="fm-timeline-row right">
             <Reveal delay={0.1} className="fm-timeline-content" style={{ position: "relative" }}>
-              <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
+              <div className="fm-callcard fm-hoverlift" style={{ background: `${C.accentOrange}15`, border: `1px solid ${C.accentOrange}30` }}>
                 <div className="fm-callrow">
                   <div className="fm-callic"><Calendar o /></div>
                   <div style={{ flex: 1 }}>
@@ -1282,7 +1355,7 @@ function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
           {/* Step 3: Books */}
           <div className="fm-timeline-row left">
             <Reveal delay={0.2} className="fm-timeline-content" style={{ position: "relative" }}>
-              <div className="fm-callcard fm-hoverlift" style={{ background: C.bgPrimary }}>
+              <div className="fm-callcard fm-hoverlift" style={{ background: `${C.accentOrange}15`, border: `1px solid ${C.accentOrange}30` }}>
                 <div className="fm-callrow">
                   <div className="fm-callic" style={{ background: "transparent" }}><DoodleFace /></div>
                   <div style={{ flex: 1 }}>
@@ -1322,7 +1395,13 @@ function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
 /* ================================================================== */
 function IntegrationsRow() {
   const reducedMotion = useReducedMotion();
-  const logos = ["Google Calendar", "ServiceTitan", "Jobber", "QuickBooks", "Twilio"];
+  const logos = [
+    { name: "Google Calendar", iconUrl: "https://cdn.simpleicons.org/googlecalendar" },
+    { name: "ServiceTitan", iconUrl: "https://www.google.com/s2/favicons?sz=64&domain=servicetitan.com" },
+    { name: "Jobber", iconUrl: "https://www.google.com/s2/favicons?sz=64&domain=getjobber.com" },
+    { name: "QuickBooks", iconUrl: "https://cdn.simpleicons.org/quickbooks" },
+    { name: "Twilio", iconUrl: "https://www.twilio.com/favicon.ico" }
+  ];
   return (
     <section className="fm-island" style={{ background: C.bgPrimary, padding: "96px 0", zIndex: 6, overflow: "hidden" }}>
       <div style={{ textAlign: "center" }}>
@@ -1370,7 +1449,7 @@ function IntegrationsRow() {
           </div>
 
           <div className="fm-roller-track">
-            {[...logos, ...logos, ...logos, ...logos, ...logos].map((logo, i, arr) => (
+            {[...logos, ...logos, ...logos, ...logos].map((logo, i, arr) => (
               <div
                 key={i}
                 className="fm-logopill fm-roller-pill"
@@ -1378,16 +1457,22 @@ function IntegrationsRow() {
                   background: C.bgCard,
                   border: `1px solid ${C.borderPrimary}`,
                   borderRadius: 999,
-                  padding: "14px 28px",
+                  padding: "14px 30px",
                   color: C.textHeading,
                   fontWeight: 600,
                   fontSize: 17,
                   whiteSpace: "nowrap",
                   offsetPath: "path('M -200 125 C 50 65, 450 185, 800 125 C 1050 65, 1450 185, 1800 125 C 2050 65, 2450 185, 2800 125 C 3050 65, 3450 185, 3800 125 C 4050 65, 4450 185, 4800 125')",
-                  animationDelay: `-${i * (25 / arr.length)}s`
+                  animationDelay: `-${i * (25 / arr.length)}s`,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+
+                  boxSizing: "border-box"
                 }}
               >
-                {logo}
+                <img src={logo.iconUrl} alt={logo.name} width="24" height="24" style={{ display: "block", borderRadius: "4px" }} />
+                <span>{logo.name}</span>
               </div>
             ))}
           </div>
@@ -1489,9 +1574,9 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
   const fCopy = FEATURES_COPY[mode] || FEATURES_COPY.main;
 
   return (
-    <section id="features" className="fm-island" style={{ background: C.bgCard, padding: "112px 0", zIndex: 7 }}>
+    <section id="features" className="fm-island" style={{ background: C.bgCard, padding: "60px 0", zIndex: 7 }}>
       <div className="fm-wrap">
-        <Reveal className="fm-sechead" style={{ marginBottom: 72 }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 40 }}>
           <div className="fm-eyebrow">{fCopy.eyebrow}</div>
           <h2 style={{
             fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
@@ -1563,7 +1648,7 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
   const content = CTA_COPY[mode] || CTA_COPY.main;
 
   return (
-    <section id="pilot" style={{ background: C.bgPrimary, padding: "160px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
+    <section id="pilot" style={{ background: C.bgPrimary, padding: "80px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
       <div style={{
         position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         width: "100%", maxWidth: 1000, height: 600,
@@ -1606,9 +1691,9 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
 /* ================================================================== */
 /*  FOOTER                                                             */
 /* ================================================================== */
-function Footer() {
+export function Footer() {
   return (
-    <footer style={{ background: C.footerBg, color: C.textBody, paddingTop: 100, paddingBottom: 60, position: "relative", overflow: "hidden", borderTop: `1px solid ${C.borderPrimary}` }}>
+    <footer style={{ background: C.footerBg, color: C.textBody, paddingTop: 60, paddingBottom: 60, position: "relative", overflow: "hidden", borderTop: `1px solid ${C.borderPrimary}` }}>
 
       {/* Background glow effects */}
       <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, ${C.accentOrange}10, transparent 70%)`, pointerEvents: "none" }} />
@@ -1626,18 +1711,24 @@ function Footer() {
               The AI front office built exclusively for the trades. We answer the phone, qualify the lead, and book the job directly into your calendar so you can focus on the work.
             </p>
             <div style={{ display: "flex", gap: 16 }}>
-              {["twitter", "linkedin", "instagram"].map((social, i) => (
+              {[
+                { id: "twitter", url: "https://twitter.com" },
+                { id: "linkedin", url: "https://linkedin.com" },
+                { id: "instagram", url: "https://www.instagram.com/foreman.ai_?igsh=c2J0M2pxcWNlbjM2" }
+              ].map((social, i) => (
                 <motion.a
                   key={i}
-                  href="#"
-                  aria-label={social}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={social.id}
                   whileHover={{ scale: 1.1, y: -2, borderColor: C.accentOrange, color: C.accentOrange }}
                   transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   style={{ width: 44, height: 44, borderRadius: "50%", background: C.bgCard, border: `1px solid ${C.borderPrimary}`, color: C.textBody, display: "flex", alignItems: "center", justifyContent: "center" }}
                 >
-                  {social === "twitter" && <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" /></svg>}
-                  {social === "linkedin" && <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z" /></svg>}
-                  {social === "instagram" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>}
+                  {social.id === "twitter" && <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" /></svg>}
+                  {social.id === "linkedin" && <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z" /></svg>}
+                  {social.id === "instagram" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>}
                 </motion.a>
               ))}
             </div>
@@ -1669,7 +1760,7 @@ function Footer() {
             {TRADES.slice(0, 5).map((trade) => (
               <motion.a
                 key={trade.id}
-                href={trade.href || "#"}
+                href={`/${trade.id}`}
                 whileHover={{ x: 4, color: C.accentOrange }}
                 style={{ fontSize: 15, color: C.textBody, textDecoration: "none", transition: "color 0.2s", fontWeight: 500, alignSelf: "flex-start" }}
               >
@@ -1754,7 +1845,7 @@ function PersistentWidget() {
 /* ------------------------------------------------------------------ */
 /*  Icons                                                              */
 /* ------------------------------------------------------------------ */
-function Check({ o }: { o?: boolean }) {
+export function Check({ o }: { o?: boolean }) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden style={{ flexShrink: 0 }}>
       <path d="M20 6L9 17l-5-5" stroke={C.accentOrange} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1907,6 +1998,56 @@ function StickerEye({ style, className }: { style?: React.CSSProperties, classNa
 }
 
 /* ================================================================== */
+/*  PRICING                                                            */
+/* ================================================================== */
+export function Pricing() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  return (
+    <section id="pricing" className="py-32 relative" style={{ background: C.bgPrimary }}>
+      {/* Background glow */}
+      <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: `radial-gradient(ellipse at 50% -50%, ${C.accentOrange}, transparent 70%)` }} />
+      
+      <div className="max-w-[1000px] mx-auto px-6" ref={ref}>
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8 }}
+          className="rounded-3xl border p-12 md:p-16 text-center relative overflow-hidden"
+          style={{ background: C.bgCard, borderColor: C.borderPrimary }}
+        >
+          {/* Subtle noise texture or inner glow */}
+          <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(circle at 50% 50%, ${C.accentOrange}, transparent 60%)` }} />
+          
+          <div className="relative z-10">
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 text-white leading-tight">
+              Pricing that only wins when you do.
+            </h2>
+            <p className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto mb-12">
+              Foreman is priced to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit. You only pay when Foreman books you real work.
+            </p>
+            
+            <div className="flex flex-col items-center justify-center">
+              <MagneticButton href={CALENDLY_LINK} className="fm-btn fm-btn-primary" style={{ padding: "16px 32px", fontSize: "18px" }}>
+                Book your free pilot
+              </MagneticButton>
+              <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-400 font-medium tracking-wide">
+                <span>Custom to your business</span>
+                <span style={{ color: C.borderPrimary }}>&bull;</span>
+                <span>Live in 24 hours</span>
+                <span style={{ color: C.borderPrimary }}>&bull;</span>
+                <span>Cancel anytime</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ================================================================== */
 /*  FAQ                                                                */
 /* ================================================================== */
 const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
@@ -1914,7 +2055,7 @@ const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
     { q: "Is it a robot talking to my customers?", a: "It sounds like your best front-desk person, calm, clear, and to the point. It never wastes a caller's time, and it never sends anyone to voicemail. You can also give it your shop's name and tone so it sounds like your team." },
     { q: "Can I listen to calls or step in?", a: "Yes. Listen to any call live from your phone and take over instantly. You are always in control." },
     { q: "Does it really speak Spanish?", a: "Fluently. It handles calls in English and Spanish automatically, so you never lose a caller to a language barrier." },
-    { q: "How much does it cost?", a: "$500 a month for the system plus $50 each time it books you a paying job. During your pilot the base is free, so you only pay per booking. One job usually pays for many bookings." },
+    { q: "How much does it cost?", a: "Foreman is priced custom to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit." },
     { q: "I already have voicemail or an answering service.", a: "Voicemail loses about 80% of callers. Answering services take a message and hand it back to you. Foreman qualifies the job and books it into your calendar. That is the difference between a note and a booked job." },
     { q: "How long does setup take?", a: "You're live in about 24 hours. No new hardware, we connect to your existing number." },
     { q: "What happens after hours?", a: "That's when Foreman shines. Nights, weekends, and holidays are prime emergency hours, and it answers all of them." }
@@ -1946,11 +2087,11 @@ const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
   ]
 };
 
-function FAQ({ mode = "main" }: { mode?: LandingMode }) {
+export function FAQ({ mode = "main" }: { mode?: LandingMode }) {
   const qa = FAQ_COPY[mode] || FAQ_COPY.main;
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <section id="faq" className="fm-island" style={{ background: C.bgCard, padding: "96px 0", zIndex: 8 }}>
+    <section id="faq" className="fm-island" style={{ background: C.bgCard, padding: "48px 0", zIndex: 8 }}>
       <div className="fm-wrap">
         <Reveal className="fm-sechead">
           <div className="fm-eyebrow">STRAIGHT ANSWERS</div>
@@ -2054,23 +2195,23 @@ function CinematicWorkflow() {
   const [step, setStep] = useState(0);
 
   const progress = useMotionValue(0);
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const row2Ref = useRef<HTMLDivElement>(null);
   const row3Ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { once: true, amount: 0.1 });
 
   useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion || !isInView) return;
     let isActive = true;
-    let loopCount = 0;
 
     const runSequence = async () => {
       await new Promise(r => setTimeout(r, 1000));
-      
+
       for (let i = 1; i <= 10; i++) {
         if (!isActive) return;
         setStep(i);
-        
+
         // Auto-scroll logic
         if (containerRef.current) {
           const rect = containerRef.current.getBoundingClientRect();
@@ -2080,60 +2221,49 @@ function CinematicWorkflow() {
               row2Ref.current.scrollIntoView({ behavior: "smooth", block: "center" });
             } else if (i === 8 && row3Ref.current) {
               row3Ref.current.scrollIntoView({ behavior: "smooth", block: "center" });
-            } else if (i === 1 && loopCount > 0) {
-              // Scroll back up to start when loop restarts
-              containerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
             }
           }
         }
-        
+
         // Animate the pipeline progress
         animate(progress, i / 10, { type: "spring", stiffness: 60, damping: 20 });
-        
+
         await new Promise(r => setTimeout(r, 1800));
       }
-
-      await new Promise(r => setTimeout(r, 3000));
-      
-      if (!isActive) return;
-      setStep(0);
-      animate(progress, 0, { duration: 0.5 });
-      loopCount++;
-      setTimeout(runSequence, 1000);
     };
 
     runSequence();
 
     return () => { isActive = false; };
-  }, [reducedMotion, progress]);
+  }, [reducedMotion, progress, isInView]);
 
   return (
-    <section ref={containerRef} className="fm-island" style={{ background: C.bgPrimary, padding: "160px 0", position: "relative", overflow: "hidden", display: "flex", justifyContent: "center" }}>
+    <section ref={containerRef} className="fm-island" style={{ background: C.bgPrimary, padding: "80px 0", position: "relative", overflow: "hidden", display: "flex", justifyContent: "center" }}>
       {/* Background Ambience */}
       <div style={{ position: "absolute", top: "20%", left: "30%", width: "40%", height: 600, background: "radial-gradient(ellipse, rgba(167,139,250,0.08) 0%, transparent 60%)", filter: "blur(80px)", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "20%", right: "20%", width: "40%", height: 600, background: `radial-gradient(circle, ${C.accentOrange}0A 0%, transparent 60%)`, filter: "blur(80px)", pointerEvents: "none" }} />
 
       <div style={{ position: "relative", width: 1000, margin: "0 auto" }}>
-        
+
         {/* The S-Curve SVG Pipeline */}
         <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }}>
           {/* Base Track */}
-          <path 
-            d="M 140 210 L 860 210 A 80 80 0 0 1 940 290 L 940 650 A 80 80 0 0 1 860 730 L 140 730 A 80 80 0 0 0 60 810 L 60 1170 A 80 80 0 0 0 140 1250 L 860 1250" 
-            fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" 
+          <path
+            d="M 140 210 L 860 210 A 80 80 0 0 1 940 290 L 940 650 A 80 80 0 0 1 860 730 L 140 730 A 80 80 0 0 0 60 810 L 60 1170 A 80 80 0 0 0 140 1250 L 860 1250"
+            fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4"
           />
           {/* Animated Pulse */}
-          <motion.path 
-            d="M 140 210 L 860 210 A 80 80 0 0 1 940 290 L 940 650 A 80 80 0 0 1 860 730 L 140 730 A 80 80 0 0 0 60 810 L 60 1170 A 80 80 0 0 0 140 1250 L 860 1250" 
+          <motion.path
+            d="M 140 210 L 860 210 A 80 80 0 0 1 940 290 L 940 650 A 80 80 0 0 1 860 730 L 140 730 A 80 80 0 0 0 60 810 L 60 1170 A 80 80 0 0 0 140 1250 L 860 1250"
             fill="none" stroke={C.accentOrange} strokeWidth="4"
             style={{ pathLength: progress, filter: "drop-shadow(0 0 8px rgba(249,122,53,0.8))" }}
           />
         </svg>
 
         {/* 3x3 Grid Layout */}
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(3, 280px)", 
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 280px)",
           gap: "100px 80px",
           gridTemplateAreas: `
             "step1 step2 step4"
@@ -2146,11 +2276,11 @@ function CinematicWorkflow() {
           <div style={{ gridArea: "step1" }}><StepPhone active={step >= 1} /></div>
           <div style={{ gridArea: "step2" }}><StepAI active={step >= 2} listens={step >= 3} /></div>
           <div style={{ gridArea: "step4" }}><StepQualification active={step >= 4} /></div>
-          
+
           <div ref={row2Ref} style={{ gridArea: "step5" }}><StepAppointment active={step >= 5} /></div>
           <div style={{ gridArea: "step6" }}><StepCalendar active={step >= 6} /></div>
           <div style={{ gridArea: "step7" }}><StepDispatch active={step >= 7} /></div>
-          
+
           <div ref={row3Ref} style={{ gridArea: "step8" }}><StepSMS active={step >= 8} /></div>
           <div style={{ gridArea: "step9" }}><StepCRM active={step >= 9} /></div>
           <div style={{ gridArea: "step10" }}><StepRevenue active={step >= 10} /></div>
@@ -2174,9 +2304,9 @@ function StepPhone({ active }: { active: boolean }) {
         <h3 style={{ fontSize: 20, color: "#fff", marginBottom: 4, fontWeight: 600 }}>Mike Johnson</h3>
         <span style={{ color: "#60A5FA", fontSize: 13, marginBottom: 32, fontWeight: 500 }}>HVAC Repair</span>
         <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#222", marginBottom: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(255,255,255,0.1)" }}>
-           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
         </div>
-        
+
         {active && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 20, opacity: 1 }} style={{ marginBottom: 32, display: "flex", alignItems: "center", gap: 3 }}>
             {[...Array(6)].map((_, i) => (
@@ -2187,10 +2317,10 @@ function StepPhone({ active }: { active: boolean }) {
 
         <div style={{ display: "flex", gap: 32, opacity: active ? 1 : 0.5, transition: "opacity 0.3s" }}>
           <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 16px rgba(239,68,68,0.3)" }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
           </div>
           <motion.div animate={active ? { y: [-2, 2] } : {}} transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }} style={{ width: 56, height: 56, borderRadius: "50%", background: C.accentGreenText, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 16px rgba(31,170,89,0.3)` }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
           </motion.div>
         </div>
       </TiltCard>
@@ -2205,9 +2335,9 @@ function StepAI({ active, listens }: { active: boolean, listens: boolean }) {
         {listens ? "3 AI LISTENS" : "2 AI ANSWERS"}
       </motion.div>
       <div style={{ position: "relative", width: 240, height: 240, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        
+
         {/* Core Glow */}
-        <motion.div 
+        <motion.div
           animate={active ? { scale: listens ? [1, 1.4, 1] : [1, 1.2, 1], opacity: [0.3, 0.7, 0.3] } : { scale: 0.8, opacity: 0 }}
           transition={{ duration: listens ? 1.5 : 3, repeat: Infinity, ease: "easeInOut" }}
           style={{ position: "absolute", width: "100%", height: "100%", borderRadius: "50%", background: "radial-gradient(circle, rgba(167,139,250,0.6) 0%, rgba(167,139,250,0) 70%)", filter: "blur(20px)" }}
@@ -2226,7 +2356,7 @@ function StepAI({ active, listens }: { active: boolean, listens: boolean }) {
         ))}
 
         {/* Central Orb */}
-        <motion.div 
+        <motion.div
           animate={active ? { scale: [1, 1.05, 1] } : { scale: 0.9, opacity: 0.5 }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           style={{ width: 120, height: 120, borderRadius: "50%", background: "linear-gradient(135deg, #3B2A6B, #1A1235)", border: "2px solid rgba(167,139,250,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, boxShadow: "inset 0 0 20px rgba(167,139,250,0.3)" }}
@@ -2238,7 +2368,7 @@ function StepAI({ active, listens }: { active: boolean, listens: boolean }) {
               ))}
             </div>
           ) : (
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="1.5"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="1.5"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /></svg>
           )}
         </motion.div>
 
@@ -2266,7 +2396,7 @@ function StepQualification({ active }: { active: boolean }) {
             <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>{f.label}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{f.value}</span>
-              {active && <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2 + i * 0.2 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accentGreenText} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></motion.svg>}
+              {active && <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2 + i * 0.2 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accentGreenText} strokeWidth="3"><polyline points="20 6 9 17 4 12" /></motion.svg>}
             </div>
           </div>
         ))}
@@ -2285,19 +2415,19 @@ function StepAppointment({ active }: { active: boolean }) {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#FBBF24" }}>5 SUGGESTION</motion.div>
       <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
-         <motion.div animate={active ? { scale: [0.9, 1], opacity: [0, 1] } : { opacity: 0.2 }} transition={{ duration: 0.5 }} style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(251,191,36,0.1)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(251,191,36,0.2)" }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-         </motion.div>
-         <div style={{ textAlign: "center" }}>
-           <h3 style={{ color: "#fff", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Suggesting Time</h3>
-           <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>Cross-referencing availability for Austin, TX.</p>
-         </div>
-         {active && (
-           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ width: "100%", background: "#1a1a1f", padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)" }}>
-             <div style={{ color: "#FBBF24", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>FOUND SLOT</div>
-             <div style={{ color: "#fff", fontSize: 16, fontWeight: 500 }}>Today, 2:00 PM</div>
-           </motion.div>
-         )}
+        <motion.div animate={active ? { scale: [0.9, 1], opacity: [0, 1] } : { opacity: 0.2 }} transition={{ duration: 0.5 }} style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(251,191,36,0.1)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(251,191,36,0.2)" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>
+        </motion.div>
+        <div style={{ textAlign: "center" }}>
+          <h3 style={{ color: "#fff", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Suggesting Time</h3>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>Cross-referencing availability for Austin, TX.</p>
+        </div>
+        {active && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ width: "100%", background: "#1a1a1f", padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ color: "#FBBF24", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>FOUND SLOT</div>
+            <div style={{ color: "#fff", fontSize: 16, fontWeight: 500 }}>Today, 2:00 PM</div>
+          </motion.div>
+        )}
       </TiltCard>
     </div>
   );
@@ -2306,19 +2436,23 @@ function StepAppointment({ active }: { active: boolean }) {
 function StepCalendar({ active }: { active: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
-      <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: C.accentGreenText }}>6 CALENDAR</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-         <motion.div animate={active ? { rotateY: 360 } : {}} transition={{ duration: 0.8 }} style={{ width: 64, height: 64, borderRadius: 16, background: "linear-gradient(135deg, rgba(31,170,89,0.2), rgba(31,170,89,0.05))", border: "1px solid rgba(31,170,89,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32 }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.accentGreenText} strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-         </motion.div>
-         <h3 style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 12, fontWeight: 500 }}>Thursday</h3>
-         <motion.div animate={active ? { scale: [0.9, 1.1, 1], color: ["#fff", C.accentGreenText, "#fff"] } : {}} transition={{ duration: 0.5, delay: 0.3 }} style={{ fontSize: 36, color: "#fff", fontWeight: 700, marginBottom: 8, letterSpacing: -1 }}>2:00 PM</motion.div>
-         <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, marginBottom: 40 }}>May 16, 2024</span>
-         
-         <motion.div animate={{ opacity: active ? 1 : 0.2 }} style={{ background: "rgba(31,170,89,0.15)", border: "1px solid rgba(31,170,89,0.4)", padding: "10px 24px", borderRadius: 999, display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ color: C.accentGreenText, fontSize: 14, fontWeight: 700 }}>Booked</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.accentGreenText} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-         </motion.div>
+      <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#8AB4F8" }}>6 CALENDAR</motion.div>
+      <TiltCard style={{ width: 280, height: 420, background: "rgba(32,33,36,0.9)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid #3C4043", padding: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.5)" }}>
+        <motion.div animate={active ? { rotateY: 360 } : {}} transition={{ duration: 0.8 }} style={{ width: 64, height: 64, borderRadius: 16, background: "#ffffff", border: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32, boxShadow: "0 8px 16px rgba(0,0,0,0.3)" }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+            <rect x="2" y="4" width="20" height="18" rx="4" fill="#ffffff" />
+            <path d="M2 8a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v3H2V8z" fill="#4285F4" />
+            <text x="12" y="19" fill="#4285F4" fontSize="10" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">31</text>
+          </svg>
+        </motion.div>
+        <h3 style={{ fontSize: 16, color: "#9AA0A6", marginBottom: 12, fontWeight: 500 }}>Thursday</h3>
+        <motion.div animate={active ? { scale: [0.9, 1.1, 1], color: ["#E8EAED", "#8AB4F8", "#E8EAED"] } : {}} transition={{ duration: 0.5, delay: 0.3 }} style={{ fontSize: 36, color: "#E8EAED", fontWeight: 700, marginBottom: 8, letterSpacing: -1 }}>2:00 PM</motion.div>
+        <span style={{ color: "#9AA0A6", fontSize: 13, marginBottom: 40 }}>May 16, 2024</span>
+
+        <motion.div animate={{ opacity: active ? 1 : 0.2 }} style={{ background: "rgba(138,180,248,0.15)", border: "1px solid rgba(138,180,248,0.4)", padding: "10px 24px", borderRadius: 999, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: "#8AB4F8", fontSize: 14, fontWeight: 700 }}>Booked</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8AB4F8" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+        </motion.div>
       </TiltCard>
     </div>
   );
@@ -2329,35 +2463,35 @@ function StepDispatch({ active }: { active: boolean }) {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#38BDF8" }}>7 DISPATCH</motion.div>
       <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-         {/* Map Background Simulation */}
-         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "#0f172a", opacity: 0.5, zIndex: 0 }} />
-         <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0 }}>
-           <path d="M 40 380 Q 100 250 180 200 T 240 60" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" strokeLinecap="round" />
-           {active && (
-             <motion.path 
-               initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, ease: "easeInOut" }}
-               d="M 40 380 Q 100 250 180 200 T 240 60" fill="none" stroke="#38BDF8" strokeWidth="6" strokeLinecap="round" 
-             />
-           )}
-         </svg>
-         
-         <div style={{ zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
-           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(15,23,42,0.8)", padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}>
-             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#38BDF8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>M</div>
-               <div>
-                 <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Mike (Tech)</div>
-                 <div style={{ color: "#38BDF8", fontSize: 11, fontWeight: 500 }}>Assigned</div>
-               </div>
-             </div>
-           </div>
+        {/* Map Background Simulation */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "#0f172a", opacity: 0.5, zIndex: 0 }} />
+        <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0 }}>
+          <path d="M 40 380 Q 100 250 180 200 T 240 60" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" strokeLinecap="round" />
+          {active && (
+            <motion.path
+              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, ease: "easeInOut" }}
+              d="M 40 380 Q 100 250 180 200 T 240 60" fill="none" stroke="#38BDF8" strokeWidth="6" strokeLinecap="round"
+            />
+          )}
+        </svg>
 
-           {active && (
-             <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.5 }} style={{ position: "absolute", top: 40, right: 30, background: "#fff", padding: "6px 12px", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.5)", color: "#000", fontSize: 12, fontWeight: 700 }}>
-               ETA 14m
-             </motion.div>
-           )}
-         </div>
+        <div style={{ zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(15,23,42,0.8)", padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#38BDF8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>M</div>
+              <div>
+                <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Mike (Tech)</div>
+                <div style={{ color: "#38BDF8", fontSize: 11, fontWeight: 500 }}>Assigned</div>
+              </div>
+            </div>
+          </div>
+
+          {active && (
+            <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.5 }} style={{ position: "absolute", top: 40, right: 30, background: "#fff", padding: "6px 12px", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.5)", color: "#000", fontSize: 12, fontWeight: 700 }}>
+              ETA 14m
+            </motion.div>
+          )}
+        </div>
       </TiltCard>
     </div>
   );
@@ -2368,22 +2502,22 @@ function StepSMS({ active }: { active: boolean }) {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#34D399" }}>8 SMS SENT</motion.div>
       <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 24 }}>
-         {active && (
-           <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#1a1a1f", padding: 20, borderRadius: 20, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 12px 24px rgba(0,0,0,0.3)" }}>
-             <p style={{ color: "#fff", fontSize: 14, lineHeight: 1.5, margin: 0 }}>
-               "Hi Mike! Your HVAC repair is confirmed for today between 2-4 PM. Your tech is Mike. Reply YES to confirm."
-             </p>
-             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 12 }}>
-               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Delivered</span>
-               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-             </div>
-           </motion.div>
-         )}
-         {active && (
-           <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.8, type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#34D399", padding: "12px 20px", borderRadius: 20, borderBottomRightRadius: 4, alignSelf: "flex-end", boxShadow: "0 8px 16px rgba(52,211,153,0.3)" }}>
-             <p style={{ color: "#000", fontSize: 14, fontWeight: 500, margin: 0 }}>YES</p>
-           </motion.div>
-         )}
+        {active && (
+          <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#1a1a1f", padding: 20, borderRadius: 20, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 12px 24px rgba(0,0,0,0.3)" }}>
+            <p style={{ color: "#fff", fontSize: 14, lineHeight: 1.5, margin: 0 }}>
+              &quot;Hi Mike! Your HVAC repair is confirmed for today between 2-4 PM. Your tech is Mike. Reply YES to confirm.&quot;
+            </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 12 }}>
+              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Delivered</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+            </div>
+          </motion.div>
+        )}
+        {active && (
+          <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.8, type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#34D399", padding: "12px 20px", borderRadius: 20, borderBottomRightRadius: 4, alignSelf: "flex-end", boxShadow: "0 8px 16px rgba(52,211,153,0.3)" }}>
+            <p style={{ color: "#000", fontSize: 14, fontWeight: 500, margin: 0 }}>YES</p>
+          </motion.div>
+        )}
       </TiltCard>
     </div>
   );
@@ -2396,14 +2530,14 @@ function StepCRM({ active }: { active: boolean }) {
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#C084FC" }}>9 CRM UPDATED</motion.div>
       <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 16 }}>
-           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-           <span style={{ color: "#fff", fontSize: 16, fontWeight: 600 }}>Housecall Pro</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          <span style={{ color: "#fff", fontSize: 16, fontWeight: 600 }}>Housecall Pro</span>
         </div>
         {steps.map((s, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, opacity: active ? 1 : 0.2, transition: `opacity 0.4s ${i * 0.3}s` }}>
             {active ? (
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.3, type: "spring" }} style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(192,132,252,0.2)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(192,132,252,0.4)" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
               </motion.div>
             ) : (
               <div style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)" }} />
@@ -2421,18 +2555,18 @@ function StepRevenue({ active }: { active: boolean }) {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#F97A35" }}>10 COMPLETED</motion.div>
       <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(249,122,53,0.2)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-        
+
         {/* Glow */}
         {active && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} style={{ position: "absolute", top: "50%", left: "50%", width: 200, height: 200, background: "radial-gradient(circle, rgba(249,122,53,0.15) 0%, transparent 70%)", transform: "translate(-50%, -50%)", zIndex: 0 }} />
         )}
 
         <motion.div animate={active ? { scale: [0.9, 1.1, 1] } : {}} transition={{ duration: 0.6 }} style={{ width: 64, height: 64, borderRadius: 16, background: "linear-gradient(135deg, rgba(249,122,53,0.3), rgba(249,122,53,0.05))", border: "1px solid rgba(249,122,53,0.5)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32, zIndex: 1 }}>
-           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F97A35" strokeWidth="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F97A35" strokeWidth="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>
         </motion.div>
-        
+
         <h3 style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 12, fontWeight: 500, zIndex: 1, textTransform: "uppercase", letterSpacing: 1 }}>Job Completed</h3>
-        
+
         {active ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, type: "spring" }} style={{ fontSize: 48, color: "#fff", fontWeight: 700, marginBottom: 8, letterSpacing: -2, zIndex: 1 }}>
             +$650
@@ -2457,18 +2591,21 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
           fontFamily: "var(--font-outfit), sans-serif",
           color: C.textHeading,
           background: C.navBg,
-          overflowX: "hidden",
+          overflowX: "clip",
         }}
       >
         <Nav />
         <Hero mode={mode} />
-        <CinematicWorkflow />
+        <div id="how">
+          <CinematicWorkflow />
+        </div>
         {mode === "main" && <TradeSelector />}
         <StatComparison mode={mode} />
         <AnnotatedProof mode={mode} />
         <IntegrationsRow />
         <AdvancedFeatures mode={mode} />
         <FinalCTA mode={mode} />
+        <Pricing />
         <FAQ mode={mode} />
         <Footer />
         <PersistentWidget />
