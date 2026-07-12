@@ -812,6 +812,7 @@ const TRADES = [
   { id: "garage", label: "Garage Door", example: "Spring broke, car stuck, booked emergency visit 4pm" },
   { id: "restoration", label: "Restoration", example: "Water damage, booked emergency dispatch" },
   { id: "property-management", label: "Property Mgmt", example: "Tenant locked out, dispatched maintenance" },
+  { id: "law-firm", label: "Law Firms", example: "Accident inquiry, booked intake consultation Wed 10am" },
 ];
 
 const NICHE_DETAILS: Record<string, { problemHeadline: string, problemBody: string, features: string[], ctaText: string }> = {
@@ -862,6 +863,12 @@ const NICHE_DETAILS: Record<string, { problemHeadline: string, problemBody: stri
     problemBody: "When a spring breaks, the customer needs it fixed now. Foreman catches every panic call and dispatches your tech.",
     features: ["Emergency triage for trapped cars", "Prices spring and opener repairs", "Instant booking and confirmation"],
     ctaText: "Book your free garage pilot"
+  },
+  "law-firm": {
+    problemHeadline: "Never lose a high-value case to a missed call.",
+    problemBody: "A single missed intake can mean a significant lost case. Foreman answers 24/7, qualifies the matter against your criteria, and books the consultation.",
+    features: ["24/7 Intake Answering", "Case Qualification", "Consultation Booking"],
+    ctaText: "Book your free law firm pilot"
   }
 };
 
@@ -873,7 +880,8 @@ const tradeIconMap: Record<string, React.ReactNode> = {
   pest: <img src="/images/pest.png" alt="Pest Control" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
   garage: <img src="/images/garage.png" alt="Garage Door" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
   restoration: <img src="/images/restoration.png" alt="Restoration" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  "property-management": <img src="/images/property.png" alt="Property Management" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+  "property-management": <img src="/images/property.png" alt="Property Management" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  "law-firm": <img src="/images/property.png" alt="Law Firms" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
 };
 
 export function TradeSelector() {
