@@ -2197,16 +2197,29 @@ function ScrollToTopButton() {
 function CinematicWorkflow() {
   const reducedMotion = useReducedMotion();
   const [step, setStep] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
-  const progress = useMotionValue(0);
+  const autoProgress = useMotionValue(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const row2Ref = useRef<HTMLDivElement>(null);
   const row3Ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, amount: 0.1 });
 
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start 85%", "end 85%"]
+  });
+
   useEffect(() => {
-    if (reducedMotion || !isInView) return;
+    const checkMobile = () => setIsMobile(window.innerWidth <= 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion || isMobile || !isInView) return;
     let isActive = true;
 
     const runSequence = async () => {
@@ -2230,7 +2243,7 @@ function CinematicWorkflow() {
         }
 
         // Animate the pipeline progress
-        animate(progress, i / 10, { type: "spring", stiffness: 60, damping: 20 });
+        animate(autoProgress, i / 10, { type: "spring", stiffness: 60, damping: 20 });
 
         await new Promise(r => setTimeout(r, 1800));
       }
@@ -2239,7 +2252,17 @@ function CinematicWorkflow() {
     runSequence();
 
     return () => { isActive = false; };
-  }, [reducedMotion, progress, isInView]);
+  }, [reducedMotion, isInView, isMobile, autoProgress]);
+
+  // Sync mobile step with scroll
+  useEffect(() => {
+    if (!isMobile) return;
+    return scrollYProgress.on("change", (v) => {
+      setStep(Math.min(10, Math.max(0, Math.ceil(v * 10))));
+    });
+  }, [isMobile, scrollYProgress]);
+
+  const activeProgress = isMobile ? scrollYProgress : autoProgress;
 
   return (
     <section ref={containerRef} className="fm-island" style={{ background: C.bgPrimary, padding: "80px 0", position: "relative", overflow: "hidden", display: "flex", justifyContent: "center" }}>
@@ -2247,10 +2270,10 @@ function CinematicWorkflow() {
       <div style={{ position: "absolute", top: "20%", left: "30%", width: "40%", height: 600, background: "radial-gradient(ellipse, rgba(167,139,250,0.08) 0%, transparent 60%)", filter: "blur(80px)", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "20%", right: "20%", width: "40%", height: 600, background: `radial-gradient(circle, ${C.accentOrange}0A 0%, transparent 60%)`, filter: "blur(80px)", pointerEvents: "none" }} />
 
-      <div style={{ position: "relative", width: 1000, margin: "0 auto" }}>
+      <div className="fm-cinematic-container">
 
         {/* The S-Curve SVG Pipeline */}
-        <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }}>
+        <svg className="fm-cinematic-svg" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }}>
           {/* Base Track */}
           <path
             d="M 140 210 L 860 210 A 80 80 0 0 1 940 290 L 940 650 A 80 80 0 0 1 860 730 L 140 730 A 80 80 0 0 0 60 810 L 60 1170 A 80 80 0 0 0 140 1250 L 860 1250"
@@ -2260,34 +2283,30 @@ function CinematicWorkflow() {
           <motion.path
             d="M 140 210 L 860 210 A 80 80 0 0 1 940 290 L 940 650 A 80 80 0 0 1 860 730 L 140 730 A 80 80 0 0 0 60 810 L 60 1170 A 80 80 0 0 0 140 1250 L 860 1250"
             fill="none" stroke={C.accentOrange} strokeWidth="4"
-            style={{ pathLength: progress, filter: "drop-shadow(0 0 8px rgba(249,122,53,0.8))" }}
+            style={{ pathLength: activeProgress, filter: "drop-shadow(0 0 8px rgba(249,122,53,0.8))" }}
           />
         </svg>
 
+        {/* Mobile Vertical Pipeline */}
+        <div className="fm-cinematic-line-mobile">
+          <motion.div
+            style={{ width: "100%", height: "100%", background: C.accentOrange, transformOrigin: "top", scaleY: activeProgress, filter: "drop-shadow(0 0 8px rgba(249,122,53,0.8))" }}
+          />
+        </div>
+
         {/* 3x3 Grid Layout */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 280px)",
-          gap: "100px 80px",
-          gridTemplateAreas: `
-            "step1 step2 step4"
-            "step7 step6 step5"
-            "step8 step9 step10"
-          `,
-          position: "relative",
-          zIndex: 1
-        }}>
-          <div style={{ gridArea: "step1" }}><StepPhone active={step >= 1} /></div>
-          <div style={{ gridArea: "step2" }}><StepAI active={step >= 2} listens={step >= 3} /></div>
-          <div style={{ gridArea: "step4" }}><StepQualification active={step >= 4} /></div>
+        <div className="fm-cinematic-grid">
+          <div className="fm-cinematic-step step1"><StepPhone active={step >= 1} /></div>
+          <div className="fm-cinematic-step step2"><StepAI active={step >= 2} listens={step >= 3} /></div>
+          <div className="fm-cinematic-step step4"><StepQualification active={step >= 4} /></div>
 
-          <div ref={row2Ref} style={{ gridArea: "step5" }}><StepAppointment active={step >= 5} /></div>
-          <div style={{ gridArea: "step6" }}><StepCalendar active={step >= 6} /></div>
-          <div style={{ gridArea: "step7" }}><StepDispatch active={step >= 7} /></div>
+          <div ref={row2Ref} className="fm-cinematic-step step5"><StepAppointment active={step >= 5} /></div>
+          <div className="fm-cinematic-step step6"><StepCalendar active={step >= 6} /></div>
+          <div className="fm-cinematic-step step7"><StepDispatch active={step >= 7} /></div>
 
-          <div ref={row3Ref} style={{ gridArea: "step8" }}><StepSMS active={step >= 8} /></div>
-          <div style={{ gridArea: "step9" }}><StepCRM active={step >= 9} /></div>
-          <div style={{ gridArea: "step10" }}><StepRevenue active={step >= 10} /></div>
+          <div ref={row3Ref} className="fm-cinematic-step step8"><StepSMS active={step >= 8} /></div>
+          <div className="fm-cinematic-step step9"><StepCRM active={step >= 9} /></div>
+          <div className="fm-cinematic-step step10"><StepRevenue active={step >= 10} /></div>
         </div>
 
       </div>

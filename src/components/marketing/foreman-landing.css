@@ -1063,4 +1063,70 @@
   }
 }
 
+/* Cinematic Workflow */
+.fm-cinematic-container {
+  position: relative;
+  width: 1000px;
+  margin: 0 auto;
+}
+
+.fm-cinematic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 280px);
+  gap: 100px 80px;
+  grid-template-areas:
+    "step1 step2 step4"
+    "step7 step6 step5"
+    "step8 step9 step10";
+  position: relative;
+  z-index: 1;
+}
+
+.step1 { grid-area: step1; }
+.step2 { grid-area: step2; }
+.step4 { grid-area: step4; }
+.step5 { grid-area: step5; }
+.step6 { grid-area: step6; }
+.step7 { grid-area: step7; }
+.step8 { grid-area: step8; }
+.step9 { grid-area: step9; }
+.step10 { grid-area: step10; }
+
+.fm-cinematic-line-mobile {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .fm-cinematic-container {
+    width: 100%;
+    padding: 0 20px;
+  }
+  .fm-cinematic-svg {
+    display: none;
+  }
+  .fm-cinematic-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 64px;
+  }
+  .fm-cinematic-step {
+    width: 100%;
+    max-width: 320px;
+    /* Basic fade-in animation for robust feel on mobile scroll */
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+  }
+  .fm-cinematic-line-mobile {
+    display: block;
+    position: absolute;
+    top: 40px;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    background: rgba(255,255,255,0.05);
+    z-index: 0;
+  }
+}
+
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Libre+Baskerville:wght@400;700&display=swap');
