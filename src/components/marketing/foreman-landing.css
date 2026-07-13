@@ -46,6 +46,83 @@
   color: #FFFFFF;
 }
 
+/* Mobile Navigation Drawer */
+.fm-nav-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.fm-nav-mobile {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  background: #0A0F1C;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 32px 0 120px 0;
+  /* Extra bottom padding for safe area */
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: opacity 0.3s var(--ease-flow), transform 0.3s var(--ease-flow), visibility 0.3s;
+}
+
+.fm-nav-mobile.fm-nav-mobile-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.fm-nav-mobile-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 40px !important;
+}
+
+.fm-nav-mobile-link {
+  color: #B8BFCC;
+  font-family: var(--font-outfit), sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  padding: 14px 0;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: color 0.3s var(--ease-flow);
+}
+
+.fm-nav-mobile-link:hover {
+  color: #FFFFFF;
+}
+
+.fm-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 99;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .fm-nav-desktop {
+    display: none !important;
+  }
+
+  .fm-nav-toggle {
+    display: block;
+  }
+}
+
 .fm-btn {
   display: inline-flex;
   align-items: center;
@@ -91,6 +168,48 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
+}
+
+.fm-hero-technician {
+  bottom: -48px;
+  right: -70px;
+  width: 156px;
+}
+
+@media (max-width: 768px) {
+  .fm-hero-technician {
+    right: -20px;
+    width: 120px;
+    bottom: -32px;
+  }
+}
+
+.fm-zero-img {
+  bottom: -45px;
+  right: -30px;
+  width: 100px;
+}
+
+@media (max-width: 768px) {
+  .fm-zero-img {
+    right: -10px;
+    width: 80px;
+    bottom: -30px;
+  }
+}
+
+.fm-phone-img {
+  top: -65px;
+  left: -20px;
+  width: 110px;
+}
+
+@media (max-width: 768px) {
+  .fm-phone-img {
+    left: -25px;
+    width: 80px;
+    top: -45px;
+  }
 }
 
 .fm-hero-grid {
@@ -182,6 +301,7 @@
   padding: 4px 10px;
   border-radius: 20px;
   letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
 .fm-badge-booked {
@@ -715,6 +835,7 @@
     transform: translateX(calc(-100% - 24px));
   }
 }
+
 .fm-timeline-row {
   display: flex;
   align-items: center;
@@ -722,44 +843,223 @@
   width: 100%;
   margin-bottom: 120px;
 }
+
 .fm-timeline-row:last-child {
   margin-bottom: 0;
 }
+
 .fm-timeline-content {
   width: 45%;
 }
+
 .fm-timeline-visual {
   width: 45%;
   display: flex;
   justify-content: center;
   align-items: center;
 }
+
 .fm-timeline-row.left .fm-timeline-content {
   margin-right: auto;
 }
+
 .fm-timeline-row.left .fm-timeline-visual {
   position: absolute;
   right: 0;
 }
+
 .fm-timeline-row.right .fm-timeline-content {
   margin-left: auto;
 }
+
 .fm-timeline-row.right .fm-timeline-visual {
   position: absolute;
   left: 0;
 }
+
 @media (max-width: 900px) {
   .fm-timeline-row {
     flex-direction: column;
     margin-bottom: 80px;
   }
-  .fm-timeline-content, .fm-timeline-visual {
+
+  .fm-timeline-content,
+  .fm-timeline-visual {
     width: 100%;
     position: static !important;
   }
+
   .fm-timeline-visual {
     margin-bottom: 40px;
     order: -1;
+  }
+}
+
+.fm-dashboard-container {
+  padding: 32px 40px;
+}
+
+.fm-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .fm-dashboard-container {
+    padding: 32px;
+  }
+
+  .fm-dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .fm-dashboard-container {
+    padding: 24px 20px;
+  }
+
+  .fm-dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .fm-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fm-trade-card-container {
+  height: 160px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .fm-trade-card-container {
+    height: 190px;
+    margin: 60px auto 0;
+  }
+}
+
+@media (max-width: 1024px) {
+  .fm-desktop-only {
+    display: none !important;
+  }
+}
+
+.fm-trade-img-left {
+  position: absolute;
+  top: 50%;
+  margin-top: -100px;
+  left: -220px;
+  width: 200px;
+  height: 200px;
+  z-index: 10;
+}
+
+.fm-trade-img-right {
+  position: absolute;
+  top: 50%;
+  margin-top: -100px;
+  right: -220px;
+  width: 200px;
+  height: 200px;
+  z-index: 10;
+}
+
+@media (max-width: 1024px) {
+  .fm-trade-img-left {
+    left: -20px;
+    top: -65px;
+    margin-top: 0;
+    width: 110px;
+    height: 110px;
+    z-index: 20;
+  }
+
+  .fm-trade-img-right {
+    right: -20px;
+    top: -65px;
+    margin-top: 0;
+    width: 110px;
+    height: 110px;
+    z-index: 20;
+  }
+}
+
+.fm-cta-banner {
+  padding: 32px 40px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  text-align: left;
+}
+
+.fm-cta-banner-text {
+  font-size: 24px;
+  flex: 1 1 300px;
+}
+
+.fm-cta-banner-btn {
+  flex: 0 0 auto;
+  padding: 14px 24px;
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .fm-cta-banner {
+    padding: 24px 20px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .fm-cta-banner-text {
+    flex: 1 1 100%;
+    font-size: 20px;
+  }
+
+  .fm-cta-banner-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+}
+
+.fm-sunburst-wrapper {
+  position: absolute;
+  top: -25px;
+  left: -40px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .fm-sunburst-wrapper {
+    left: -15px;
+    top: -30px;
+    transform: scale(0.7);
+  }
+
+  .fm-roller-track {
+    width: 155% !important;
+    left: 50%;
+    transform: translateX(-50%) scale(0.65);
+    transform-origin: center center;
+  }
+}
+
+.fm-integration-illustration {
+  margin-top: -40px;
+}
+
+@media (max-width: 768px) {
+  .fm-integration-illustration {
+    margin-top: 20px;
   }
 }
 

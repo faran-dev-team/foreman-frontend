@@ -786,7 +786,8 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
           </div>
           {!reducedMotion && (
             <motion.div
-              style={{ position: "absolute", bottom: -48, right: -70, width: 156, zIndex: 10, filter: "drop-shadow(0 24px 32px rgba(0,0,0,0.5))" }}
+              className="fm-hero-technician"
+              style={{ position: "absolute", zIndex: 10, filter: "drop-shadow(0 24px 32px rgba(0,0,0,0.5))" }}
               animate={{ y: [-8, 8], rotate: [-2, 2] }}
               whileHover={{ scale: 1.1, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
               transition={{ duration: 5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
@@ -916,23 +917,16 @@ export function TradeSelector() {
         </Reveal>
 
         <Reveal delay={0.05} style={{ maxWidth: 900, margin: "0 auto 48px" }}>
-          <div style={{
+          <div className="fm-cta-banner" style={{
             background: `linear-gradient(135deg, rgba(249,122,53,0.15) 0%, rgba(20,28,48,0.8) 100%)`,
             border: `1px solid rgba(249,122,53,0.3)`,
             borderRadius: 24,
-            padding: "32px 40px",
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 24,
-            textAlign: "left",
             boxShadow: "0 20px 40px rgba(0,0,0,0.2)"
           }}>
-            <h3 style={{ fontSize: 24, fontWeight: 700, color: C.textHeading, margin: 0, lineHeight: 1.3, flex: "1 1 300px" }}>
+            <h3 className="fm-cta-banner-text" style={{ fontWeight: 700, color: C.textHeading, margin: 0, lineHeight: 1.3 }}>
               Book a free call with our AI Consultant today.
             </h3>
-            <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary" style={{ flex: "0 0 auto", padding: "14px 24px", fontSize: 16 }}>
+            <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary fm-cta-banner-btn">
               Book a free call with our AI Consultant
             </MagneticButton>
           </div>
@@ -971,7 +965,7 @@ export function TradeSelector() {
           </div>
         </Reveal>
 
-        <Reveal delay={0.2} style={{ maxWidth: 500, margin: "0 auto", position: "relative", height: 160, perspective: 1000 }}>
+        <Reveal delay={0.2} className="fm-trade-card-container" style={{ maxWidth: 500, position: "relative", perspective: 1000 }}>
           {TRADES.map((trade, i) => {
             const distance = (i - activeIndex + TRADES.length) % TRADES.length;
             const isFront = distance === 0;
@@ -1022,11 +1016,11 @@ export function TradeSelector() {
             );
           })}
 
-          <div style={{ position: "absolute", top: "50%", marginTop: -100, left: -220, width: 200, height: 200, zIndex: 10, filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
+          <div className="fm-trade-img-left" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
             <img src="/images/foreman.png" alt="Foreman" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           </div>
 
-          <div style={{ position: "absolute", top: "50%", marginTop: -100, right: -220, width: 200, height: 200, zIndex: 10, filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
+          <div className="fm-trade-img-right" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTrade.id}
@@ -1104,7 +1098,8 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
             </div>
             {!reducedMotion && (
               <motion.div
-                style={{ position: "absolute", top: -65, left: -45, width: 110, zIndex: 3, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.4))" }}
+                className="fm-phone-img"
+                style={{ position: "absolute", zIndex: 3, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.4))" }}
                 animate={{ rotate: [-6, 6], y: [-5, 5] }}
                 whileHover={{ scale: 1.12, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
                 transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
@@ -1131,7 +1126,8 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
             </div>
             {!reducedMotion && (
               <div
-                style={{ position: "absolute", bottom: -45, right: -35, width: 100, zIndex: 3, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.35))" }}
+                className="fm-zero-img"
+                style={{ position: "absolute", zIndex: 3, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.35))" }}
               >
                 <img src="/images/zero.png" alt="Zero" style={{ width: "100%", height: "auto" }} />
               </div>
@@ -1141,11 +1137,11 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
 
         <Reveal delay={0.2} style={{ marginTop: 64, maxWidth: 1040, margin: "64px auto 0" }}>
           <TiltCard
+            className="fm-dashboard-container"
             style={{
               background: "rgba(20, 28, 48, 0.4)",
               border: `1px solid ${C.accentOrange}40`,
               borderRadius: 24,
-              padding: "32px 40px",
               backdropFilter: "blur(12px)",
             }}
           >
@@ -1157,7 +1153,7 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
                 <span style={{ color: C.accentOrange }}>AI</span> BUSINESS DASHBOARD
               </h3>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
+            <div className="fm-dashboard-grid">
               {/* Card 1 */}
               <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
                 <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(249,122,53,0.1)", border: `1px solid rgba(249,122,53,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: C.accentOrange }}>
@@ -1233,7 +1229,7 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
         aria-hidden
         style={{
           marginTop: 16,
-          whiteSpace: "nowrap", fontSize: "160px", fontWeight: 900,
+          whiteSpace: "nowrap", fontSize: "clamp(60px, 15vw, 160px)", fontWeight: 900,
           color: "rgba(255,255,255,0.02)", pointerEvents: "none"
         }}
         animate={{ x: ["0%", "-50%"] }}
@@ -1449,7 +1445,7 @@ function IntegrationsRow() {
               position: "relative",
               display: "inline-block"
             }}>
-              <span style={{ position: "absolute", top: -25, left: -40, zIndex: -1, pointerEvents: "none" }}>
+              <span className="fm-sunburst-wrapper">
                 <DoodleSunburst />
               </span>
               Plays nice with your tools
@@ -1486,7 +1482,7 @@ function IntegrationsRow() {
           </div>
 
           {!reducedMotion && (
-            <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center", marginTop: -40, zIndex: 0 }}>
+            <div className="fm-integration-illustration" style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center", zIndex: 0 }}>
               <motion.div
                 style={{ width: 320, opacity: 0.9, filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.3))" }}
                 animate={{ y: [-8, 8] }}
