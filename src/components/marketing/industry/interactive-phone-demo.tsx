@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { C } from "../landing/shared";
+import { C } from '../foreman-landing';
 import { Phone } from 'lucide-react';
 
 import { TradeId, INDUSTRY_CONTENT } from './content';

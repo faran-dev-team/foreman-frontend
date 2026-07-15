@@ -1,9 +1,5 @@
 'use client';
-import { Nav } from "../landing/Nav";
-import { Footer } from "../landing/Footer";
-import { Pricing } from "../landing/Pricing";
-import { FAQ } from "../landing/FAQ";
-import { Check } from "../landing/shared";
+import { Nav, Footer, Pricing, FAQ, Check } from '../foreman-landing';
 import { ReactLenis } from '@studio-freight/react-lenis';
 import { TradeId } from './content';
 
