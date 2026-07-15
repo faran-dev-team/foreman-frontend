@@ -270,6 +270,25 @@ export function Nav() {
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
+  const handleScrollTo = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("#")) {
+      if (href === "#top") {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.history.pushState(null, "", href);
+        closeMobile();
+        return;
+      }
+      const el = document.querySelector(href);
+      if (el) {
+        e.preventDefault();
+        el.scrollIntoView({ behavior: "smooth" });
+        window.history.pushState(null, "", href);
+        closeMobile();
+      }
+    }
+  }, [closeMobile]);
+
   useEffect(() => {
     let ticking = false;
     const onScroll = () => {
@@ -310,13 +329,13 @@ export function Nav() {
         }}
       >
         <div className="fm-wrap fm-nav-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: scrolled ? 64 : 88, transition: "height 0.45s cubic-bezier(0.16,1,0.3,1)", gap: 16 }}>
-          <a href="#top" style={{ display: "flex", alignItems: "center", gap: 12 }} onClick={closeMobile}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1)", transform: `scale(${scrolled ? 0.85 : 1})`, transformOrigin: "left center" }}><Logo size={38} /></div>
             <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 22, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
-          </a>
+          </Link>
           <div className="fm-nav-desktop" onMouseLeave={() => setHoveredId(null)}>
             {NAV_SECTIONS.map((item) => (
-              <a key={item.href} href={item.href} className="fm-navlink" onMouseEnter={() => setHoveredId(item.href)} style={{ position: "relative", padding: "8px 16px" }}>
+              <a key={item.href} href={item.href} className="fm-navlink" onMouseEnter={() => setHoveredId(item.href)} onClick={(e) => handleScrollTo(e, item.href)} style={{ position: "relative", padding: "8px 16px" }}>
                 <span style={{ position: "relative", zIndex: 2 }}>{item.label}</span>
                 {hoveredId === item.href && !reducedMotion && <motion.div layoutId="navHover" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.08)", borderRadius: 999, zIndex: 1 }} transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
               </a>
@@ -339,7 +358,7 @@ export function Nav() {
         </div>
         <div id="fm-mobile-nav" className={`fm-nav-mobile${mobileOpen ? " fm-nav-mobile-open" : ""}`}>
           <div className="fm-wrap fm-nav-mobile-inner">
-            {NAV_SECTIONS.map((item) => <a key={item.href} href={item.href} className="fm-nav-mobile-link" onClick={closeMobile}>{item.label}</a>)}
+            {NAV_SECTIONS.map((item) => <a key={item.href} href={item.href} className="fm-nav-mobile-link" onClick={(e) => handleScrollTo(e, item.href)}>{item.label}</a>)}
             <NavAuthLinks className="fm-nav-mobile-link" onNavigate={closeMobile} />
             <a href={CALENDLY_LINK} className="fm-btn fm-btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={closeMobile}>Book a pilot call</a>
           </div>
@@ -1705,7 +1724,24 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
 /* ================================================================== */
 /*  FOOTER                                                             */
 /* ================================================================== */
-export function Footer() {
+export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolean }) {
+  const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("#")) {
+      if (href === "#top") {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.history.pushState(null, "", href);
+        return;
+      }
+      const el = document.querySelector(href);
+      if (el) {
+        e.preventDefault();
+        el.scrollIntoView({ behavior: "smooth" });
+        window.history.pushState(null, "", href);
+      }
+    }
+  };
+
   return (
     <footer style={{ background: C.footerBg, color: C.textBody, paddingTop: 60, paddingBottom: 60, position: "relative", overflow: "hidden", borderTop: `1px solid ${C.borderPrimary}` }}>
 
@@ -1717,10 +1753,10 @@ export function Footer() {
 
           {/* Brand Column */}
           <div style={{ flex: "2 1 300px", paddingRight: 40 }}>
-            <a href="#top" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, textDecoration: "none" }}>
+            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, textDecoration: "none" }}>
               <Logo size={36} />
               <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 26, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
-            </a>
+            </Link>
             <p style={{ fontSize: 15, lineHeight: 1.6, color: C.textBody, marginBottom: 32, maxWidth: 360 }}>
               The AI front office built exclusively for the trades. We answer the phone, qualify the lead, and book the job directly into your calendar so you can focus on the work.
             </p>
@@ -1755,12 +1791,15 @@ export function Footer() {
               { label: "Features", href: "#features" },
               { label: "How it works", href: "#how" },
               { label: "Pricing", href: "#pricing" },
-              { label: "Integrations", href: "#" },
-              { label: "Book a Pilot", href: "#pilot" }
-            ].map((link) => (
+              { label: "Integrations", href: "#integrations" },
+              { label: "Book a Pilot", href: CALENDLY_LINK }
+            ].filter(link => !(hideIntegrations && link.label === "Integrations")).map((link) => (
               <motion.a
                 key={link.label}
                 href={link.href}
+                onClick={(e) => handleScrollTo(e, link.href)}
+                target={link.href.startsWith("http") ? "_blank" : undefined}
+                rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                 whileHover={{ x: 4, color: C.accentOrange }}
                 style={{ fontSize: 15, color: C.textBody, textDecoration: "none", transition: "color 0.2s", fontWeight: 500, alignSelf: "flex-start" }}
               >
@@ -1771,7 +1810,7 @@ export function Footer() {
 
           <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", gap: 16 }}>
             <h4 style={{ color: C.textHeading, fontWeight: 700, fontSize: 14, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>Trades</h4>
-            {TRADES.slice(0, 5).map((trade) => (
+            {TRADES.map((trade) => (
               <motion.a
                 key={trade.id}
                 href={`/${trade.id}`}
@@ -2633,6 +2672,17 @@ function StepRevenue({ active }: { active: boolean }) {
 /*  PAGE                                                               */
 /* ================================================================== */
 export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
+  useEffect(() => {
+    if (window.location.hash) {
+      setTimeout(() => {
+        const el = document.querySelector(window.location.hash);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 300);
+    }
+  }, []);
+
   return (
     <ReactLenis root options={{ lerp: 0.08, duration: 1.2, wheelMultiplier: 1, touchMultiplier: 2, syncTouch: true, smoothWheel: true }}>
       <main
@@ -2646,14 +2696,20 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
       >
         <Nav />
         <Hero mode={mode} />
-        <div id="how">
+        <div id={mode === "main" ? "how" : undefined}>
           <CinematicWorkflow />
         </div>
         {mode === "main" && <TradeSelector />}
         <StatComparison mode={mode} />
-        <AnnotatedProof mode={mode} />
-        <IntegrationsRow />
-        <AdvancedFeatures mode={mode} />
+        <div id={mode !== "main" ? "how" : undefined}>
+          <AnnotatedProof mode={mode} />
+        </div>
+        <div id="integrations">
+          <IntegrationsRow />
+        </div>
+        <div id="features">
+          <AdvancedFeatures mode={mode} />
+        </div>
         <FinalCTA mode={mode} />
         <Pricing />
         <FAQ mode={mode} />

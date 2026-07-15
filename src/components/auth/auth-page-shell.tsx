@@ -1,4 +1,6 @@
+'use client';
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type AuthPageShellProps = {
   title: string;
@@ -22,16 +24,25 @@ function BackArrowIcon() {
 }
 
 export function AuthPageShell({ title, description, children }: AuthPageShellProps) {
+  const router = useRouter();
+  
   return (
     <main className="flex min-h-screen flex-col bg-slate-50 px-4 py-6 sm:px-6 sm:py-10">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-        <Link
-          href="/"
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 2) {
+              router.back();
+            } else {
+              router.push("/");
+            }
+          }}
           className="mb-6 inline-flex w-fit items-center gap-2 rounded-lg px-1 py-1 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 sm:mb-8"
         >
           <BackArrowIcon />
-          Back to home
-        </Link>
+          Back
+        </button>
 
         <div className="mb-6 text-center sm:mb-8">
           <Link

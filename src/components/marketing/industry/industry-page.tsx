@@ -19,9 +19,13 @@ export function IndustryPage({ tradeId }: { tradeId: TradeId }) {
         <Nav />
         <HeroSection tradeId={tradeId} />
         <MathSection tradeId={tradeId} />
-        <TimelineSection />
+        <div id="how">
+          <TimelineSection />
+        </div>
         <PhoneDemoSection tradeId={tradeId} />
-        <FeatureGrid tradeId={tradeId} />
+        <div id="features">
+          <FeatureGrid tradeId={tradeId} />
+        </div>
         
         {/* Skipping Integrations, ROI, Dashboard, Testimonials for brevity in this iteration */}
         <CTASection tradeId={tradeId} />
@@ -38,7 +42,7 @@ export function IndustryPage({ tradeId }: { tradeId: TradeId }) {
 
         <FAQ mode={tradeId as any} />
         
-        <Footer />
+        <Footer hideIntegrations />
       </main>
     </ReactLenis>
   );
