@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 export type LandingMode = "main" | "hvac" | "plumbing" | "restoration" | "property-management" | "electrical";
@@ -2633,7 +2634,7 @@ function StepRevenue({ active }: { active: boolean }) {
 /* ================================================================== */
 export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
   return (
-    <ReactLenis root options={{ lerp: 0.08, duration: 1.2, wheelMultiplier: 1, touchMultiplier: 2, syncTouch: true, smoothWheel: true, smoothTouch: false }}>
+    <ReactLenis root options={{ lerp: 0.08, duration: 1.2, wheelMultiplier: 1, touchMultiplier: 2, syncTouch: true, smoothWheel: true }}>
       <main
         className="fm-landing"
         style={{
