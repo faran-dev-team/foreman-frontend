@@ -165,7 +165,7 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
   const rx = useSpring(0, { damping: 25, stiffness: 250, mass: 0.5 });
   const ry = useSpring(0, { damping: 25, stiffness: 250, mass: 0.5 });
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!ref.current || reducedMotion) return;
     const { left, top, width, height } = ref.current.getBoundingClientRect();
     const x = e.clientX - left;
@@ -174,14 +174,14 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
     mouseY.set(y);
     rx.set(((y - height / 2) / height) * -8);
     ry.set(((x - width / 2) / width) * 8);
-  };
+  }, [reducedMotion, mouseX, mouseY, rx, ry]);
 
-  const handleMouseEnter = () => setIsHovered(true);
-  const handleMouseLeave = () => {
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => {
     setIsHovered(false);
     rx.set(0);
     ry.set(0);
-  };
+  }, [rx, ry]);
 
   const background = useMotionTemplate`radial-gradient(350px circle at ${mouseX}px ${mouseY}px, ${glowColor}, transparent 80%)`;
 
@@ -270,8 +270,17 @@ export function Nav() {
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll);
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -403,15 +412,15 @@ export function MagneticButton({ children, href, className, target, rel, style }
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const reducedMotion = useReducedMotion();
 
-  const handleMouse = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleMouse = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
     if (reducedMotion) return;
     const { clientX, clientY } = e;
     const { height, width, left, top } = ref.current!.getBoundingClientRect();
     const middleX = clientX - (left + width / 2);
     const middleY = clientY - (top + height / 2);
     setPosition({ x: middleX * 0.2, y: middleY * 0.2 });
-  };
-  const reset = () => setPosition({ x: 0, y: 0 });
+  }, [reducedMotion]);
+  const reset = useCallback(() => setPosition({ x: 0, y: 0 }), []);
 
   return (
     <motion.a
@@ -874,15 +883,15 @@ const NICHE_DETAILS: Record<string, { problemHeadline: string, problemBody: stri
 };
 
 const tradeIconMap: Record<string, React.ReactNode> = {
-  hvac: <img src="/images/hvac.png" alt="HVAC" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  plumbing: <img src="/images/plumber.png" alt="Plumbing" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  electrical: <img src="/images/electrician.png" alt="Electrical" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  roofing: <img src="/images/roofing (2).png" alt="Roofing" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  pest: <img src="/images/pest.png" alt="Pest Control" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  garage: <img src="/images/garage.png" alt="Garage Door" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  restoration: <img src="/images/restoration.png" alt="Restoration" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  "property-management": <img src="/images/property.png" alt="Property Management" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  "law-firm": <img src="/images/property.png" alt="Law Firms" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+  hvac: <img src="/images/hvac.png" alt="HVAC" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  plumbing: <img src="/images/plumber.png" alt="Plumbing" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  electrical: <img src="/images/electrician.png" alt="Electrical" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  roofing: <img src="/images/roofing (2).png" alt="Roofing" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  pest: <img src="/images/pest.png" alt="Pest Control" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  garage: <img src="/images/garage.png" alt="Garage Door" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  restoration: <img src="/images/restoration.png" alt="Restoration" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  "property-management": <img src="/images/property.png" alt="Property Management" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
+  "law-firm": <img src="/images/property.png" alt="Law Firms" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
 };
 
 export function TradeSelector() {
@@ -1017,7 +1026,7 @@ export function TradeSelector() {
           })}
 
           <div className="fm-trade-img-left" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
-            <img src="/images/foreman.png" alt="Foreman" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            <img src="/images/foreman.png" alt="Foreman" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           </div>
 
           <div className="fm-trade-img-right" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
@@ -1104,7 +1113,7 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
                 whileHover={{ scale: 1.12, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
                 transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
               >
-                <img src="/images/phone.png" alt="Phone" style={{ width: "100%", height: "auto" }} />
+                <img src="/images/phone.png" alt="Phone" loading="lazy" decoding="async" style={{ width: "100%", height: "auto" }} />
               </motion.div>
             )}
           </Reveal>
@@ -1129,7 +1138,7 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
                 className="fm-zero-img"
                 style={{ position: "absolute", zIndex: 3, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.35))" }}
               >
-                <img src="/images/zero.png" alt="Zero" style={{ width: "100%", height: "auto" }} />
+                <img src="/images/zero.png" alt="Zero" loading="lazy" decoding="async" style={{ width: "100%", height: "auto" }} />
               </div>
             )}
           </Reveal>
@@ -1475,7 +1484,7 @@ function IntegrationsRow() {
                   boxSizing: "border-box"
                 }}
               >
-                <img src={logo.iconUrl} alt={logo.name} width="24" height="24" style={{ display: "block", borderRadius: "4px" }} />
+                <img src={logo.iconUrl} alt={logo.name} width="24" height="24" loading="lazy" decoding="async" style={{ display: "block", borderRadius: "4px" }} />
                 <span>{logo.name}</span>
               </div>
             ))}
@@ -2142,10 +2151,17 @@ function ScrollToTopButton() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setVisible(window.scrollY > 600);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setVisible(window.scrollY > 600);
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -2214,8 +2230,18 @@ function CinematicWorkflow() {
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 1024);
     checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    let ticking = false;
+    const onResize = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          checkMobile();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   useEffect(() => {
@@ -2607,7 +2633,7 @@ function StepRevenue({ active }: { active: boolean }) {
 /* ================================================================== */
 export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
   return (
-    <ReactLenis root options={{ lerp: 0.05, duration: 1.6, smoothWheel: true }}>
+    <ReactLenis root options={{ lerp: 0.08, duration: 1.2, wheelMultiplier: 1, touchMultiplier: 2, syncTouch: true, smoothWheel: true, smoothTouch: false }}>
       <main
         className="fm-landing"
         style={{
