@@ -6,6 +6,7 @@ export type LandingMode = "main" | "hvac" | "plumbing" | "restoration" | "proper
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   motion,
   useScroll,
@@ -270,24 +271,29 @@ export function Nav() {
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
+  const router = useRouter();
+
   const handleScrollTo = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith("#")) {
-      if (href === "#top") {
-        e.preventDefault();
+    if (href.startsWith("#") || href.startsWith("/#")) {
+      e.preventDefault();
+      const targetId = href.startsWith("/#") ? href.slice(1) : href;
+      if (targetId === "#top") {
         window.scrollTo({ top: 0, behavior: "smooth" });
-        window.history.pushState(null, "", href);
+        window.history.pushState(null, "", targetId);
         closeMobile();
         return;
       }
-      const el = document.querySelector(href);
+      const el = document.querySelector(targetId);
       if (el) {
-        e.preventDefault();
         el.scrollIntoView({ behavior: "smooth" });
-        window.history.pushState(null, "", href);
+        window.history.pushState(null, "", targetId);
+        closeMobile();
+      } else {
+        router.push("/" + targetId);
         closeMobile();
       }
     }
-  }, [closeMobile]);
+  }, [closeMobile, router]);
 
   useEffect(() => {
     let ticking = false;
@@ -1725,19 +1731,23 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
 /*  FOOTER                                                             */
 /* ================================================================== */
 export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolean }) {
+  const router = useRouter();
+
   const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith("#")) {
-      if (href === "#top") {
-        e.preventDefault();
+    if (href.startsWith("#") || href.startsWith("/#")) {
+      e.preventDefault();
+      const targetId = href.startsWith("/#") ? href.slice(1) : href;
+      if (targetId === "#top") {
         window.scrollTo({ top: 0, behavior: "smooth" });
-        window.history.pushState(null, "", href);
+        window.history.pushState(null, "", targetId);
         return;
       }
-      const el = document.querySelector(href);
+      const el = document.querySelector(targetId);
       if (el) {
-        e.preventDefault();
         el.scrollIntoView({ behavior: "smooth" });
-        window.history.pushState(null, "", href);
+        window.history.pushState(null, "", targetId);
+      } else {
+        router.push("/" + targetId);
       }
     }
   };
@@ -1825,11 +1835,11 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
           <div style={{ flex: "1 1 150px", display: "flex", flexDirection: "column", gap: 16 }}>
             <h4 style={{ color: C.textHeading, fontWeight: 700, fontSize: 14, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>Company</h4>
             {[
-              { label: "About Us", href: "#" },
-              { label: "Contact", href: "#" },
+              { label: "About Us", href: "/about" },
+              { label: "Contact", href: "/contact" },
               { label: "Sign In", href: "/sign-in" },
-              { label: "Terms of Service", href: "#" },
-              { label: "Privacy Policy", href: "#" }
+              { label: "Terms of Service", href: "/terms" },
+              { label: "Privacy Policy", href: "/privacy" }
             ].map((link) => (
               <motion.a
                 key={link.label}
