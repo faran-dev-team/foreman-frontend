@@ -1,6 +1,6 @@
 'use client';
 import { motion, useReducedMotion } from 'framer-motion';
-import { C, MagneticButton } from '../foreman-landing';
+import { C, MagneticButton } from "../landing/shared";
 import { ArrowRight, Star, ShieldCheck, Zap } from 'lucide-react';
 import { TradeId, INDUSTRY_CONTENT } from './content';
 import { CALENDLY_PILOT_URL as CALENDLY_LINK } from "@/lib/marketing/calendly";

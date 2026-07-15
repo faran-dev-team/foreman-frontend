@@ -1,7 +1,7 @@
 'use client';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { C } from '../foreman-landing';
+import { C } from "../landing/shared";
 import { TradeId, INDUSTRY_CONTENT } from './content';
 import { Sparkles, CheckCircle, Calendar, Globe, RotateCcw, Brain } from 'lucide-react';
 

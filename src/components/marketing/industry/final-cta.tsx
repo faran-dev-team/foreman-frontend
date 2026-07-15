@@ -1,6 +1,6 @@
 'use client';
 import { motion } from 'framer-motion';
-import { C, MagneticButton } from '../foreman-landing';
+import { C, MagneticButton } from "../landing/shared";
 import { TradeId } from './content';
 import { CALENDLY_PILOT_URL as CALENDLY_LINK } from "@/lib/marketing/calendly";
 

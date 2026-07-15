@@ -1,7 +1,7 @@
 'use client';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
-import { C } from '../foreman-landing';
+import { C } from "../landing/shared";
 import { PhoneIncoming, Bot, FileCheck, CalendarCheck, CheckCircle2, Send, Hammer } from 'lucide-react';
 
 const steps = [

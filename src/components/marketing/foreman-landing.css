@@ -801,6 +801,7 @@
   position: relative;
   overflow: hidden;
   border-bottom: var(--glass-border);
+  contain: content;
 }
 
 .fm-serif-italic {
