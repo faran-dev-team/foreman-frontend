@@ -66,7 +66,7 @@ export default function ContactPage() {
           
           <div style={{ marginTop: 16, padding: "0 8px", fontSize: "0.9rem", color: "rgba(255,255,255,0.5)" }}>
             <p style={{ marginBottom: 8 }}><strong>Social:</strong> Instagram <a href="https://www.instagram.com/foreman.ai_?igsh=c2J0M2pxcWNlbjM2" target="_blank" rel="noreferrer" style={{ color: "rgba(255,255,255,0.8)", textDecoration: "underline" }}>@foreman.ai_</a></p>
-            <p><strong>Company:</strong> Foreman is a project of MeeTech LLC.<br/>MeeTech LLC<br/>[REGISTERED ADDRESS]</p>
+            <p><strong>Company:</strong> Foreman is a project of MeeTech LLC.<br/>MeeTech LLC<br/>30 N Gould St # 43982, Sheridan, WY 82801</p>
           </div>
         </div>
 
@@ -101,16 +101,16 @@ export default function ContactPage() {
               <div>
                 <label htmlFor="trade" style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, marginBottom: 8, color: "#fff" }}>Trade</label>
                 <select id="trade" style={{ width: "100%", padding: "14px 16px", borderRadius: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: "1rem", outline: "none", appearance: "none" }}>
-                  <option value="">Select a trade...</option>
-                  <option value="hvac">HVAC</option>
-                  <option value="plumbing">Plumbing</option>
-                  <option value="restoration">Restoration</option>
-                  <option value="electrical">Electrical</option>
-                  <option value="roofing">Roofing</option>
-                  <option value="pest-control">Pest Control</option>
-                  <option value="garage-door">Garage Door</option>
-                  <option value="property-management">Property Management</option>
-                  <option value="other">Other</option>
+                  <option value="" style={{ background: "#0A0F1C", color: "#fff" }}>Select a trade...</option>
+                  <option value="hvac" style={{ background: "#0A0F1C", color: "#fff" }}>HVAC</option>
+                  <option value="plumbing" style={{ background: "#0A0F1C", color: "#fff" }}>Plumbing</option>
+                  <option value="restoration" style={{ background: "#0A0F1C", color: "#fff" }}>Restoration</option>
+                  <option value="electrical" style={{ background: "#0A0F1C", color: "#fff" }}>Electrical</option>
+                  <option value="roofing" style={{ background: "#0A0F1C", color: "#fff" }}>Roofing</option>
+                  <option value="pest-control" style={{ background: "#0A0F1C", color: "#fff" }}>Pest Control</option>
+                  <option value="garage-door" style={{ background: "#0A0F1C", color: "#fff" }}>Garage Door</option>
+                  <option value="property-management" style={{ background: "#0A0F1C", color: "#fff" }}>Property Management</option>
+                  <option value="other" style={{ background: "#0A0F1C", color: "#fff" }}>Other</option>
                 </select>
               </div>
 

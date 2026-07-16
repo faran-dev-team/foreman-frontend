@@ -150,7 +150,7 @@ export default function TermsPage() {
       <h2 style={{ color: "#fff", fontSize: "1.5rem", marginTop: 24, marginBottom: 8, fontWeight: 700 }}>15. Contact</h2>
       <p>
         MeeTech LLC<br />
-        [REGISTERED ADDRESS]<br />
+        30 N Gould St # 43982, Sheridan, WY 82801<br />
         <strong>legal@foremanai.tech</strong>
       </p>
     </TextPage>
