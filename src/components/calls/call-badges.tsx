@@ -22,11 +22,16 @@ function formatLabel(value: string): string {
 type BadgeProps = {
   value?: string | null;
   styles: Record<string, string>;
+  emptyLabel: string;
 };
 
-function Badge({ value, styles }: BadgeProps) {
+function Badge({ value, styles, emptyLabel }: BadgeProps) {
   if (!value) {
-    return <span className="text-sm text-slate-400">—</span>;
+    return (
+      <span className="inline-flex rounded-full bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-400">
+        {emptyLabel}
+      </span>
+    );
   }
 
   const key = value.toLowerCase();
@@ -42,7 +47,9 @@ function Badge({ value, styles }: BadgeProps) {
 }
 
 export function IntentBadge({ intent }: { intent?: CallIntent | string | null }) {
-  return <Badge value={intent} styles={intentStyles} />;
+  return (
+    <Badge value={intent} styles={intentStyles} emptyLabel="Not classified" />
+  );
 }
 
 export function OutcomeBadge({
@@ -50,5 +57,7 @@ export function OutcomeBadge({
 }: {
   outcome?: CallOutcome | string | null;
 }) {
-  return <Badge value={outcome} styles={outcomeStyles} />;
+  return (
+    <Badge value={outcome} styles={outcomeStyles} emptyLabel="In progress" />
+  );
 }

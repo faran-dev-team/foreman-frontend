@@ -4,10 +4,10 @@ import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useState } from "react";
 
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
+import { useShop } from "@/components/dashboard/shop-provider";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import { RevenueCapturedCard } from "@/components/jobs/revenue-captured-card";
 import { ApiError } from "@/lib/api/client";
-import { getDefaultShopId } from "@/lib/api/config";
 import { fetchJobs } from "@/lib/api/jobs";
 import type { JobListItem } from "@/lib/api/types";
 
@@ -44,6 +44,33 @@ function formatCurrency(value?: number | null): string {
   }).format(value);
 }
 
+function formatServiceLabel(service: string): string {
+  const trimmed = service.trim();
+  if (!trimmed) {
+    return "—";
+  }
+
+  return trimmed
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\bAc\b/g, "AC");
+}
+
+function formatCustomer(job: JobListItem): { primary: string; secondary?: string } {
+  const name = job.customer_name?.trim();
+  const phone = job.customer_phone?.trim();
+
+  if (name) {
+    return { primary: name, secondary: phone || undefined };
+  }
+
+  if (phone) {
+    return { primary: phone };
+  }
+
+  return { primary: "Unknown customer" };
+}
+
 function JobsTableSkeleton() {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -68,18 +95,23 @@ function JobsTableSkeleton() {
 
 export function JobsPanel() {
   const { getToken } = useAuth();
-  const shopId = getDefaultShopId();
+  const { shopId, loading: shopLoading } = useShop();
 
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [jobs, setJobs] = useState<JobListItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [revenueCaptured, setRevenueCaptured] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const loadJobs = useCallback(async () => {
     if (!shopId) {
+      if (shopLoading) {
+        return;
+      }
       setViewState("error");
       setErrorMessage(
-        "NEXT_PUBLIC_DEFAULT_SHOP_ID is not set. Add a test shop UUID to .env.local.",
+        "No shop resolved for this account. Confirm Clerk sign-in and backend DEFAULT_SHOP_ID.",
       );
       return;
     }
@@ -90,13 +122,18 @@ export function JobsPanel() {
     try {
       const token = await getToken();
       const response = await fetchJobs(shopId, token);
-      setJobs(response.jobs ?? []);
+      const nextJobs = response.jobs ?? [];
+      setJobs(nextJobs);
+      setTotal(response.total ?? nextJobs.length);
       setRevenueCaptured(response.revenue_captured_usd ?? 0);
+      setLastUpdatedAt(new Date());
       setViewState("ready");
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         setJobs([]);
+        setTotal(0);
         setRevenueCaptured(0);
+        setLastUpdatedAt(new Date());
         setViewState("ready");
         return;
       }
@@ -112,27 +149,48 @@ export function JobsPanel() {
         setErrorMessage("Failed to load jobs.");
       }
     }
-  }, [getToken, shopId]);
+  }, [getToken, shopId, shopLoading]);
 
   useEffect(() => {
     void loadJobs();
   }, [loadJobs]);
 
+  if (!shopId && shopLoading) {
+    return (
+      <div className="space-y-6">
+        <RevenueCapturedCard loading />
+        <JobsTableSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <RevenueCapturedCard
         amount={revenueCaptured}
-        jobCount={jobs.length}
+        jobCount={total}
         loading={viewState === "loading"}
       />
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
-            {viewState === "ready"
-              ? `${jobs.length} job${jobs.length === 1 ? "" : "s"} booked`
-              : "Booked jobs"}
-          </p>
+          <div className="space-y-1">
+            <p className="text-sm text-slate-500">
+              {viewState === "ready"
+                ? `${total} job${total === 1 ? "" : "s"} booked`
+                : "Booked jobs"}
+            </p>
+            {lastUpdatedAt && viewState === "ready" && (
+              <p className="text-xs text-slate-400">
+                Updated{" "}
+                {new Intl.DateTimeFormat(undefined, {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  second: "2-digit",
+                }).format(lastUpdatedAt)}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => void loadJobs()}
@@ -186,31 +244,38 @@ export function JobsPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {jobs.map((job) => (
-                  <tr
-                    key={job.id}
-                    className="transition hover:bg-slate-50/80"
-                  >
-                    <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
-                      {formatScheduledTime(job.scheduled_at)}
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <div className="font-medium text-slate-900">
-                        {job.customer_name}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {job.customer_phone}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-slate-900 sm:px-6 sm:py-4">{job.service}</td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <JobStatusBadge status={job.status} />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
-                      {formatCurrency(job.est_value_usd)}
-                    </td>
-                  </tr>
-                ))}
+                {jobs.map((job) => {
+                  const customer = formatCustomer(job);
+                  return (
+                    <tr
+                      key={job.id}
+                      className="transition hover:bg-slate-50/80"
+                    >
+                      <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
+                        {formatScheduledTime(job.scheduled_at)}
+                      </td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4">
+                        <div className="font-medium text-slate-900">
+                          {customer.primary}
+                        </div>
+                        {customer.secondary && (
+                          <div className="text-xs text-slate-500">
+                            {customer.secondary}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
+                        {formatServiceLabel(job.service)}
+                      </td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4">
+                        <JobStatusBadge status={job.status} />
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
+                        {formatCurrency(job.est_value_usd)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

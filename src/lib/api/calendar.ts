@@ -1,13 +1,25 @@
 import { apiFetch } from "@/lib/api/client";
-import { getApiBaseUrl } from "@/lib/api/config";
 import type { CalendarStatus } from "@/lib/api/types";
 
 const INTEGRATIONS_BASE = "/api/v1/integrations/google";
 
-/** Full URL to start Google OAuth (backend redirects to Google). */
+/** Fetch Google OAuth URL (requires Clerk/Foreman Bearer token). */
+export async function fetchCalendarConnectUrl(
+  shopId: string,
+  token?: string | null,
+): Promise<string> {
+  const params = new URLSearchParams({ shop_id: shopId });
+  const response = await apiFetch<{ connect_url: string }>(
+    `${INTEGRATIONS_BASE}/connect?${params.toString()}`,
+    { token, cache: "no-store" },
+  );
+  return response.connect_url;
+}
+
+/** @deprecated Use fetchCalendarConnectUrl with a Bearer token (Path B). */
 export function getCalendarConnectUrl(shopId: string): string {
   const params = new URLSearchParams({ shop_id: shopId });
-  return `${getApiBaseUrl()}${INTEGRATIONS_BASE}/connect?${params.toString()}`;
+  return `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000"}${INTEGRATIONS_BASE}/connect?${params.toString()}`;
 }
 
 /** Check whether a shop has connected Google Calendar. */

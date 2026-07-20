@@ -18,8 +18,8 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * MVP shop identifier until GET /dashboard/me maps Clerk user → shop.
- * Set NEXT_PUBLIC_DEFAULT_SHOP_ID in .env.local for local testing.
+ * Fallback shop ID when /dashboard/me is unavailable.
+ * Prefer ShopProvider + GET /api/v1/dashboard/me (Path B).
  */
 export function getDefaultShopId(): string | undefined {
   const shopId = process.env.NEXT_PUBLIC_DEFAULT_SHOP_ID?.trim();

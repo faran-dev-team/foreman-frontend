@@ -6,12 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import {
   disconnectCalendar,
+  fetchCalendarConnectUrl,
   fetchCalendarStatus,
-  getCalendarConnectUrl,
 } from "@/lib/api/calendar";
-import { getDefaultShopId } from "@/lib/api/config";
 import { ApiError } from "@/lib/api/client";
 import type { CalendarStatus } from "@/lib/api/types";
+import { useShop } from "@/components/dashboard/shop-provider";
 
 type ViewState = "loading" | "ready" | "error";
 
@@ -29,8 +29,7 @@ export function GoogleCalendarConnect() {
   const { getToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const shopId = getDefaultShopId();
+  const { shopId, loading: shopLoading } = useShop();
 
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [status, setStatus] = useState<CalendarStatus | null>(null);
@@ -43,9 +42,12 @@ export function GoogleCalendarConnect() {
 
   const loadStatus = useCallback(async () => {
     if (!shopId) {
+      if (shopLoading) {
+        return;
+      }
       setViewState("error");
       setErrorMessage(
-        "NEXT_PUBLIC_DEFAULT_SHOP_ID is not set. Add a test shop UUID to .env.local.",
+        "No shop resolved for this account. Check Clerk auth / DEFAULT_SHOP_ID on the backend.",
       );
       return;
     }
@@ -61,11 +63,19 @@ export function GoogleCalendarConnect() {
     } catch (error) {
       setViewState("error");
       if (error instanceof ApiError) {
-        setErrorMessage(
-          error.status === 404
-            ? "Calendar status endpoint is not available yet. Dev 2 can enable it on the backend."
-            : error.message,
-        );
+        if (error.status === 401 || error.status === 403) {
+          setErrorMessage(
+            "Authentication failed. Sign out/in and confirm the backend accepts Clerk JWTs (Path B).",
+          );
+        } else if (error.status === 404) {
+          setErrorMessage(
+            error.message.includes("Shop")
+              ? `${error.message} Update DEFAULT_SHOP_ID / membership mapping.`
+              : "Calendar status endpoint is not available yet.",
+          );
+        } else {
+          setErrorMessage(error.message);
+        }
       } else if (error instanceof TypeError) {
         setErrorMessage(
           "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
@@ -74,7 +84,7 @@ export function GoogleCalendarConnect() {
         setErrorMessage("Failed to load calendar connection status.");
       }
     }
-  }, [getToken, shopId]);
+  }, [getToken, shopId, shopLoading]);
 
   useEffect(() => {
     const calendarParam = searchParams.get("calendar");
@@ -104,12 +114,26 @@ export function GoogleCalendarConnect() {
     void loadStatus();
   }, [loadStatus]);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (!shopId) {
       return;
     }
     setActionLoading(true);
-    window.location.href = getCalendarConnectUrl(shopId);
+    setBanner(null);
+    try {
+      const token = await getToken();
+      const connectUrl = await fetchCalendarConnectUrl(shopId, token);
+      window.location.href = connectUrl;
+    } catch (error) {
+      setActionLoading(false);
+      setBanner({
+        type: "error",
+        message:
+          error instanceof ApiError
+            ? error.message
+            : "Failed to start Google Calendar connect.",
+      });
+    }
   };
 
   const handleDisconnect = async () => {
@@ -193,13 +217,23 @@ export function GoogleCalendarConnect() {
         <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
           <p className="text-sm font-medium text-red-800">Unable to load status</p>
           <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
-          <button
-            type="button"
-            onClick={() => void loadStatus()}
-            className="mt-3 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
-          >
-            Retry
-          </button>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void loadStatus()}
+              className="rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleConnect()}
+              disabled={actionLoading || !shopId}
+              className="rounded-lg bg-foreman-navy px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {actionLoading ? "Redirecting…" : "Connect Google Calendar"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -230,7 +264,7 @@ export function GoogleCalendarConnect() {
             {!isConnected ? (
               <button
                 type="button"
-                onClick={handleConnect}
+                onClick={() => void handleConnect()}
                 disabled={actionLoading || !shopId}
                 className="rounded-lg bg-foreman-navy px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
