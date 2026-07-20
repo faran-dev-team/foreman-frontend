@@ -38,8 +38,9 @@ export function RevenueCapturedCard({
         {formatCurrency(displayAmount)}
       </p>
       <p className="mt-2 text-sm text-slate-300">
-        Estimated value from {jobCount} booked job{jobCount === 1 ? "" : "s"}{" "}
-        in this period
+        {jobCount === 0
+          ? "No completed jobs with estimated value yet"
+          : `Estimated value from ${jobCount} booked job${jobCount === 1 ? "" : "s"} in this period`}
       </p>
     </div>
   );

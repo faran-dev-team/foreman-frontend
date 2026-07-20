@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { ShopProvider } from "@/components/dashboard/shop-provider";
 
 export const dynamic = "force-dynamic";
 
@@ -7,5 +8,9 @@ export default function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <ShopProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </ShopProvider>
+  );
 }

@@ -1,13 +1,13 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { IntentBadge, OutcomeBadge } from "@/components/calls/call-badges";
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
+import { useShop } from "@/components/dashboard/shop-provider";
 import { fetchCalls } from "@/lib/api/calls";
 import { ApiError } from "@/lib/api/client";
-import { getDefaultShopId } from "@/lib/api/config";
 import type { CallListItem } from "@/lib/api/types";
 
 type ViewState = "loading" | "ready" | "error";
@@ -38,11 +38,23 @@ function formatCurrency(value?: number | null): string {
   }).format(value);
 }
 
-function formatCaller(call: CallListItem): string {
-  if (call.caller_name) {
-    return call.caller_name;
+function formatCaller(call: CallListItem): { primary: string; secondary?: string } {
+  const rawNumber = (call.caller_number || "").trim();
+  const isUnknownNumber =
+    !rawNumber || rawNumber.toLowerCase() === "unknown" || rawNumber === "n/a";
+
+  if (call.caller_name?.trim()) {
+    return {
+      primary: call.caller_name.trim(),
+      secondary: isUnknownNumber ? undefined : rawNumber,
+    };
   }
-  return call.caller_number;
+
+  if (isUnknownNumber) {
+    return { primary: "Unknown caller" };
+  }
+
+  return { primary: rawNumber };
 }
 
 function CallsTableSkeleton() {
@@ -69,17 +81,22 @@ function CallsTableSkeleton() {
 
 export function CallsTable() {
   const { getToken } = useAuth();
-  const shopId = getDefaultShopId();
+  const { shopId, loading: shopLoading } = useShop();
 
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [calls, setCalls] = useState<CallListItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const loadCalls = useCallback(async () => {
     if (!shopId) {
+      if (shopLoading) {
+        return;
+      }
       setViewState("error");
       setErrorMessage(
-        "NEXT_PUBLIC_DEFAULT_SHOP_ID is not set. Add a test shop UUID to .env.local.",
+        "No shop resolved for this account. Confirm Clerk sign-in and backend DEFAULT_SHOP_ID.",
       );
       return;
     }
@@ -90,11 +107,16 @@ export function CallsTable() {
     try {
       const token = await getToken();
       const response = await fetchCalls(shopId, token);
-      setCalls(response.calls ?? []);
+      const nextCalls = response.calls ?? [];
+      setCalls(nextCalls);
+      setTotal(response.total ?? nextCalls.length);
+      setLastUpdatedAt(new Date());
       setViewState("ready");
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         setCalls([]);
+        setTotal(0);
+        setLastUpdatedAt(new Date());
         setViewState("ready");
         return;
       }
@@ -110,20 +132,91 @@ export function CallsTable() {
         setErrorMessage("Failed to load calls.");
       }
     }
-  }, [getToken, shopId]);
+  }, [getToken, shopId, shopLoading]);
 
   useEffect(() => {
     void loadCalls();
   }, [loadCalls]);
 
+  const outcomeCounts = useMemo(() => {
+    const counts = {
+      booked: 0,
+      not_booked: 0,
+      escalated: 0,
+      missed: 0,
+      other: 0,
+    };
+
+    for (const call of calls) {
+      const key = (call.outcome || "").toLowerCase();
+      if (key === "booked") counts.booked += 1;
+      else if (key === "not_booked") counts.not_booked += 1;
+      else if (key === "escalated") counts.escalated += 1;
+      else if (key === "missed") counts.missed += 1;
+      else counts.other += 1;
+    }
+
+    return counts;
+  }, [calls]);
+
+  // Only block on skeleton when we have no shopId yet (not while /me refreshes).
+  if (!shopId && shopLoading) {
+    return (
+      <div className="space-y-4">
+        <CallsTableSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
-          {viewState === "ready"
-            ? `${calls.length} call${calls.length === 1 ? "" : "s"}`
-            : "Recent inbound calls"}
-        </p>
+        <div className="space-y-1">
+          <p className="text-sm text-slate-500">
+            {viewState === "ready"
+              ? `${total} call${total === 1 ? "" : "s"}`
+              : "Recent inbound calls"}
+          </p>
+          {viewState === "ready" && calls.length > 0 && (
+            <div className="flex flex-wrap gap-2 text-xs">
+              {outcomeCounts.booked > 0 && (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800">
+                  {outcomeCounts.booked} booked
+                </span>
+              )}
+              {outcomeCounts.not_booked > 0 && (
+                <span className="rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-800">
+                  {outcomeCounts.not_booked} not booked
+                </span>
+              )}
+              {outcomeCounts.escalated > 0 && (
+                <span className="rounded-full bg-orange-50 px-2.5 py-1 font-medium text-orange-800">
+                  {outcomeCounts.escalated} escalated
+                </span>
+              )}
+              {outcomeCounts.missed > 0 && (
+                <span className="rounded-full bg-red-50 px-2.5 py-1 font-medium text-red-800">
+                  {outcomeCounts.missed} missed
+                </span>
+              )}
+              {outcomeCounts.other > 0 && (
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+                  {outcomeCounts.other} in progress
+                </span>
+              )}
+            </div>
+          )}
+          {lastUpdatedAt && viewState === "ready" && (
+            <p className="text-xs text-slate-400">
+              Updated{" "}
+              {new Intl.DateTimeFormat(undefined, {
+                hour: "numeric",
+                minute: "2-digit",
+                second: "2-digit",
+              }).format(lastUpdatedAt)}
+            </p>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => void loadCalls()}
@@ -169,37 +262,40 @@ export function CallsTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {calls.map((call) => (
-                <tr
-                  key={call.id}
-                  className="transition hover:bg-slate-50/80"
-                >
-                  <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
-                    {formatCallTime(call.started_at)}
-                  </td>
-                  <td className="px-3 py-3 sm:px-6 sm:py-4">
-                    <div className="font-medium text-slate-900">
-                      {formatCaller(call)}
-                    </div>
-                    {call.caller_name && (
-                      <div className="text-xs text-slate-500">
-                        {call.caller_number}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 sm:px-6 sm:py-4">
-                    <IntentBadge intent={call.intent} />
-                  </td>
-                  <td className="px-3 py-3 sm:px-6 sm:py-4">
-                    <OutcomeBadge outcome={call.outcome} />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
-                    {formatCurrency(call.est_value_usd)}
-                  </td>
-                </tr>
-              ))}
+              {calls.map((call) => {
+                const caller = formatCaller(call);
+                return (
+                  <tr
+                    key={call.id}
+                    className="transition hover:bg-slate-50/80"
+                  >
+                    <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
+                      {formatCallTime(call.started_at)}
+                    </td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
+                      <div className="font-medium text-slate-900">{caller.primary}</div>
+                      {caller.secondary && (
+                        <div className="text-xs text-slate-500">{caller.secondary}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
+                      <IntentBadge intent={call.intent} />
+                    </td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
+                      <OutcomeBadge outcome={call.outcome} />
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
+                      {formatCurrency(call.est_value_usd)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400 sm:px-6">
+            Intent and value fill in when intake is saved or a job is booked. Empty
+            cells mean the voice path has not recorded that field yet.
+          </p>
         </div>
       )}
     </div>
