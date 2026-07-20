@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { fetchCalendarStatus } from "@/lib/api/calendar";
+import { waitForClerkToken } from "@/lib/auth/clerk-token";
 import { useShop } from "@/components/dashboard/shop-provider";
 
 type DashboardGettingStartedProps = {
@@ -31,7 +32,11 @@ export function DashboardGettingStarted({ variant }: DashboardGettingStartedProp
 
     async function loadCalendarStatus() {
       try {
-        const token = await getToken();
+        const token = await waitForClerkToken(getToken);
+        if (!token) {
+          if (!cancelled) setCalendarBadge("not_connected");
+          return;
+        }
         const status = await fetchCalendarStatus(resolvedShopId, token);
         if (!cancelled) {
           setCalendarBadge(status.connected ? "connected" : "not_connected");

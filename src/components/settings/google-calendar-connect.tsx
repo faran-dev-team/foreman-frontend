@@ -9,6 +9,7 @@ import {
   fetchCalendarConnectUrl,
   fetchCalendarStatus,
 } from "@/lib/api/calendar";
+import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 import { ApiError } from "@/lib/api/client";
 import type { CalendarStatus } from "@/lib/api/types";
 import { useShop } from "@/components/dashboard/shop-provider";
@@ -26,7 +27,7 @@ function statusLabel(status: CalendarStatus): string {
 }
 
 export function GoogleCalendarConnect() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { shopId, loading: shopLoading } = useShop();
@@ -41,8 +42,20 @@ export function GoogleCalendarConnect() {
   } | null>(null);
 
   const loadStatus = useCallback(async () => {
+    if (!isLoaded) {
+      setViewState("loading");
+      return;
+    }
+
+    if (!isSignedIn) {
+      setViewState("error");
+      setErrorMessage("Sign in required to manage Google Calendar.");
+      return;
+    }
+
     if (!shopId) {
       if (shopLoading) {
+        setViewState("loading");
         return;
       }
       setViewState("error");
@@ -56,8 +69,9 @@ export function GoogleCalendarConnect() {
     setErrorMessage(null);
 
     try {
-      const token = await getToken();
-      const result = await fetchCalendarStatus(shopId, token);
+      const result = await withClerkAuthRetry(getToken, (token) =>
+        fetchCalendarStatus(shopId, token),
+      );
       setStatus(result);
       setViewState("ready");
     } catch (error) {
@@ -84,7 +98,7 @@ export function GoogleCalendarConnect() {
         setErrorMessage("Failed to load calendar connection status.");
       }
     }
-  }, [getToken, shopId, shopLoading]);
+  }, [getToken, shopId, shopLoading, isLoaded, isSignedIn]);
 
   useEffect(() => {
     const calendarParam = searchParams.get("calendar");
@@ -121,8 +135,9 @@ export function GoogleCalendarConnect() {
     setActionLoading(true);
     setBanner(null);
     try {
-      const token = await getToken();
-      const connectUrl = await fetchCalendarConnectUrl(shopId, token);
+      const connectUrl = await withClerkAuthRetry(getToken, (token) =>
+        fetchCalendarConnectUrl(shopId, token),
+      );
       window.location.href = connectUrl;
     } catch (error) {
       setActionLoading(false);
@@ -145,8 +160,9 @@ export function GoogleCalendarConnect() {
     setBanner(null);
 
     try {
-      const token = await getToken();
-      await disconnectCalendar(shopId, token);
+      await withClerkAuthRetry(getToken, (token) =>
+        disconnectCalendar(shopId, token),
+      );
       setBanner({
         type: "success",
         message: "Google Calendar disconnected.",

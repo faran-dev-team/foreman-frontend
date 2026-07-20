@@ -13,6 +13,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { getDefaultShopId } from "@/lib/api/config";
 import { fetchDashboardMe, type DashboardMe } from "@/lib/api/me";
+import { waitForClerkToken } from "@/lib/auth/clerk-token";
 
 type ShopContextValue = {
   shopId: string | undefined;
@@ -53,7 +54,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      const token = await getToken();
+      const token = await waitForClerkToken(getToken);
+      if (!token) {
+        setError("Authentication required.");
+        return;
+      }
       const result = await fetchDashboardMe(token);
       setMe(result);
     } catch (err) {

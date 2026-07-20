@@ -31,6 +31,41 @@ export type CallsListResponse = {
   total?: number;
 };
 
+/** Call status from GET /voice/calls/{id} */
+export type VoiceCallStatus =
+  | "PENDING"
+  | "COMPLETED"
+  | "MISSED"
+  | "FAILED"
+  | string;
+
+/** Full call record from GET /voice/calls/{id} */
+export type CallDetail = {
+  id: string;
+  shop_id: string;
+  caller_name?: string | null;
+  caller_phone: string;
+  retell_call_id?: string | null;
+  started_at?: string | null;
+  call_status: VoiceCallStatus;
+  call_duration_seconds?: number | null;
+  summary?: string | null;
+  recording_url?: string | null;
+  transcript?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Intake from GET /voice/calls/{id}/intake */
+export type CallIntake = {
+  customer_name: string;
+  phone: string;
+  email: string;
+  service: string;
+  city: string;
+  preferred_date: string;
+};
+
 export type JobStatus =
   | "booked"
   | "completed"
