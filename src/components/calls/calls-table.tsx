@@ -1,11 +1,13 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { IntentBadge, OutcomeBadge } from "@/components/calls/call-badges";
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
 import { useShop } from "@/components/dashboard/shop-provider";
+import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 import { fetchCalls } from "@/lib/api/calls";
 import { ApiError } from "@/lib/api/client";
 import type { CallListItem } from "@/lib/api/types";
@@ -80,7 +82,7 @@ function CallsTableSkeleton() {
 }
 
 export function CallsTable() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const { shopId, loading: shopLoading } = useShop();
 
   const [viewState, setViewState] = useState<ViewState>("loading");
@@ -90,8 +92,20 @@ export function CallsTable() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const loadCalls = useCallback(async () => {
+    if (!isLoaded) {
+      setViewState("loading");
+      return;
+    }
+
+    if (!isSignedIn) {
+      setViewState("error");
+      setErrorMessage("Sign in required to load calls.");
+      return;
+    }
+
     if (!shopId) {
       if (shopLoading) {
+        setViewState("loading");
         return;
       }
       setViewState("error");
@@ -105,8 +119,9 @@ export function CallsTable() {
     setErrorMessage(null);
 
     try {
-      const token = await getToken();
-      const response = await fetchCalls(shopId, token);
+      const response = await withClerkAuthRetry(getToken, (token) =>
+        fetchCalls(shopId, token),
+      );
       const nextCalls = response.calls ?? [];
       setCalls(nextCalls);
       setTotal(response.total ?? nextCalls.length);
@@ -132,7 +147,7 @@ export function CallsTable() {
         setErrorMessage("Failed to load calls.");
       }
     }
-  }, [getToken, shopId, shopLoading]);
+  }, [getToken, shopId, shopLoading, isLoaded, isSignedIn]);
 
   useEffect(() => {
     void loadCalls();
@@ -159,8 +174,8 @@ export function CallsTable() {
     return counts;
   }, [calls]);
 
-  // Only block on skeleton when we have no shopId yet (not while /me refreshes).
-  if (!shopId && shopLoading) {
+  // Keep skeleton while Clerk/shop settle — never flash auth error early.
+  if ((!isLoaded || (!shopId && shopLoading)) && viewState === "loading") {
     return (
       <div className="space-y-4">
         <CallsTableSkeleton />
@@ -270,22 +285,42 @@ export function CallsTable() {
                     className="transition hover:bg-slate-50/80"
                   >
                     <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
-                      {formatCallTime(call.started_at)}
+                      <Link
+                        href={`/calls/${call.id}`}
+                        className="block hover:text-foreman-navy hover:underline"
+                      >
+                        {formatCallTime(call.started_at)}
+                      </Link>
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <div className="font-medium text-slate-900">{caller.primary}</div>
-                      {caller.secondary && (
-                        <div className="text-xs text-slate-500">{caller.secondary}</div>
-                      )}
+                      <Link href={`/calls/${call.id}`} className="block">
+                        <div className="font-medium text-slate-900 hover:text-foreman-navy">
+                          {caller.primary}
+                        </div>
+                        {caller.secondary && (
+                          <div className="text-xs text-slate-500">
+                            {caller.secondary}
+                          </div>
+                        )}
+                      </Link>
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <IntentBadge intent={call.intent} />
+                      <Link href={`/calls/${call.id}`} className="block">
+                        <IntentBadge intent={call.intent} />
+                      </Link>
                     </td>
                     <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <OutcomeBadge outcome={call.outcome} />
+                      <Link href={`/calls/${call.id}`} className="block">
+                        <OutcomeBadge outcome={call.outcome} />
+                      </Link>
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
-                      {formatCurrency(call.est_value_usd)}
+                      <Link
+                        href={`/calls/${call.id}`}
+                        className="block hover:text-foreman-navy hover:underline"
+                      >
+                        {formatCurrency(call.est_value_usd)}
+                      </Link>
                     </td>
                   </tr>
                 );
@@ -293,8 +328,8 @@ export function CallsTable() {
             </tbody>
           </table>
           <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400 sm:px-6">
-            Intent and value fill in when intake is saved or a job is booked. Empty
-            cells mean the voice path has not recorded that field yet.
+            Click a call to open details, recording, intake, and transcript.
+            Intent and value fill in when intake is saved or a job is booked.
           </p>
         </div>
       )}

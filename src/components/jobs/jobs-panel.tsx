@@ -7,6 +7,7 @@ import { DashboardGettingStarted } from "@/components/dashboard/dashboard-gettin
 import { useShop } from "@/components/dashboard/shop-provider";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import { RevenueCapturedCard } from "@/components/jobs/revenue-captured-card";
+import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 import { ApiError } from "@/lib/api/client";
 import { fetchJobs } from "@/lib/api/jobs";
 import type { JobListItem } from "@/lib/api/types";
@@ -94,7 +95,7 @@ function JobsTableSkeleton() {
 }
 
 export function JobsPanel() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const { shopId, loading: shopLoading } = useShop();
 
   const [viewState, setViewState] = useState<ViewState>("loading");
@@ -105,8 +106,20 @@ export function JobsPanel() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const loadJobs = useCallback(async () => {
+    if (!isLoaded) {
+      setViewState("loading");
+      return;
+    }
+
+    if (!isSignedIn) {
+      setViewState("error");
+      setErrorMessage("Sign in required to load jobs.");
+      return;
+    }
+
     if (!shopId) {
       if (shopLoading) {
+        setViewState("loading");
         return;
       }
       setViewState("error");
@@ -120,8 +133,9 @@ export function JobsPanel() {
     setErrorMessage(null);
 
     try {
-      const token = await getToken();
-      const response = await fetchJobs(shopId, token);
+      const response = await withClerkAuthRetry(getToken, (token) =>
+        fetchJobs(shopId, token),
+      );
       const nextJobs = response.jobs ?? [];
       setJobs(nextJobs);
       setTotal(response.total ?? nextJobs.length);
@@ -149,13 +163,13 @@ export function JobsPanel() {
         setErrorMessage("Failed to load jobs.");
       }
     }
-  }, [getToken, shopId, shopLoading]);
+  }, [getToken, shopId, shopLoading, isLoaded, isSignedIn]);
 
   useEffect(() => {
     void loadJobs();
   }, [loadJobs]);
 
-  if (!shopId && shopLoading) {
+  if ((!isLoaded || (!shopId && shopLoading)) && viewState === "loading") {
     return (
       <div className="space-y-6">
         <RevenueCapturedCard loading />
