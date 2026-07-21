@@ -6,13 +6,13 @@ export default function SignInPage() {
   return (
     <AuthPageShell
       title="Owner sign in"
-      description="Access your calls, booked jobs, and shop settings."
+      description="Access your revenue dashboard, calls, jobs, and shop settings."
     >
       <SignIn
         routing="path"
         path="/sign-in"
         signUpUrl="/sign-up"
-        forceRedirectUrl="/calls"
+        forceRedirectUrl="/dashboard"
       />
     </AuthPageShell>
   );

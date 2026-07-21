@@ -258,7 +258,7 @@ function NavAuthLinks({ className, onNavigate, renderDesktopItem }: { className:
 
   return (
     <>
-      {renderDesktopItem ? renderDesktopItem("/calls", "Dashboard") : <Link href="/calls" className={className} onClick={onNavigate}>Dashboard</Link>}
+      {renderDesktopItem ? renderDesktopItem("/dashboard", "Dashboard") : <Link href="/dashboard" className={className} onClick={onNavigate}>Dashboard</Link>}
     </>
   );
 }

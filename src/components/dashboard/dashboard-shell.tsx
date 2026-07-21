@@ -120,7 +120,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             <MenuIcon open={mobileNavOpen} />
           </button>
           <p className="min-w-0 truncate text-sm text-slate-500">
-            Foreman MVP · Owner portal
+            Foreman Launch+ · Owner portal
           </p>
         </header>
 
