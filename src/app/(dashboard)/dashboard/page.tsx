@@ -16,8 +16,8 @@ export default function DashboardPage() {
       <div>
         <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Dashboard</h2>
         <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Revenue captured, jobs today, and conversion — what Foreman booked for your
-          shop.
+          Revenue captured, call performance, lead sources, and live bookings —
+          what Foreman booked for your shop.
         </p>
       </div>
 

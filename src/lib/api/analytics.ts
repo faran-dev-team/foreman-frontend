@@ -2,7 +2,7 @@ import { apiFetch } from "@/lib/api/client";
 
 const DASHBOARD_BASE = "/api/v1/dashboard";
 
-/** Response from GET /api/v1/dashboard/analytics */
+/** Response from GET /api/v1/dashboard/analytics (Day 1 + Day 2). */
 export type DashboardAnalytics = {
   revenue: {
     today: number;
@@ -16,9 +16,25 @@ export type DashboardAnalytics = {
     cancelled: number;
   };
   conversion_rate: number;
+  calls: {
+    captured: number;
+    missed: number;
+    capture_rate: number;
+    average_duration_seconds: number;
+  };
+  ai_booking: {
+    successful_bookings: number;
+    eligible_calls: number;
+    success_rate: number;
+  };
+  lead_sources: Array<{
+    source: string;
+    count: number;
+    percentage: number;
+  }>;
 };
 
-/** Launch+ revenue / jobs / conversion analytics for a shop. */
+/** Launch+ revenue / call performance / lead-source analytics for a shop. */
 export async function fetchDashboardAnalytics(
   shopId: string,
   token?: string | null,
