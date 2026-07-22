@@ -34,7 +34,7 @@ export function isAuthRequiredError(error: unknown): boolean {
 }
 
 /**
- * Run an authenticated API call; soft-retry once if Clerk token was too early.
+ * Run an authenticated API call; soft-retry on early 401/403 while Clerk/session settles.
  */
 export async function withClerkAuthRetry<T>(
   getToken: GetToken,
@@ -45,22 +45,32 @@ export async function withClerkAuthRetry<T>(
     throw new ApiError(401, "Authentication required.");
   }
 
-  try {
-    return await run(token);
-  } catch (error) {
-    if (!isAuthRequiredError(error)) {
-      throw error;
-    }
+  let lastError: unknown;
+  const maxAttempts = 3;
 
-    // Session may still be settling — wait for a fresh token and retry once.
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    const retryToken = await waitForClerkToken(getToken, {
-      attempts: 6,
-      delayMs: 150,
-    });
-    if (!retryToken) {
-      throw error;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const attemptToken =
+        attempt === 0
+          ? token
+          : (await waitForClerkToken(getToken, {
+              attempts: 6,
+              delayMs: 150,
+            })) ?? token;
+      return await run(attemptToken);
+    } catch (error) {
+      lastError = error;
+      if (!isAuthRequiredError(error) || attempt === maxAttempts - 1) {
+        throw error;
+      }
+      // Token/membership may still be settling after sign-in redirect.
+      await new Promise((resolve) =>
+        setTimeout(resolve, 300 * (attempt + 1)),
+      );
     }
-    return run(retryToken);
   }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new ApiError(401, "Authentication required.");
 }

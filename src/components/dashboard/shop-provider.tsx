@@ -19,9 +19,9 @@ type ShopContextValue = {
   shopId: string | undefined;
   shopName: string | undefined;
   role: string | undefined;
-  /** True only while Clerk is loading or we still have no shopId to use. */
+  /** True while Clerk is loading or the first /dashboard/me resolve is in flight. */
   loading: boolean;
-  /** True while /me is refreshing in the background (does not block page data). */
+  /** True while /me is resolving — owner API calls should wait to avoid 403 flash. */
   resolvingMe: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -34,11 +34,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const envShopId = getDefaultShopId();
 
   const [me, setMe] = useState<DashboardMe | null>(null);
-  const [resolvingMe, setResolvingMe] = useState(false);
+  // Start true so dashboard APIs wait until the first /me attempt finishes.
+  // Otherwise env shopId fires analytics before membership is ready → 403 flash.
+  const [resolvingMe, setResolvingMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isLoaded) {
+      setResolvingMe(true);
       return;
     }
 
@@ -49,7 +52,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Keep existing shopId available (env or previous /me) while /me refreshes.
     setResolvingMe(true);
     setError(null);
 
@@ -86,8 +88,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       shopId,
       shopName: me?.shop_name,
       role: me?.role,
-      // Block UI only when we truly cannot fetch yet.
-      loading: !isLoaded || (isSignedIn && !shopId && resolvingMe),
+      // Block owner pages until Clerk is ready and first /me attempt finishes.
+      loading: !isLoaded || (isSignedIn && resolvingMe),
       resolvingMe,
       error,
       refresh,
