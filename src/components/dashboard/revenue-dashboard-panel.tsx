@@ -330,7 +330,7 @@ function DashboardSkeleton() {
 
 export function RevenueDashboardPanel() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading } = useShop();
+  const { shopId, loading: shopLoading, resolvingMe } = useShop();
 
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
@@ -348,11 +348,13 @@ export function RevenueDashboardPanel() {
       setErrorMessage("Sign in required to view revenue analytics.");
       return;
     }
+    // Wait for /dashboard/me so shop membership is ready — avoids a 403 flash
+    // when analytics fires with env shopId before Clerk→shop mapping settles.
+    if (resolvingMe || shopLoading) {
+      setViewState("loading");
+      return;
+    }
     if (!shopId) {
-      if (shopLoading) {
-        setViewState("loading");
-        return;
-      }
       setViewState("error");
       setErrorMessage("No shop resolved for this account.");
       return;
@@ -393,7 +395,7 @@ export function RevenueDashboardPanel() {
         setErrorMessage("Failed to load revenue analytics.");
       }
     }
-  }, [getToken, isLoaded, isSignedIn, shopId, shopLoading]);
+  }, [getToken, isLoaded, isSignedIn, shopId, shopLoading, resolvingMe]);
 
   useEffect(() => {
     void loadDashboard();
@@ -408,8 +410,13 @@ export function RevenueDashboardPanel() {
     return `Conversion ${formatPercent(analytics.conversion_rate)} · Capture ${formatPercent(analytics.calls.capture_rate)} · ${jobsToday} job${jobsToday === 1 ? "" : "s"} today`;
   }, [analytics]);
 
-  if ((!isLoaded || (!shopId && shopLoading) || viewState === "loading") &&
-    viewState !== "error") {
+  if (
+    !isLoaded ||
+    resolvingMe ||
+    shopLoading ||
+    viewState === "loading" ||
+    (!analytics && viewState !== "error")
+  ) {
     return <DashboardSkeleton />;
   }
 
