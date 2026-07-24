@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 
 import { Outfit, IBM_Plex_Mono } from "next/font/google";
+import { NotificationProvider } from "@/components/providers/NotificationProvider";
 
 import "./globals.css";
 
@@ -31,8 +32,11 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`min-h-screen antialiased ${outfit.variable} ${mono.variable}`}>{children}</body>
+        <body className={`min-h-screen antialiased ${outfit.variable} ${mono.variable}`}>
+          <NotificationProvider>{children}</NotificationProvider>
+        </body>
       </html>
     </ClerkProvider>
   );
 }
+

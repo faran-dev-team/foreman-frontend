@@ -7,6 +7,8 @@ import {
 } from "@/components/settings/google-calendar-connect";
 import { ShopSettingsForms } from "@/components/settings/shop-settings-forms";
 
+import { NotificationToggle } from "@/components/settings/notification-toggle";
+
 export const metadata: Metadata = {
   title: "Settings | Foreman",
 };
@@ -20,6 +22,8 @@ export default function SettingsPage() {
           Manage integrations and shop configuration for your Foreman agent.
         </p>
       </div>
+
+      <NotificationToggle />
 
       <Suspense fallback={<GoogleCalendarConnectSkeleton />}>
         <GoogleCalendarConnect />
