@@ -3,6 +3,18 @@
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { useShop } from "@/components/dashboard/shop-provider";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
@@ -14,8 +26,19 @@ import { ApiError } from "@/lib/api/client";
 import { fetchJobs } from "@/lib/api/jobs";
 import type { JobListItem } from "@/lib/api/types";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
+import { brand } from "@/lib/brand";
 
 type ViewState = "loading" | "ready" | "error";
+
+const CHART = {
+  orange: brand.orange,
+  carbon: brand.carbon,
+  green: brand.green,
+  sky: "#38BDF8",
+  red: "#F87171",
+  slate: "#94A3B8",
+  amber: "#FBBF24",
+} as const;
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat(undefined, {
@@ -60,14 +83,32 @@ function KpiCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-foreman-accent/30 hover:shadow-md sm:p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+      <p className="mt-2 text-2xl font-bold tracking-tight text-foreman-navy">
         {value}
       </p>
       {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-6">
+      <h3 className="text-sm font-semibold text-foreman-navy">{title}</h3>
+      <p className="mt-1 text-xs text-slate-500">{description}</p>
+      <div className="mt-4 h-52 w-full min-w-0">{children}</div>
     </div>
   );
 }
@@ -81,40 +122,50 @@ function RevenueBarChart({
   week: number;
   month: number;
 }) {
-  const bars = [
-    { label: "Today", value: today, fill: "#38bdf8" },
-    { label: "Week", value: week, fill: "#f59e0b" },
-    { label: "Month", value: month, fill: "#0f172a" },
+  const data = [
+    { label: "Today", value: today, fill: CHART.sky },
+    { label: "Week", value: week, fill: CHART.orange },
+    { label: "Month", value: month, fill: CHART.carbon },
   ];
-  const max = Math.max(...bars.map((b) => b.value), 1);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <h3 className="text-sm font-semibold text-slate-900">Revenue by period</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        Estimated value from completed jobs (shop-local periods).
-      </p>
-      <div className="mt-6 flex h-48 items-end justify-around gap-4 sm:gap-8">
-        {bars.map((bar) => {
-          const heightPct = Math.max((bar.value / max) * 100, bar.value > 0 ? 6 : 2);
-          return (
-            <div key={bar.label} className="flex flex-1 flex-col items-center gap-2">
-              <span className="text-xs font-medium text-slate-700">
-                {formatCurrency(bar.value)}
-              </span>
-              <div className="flex h-36 w-full max-w-[4.5rem] items-end rounded-md bg-slate-100">
-                <div
-                  className="w-full rounded-md transition-all"
-                  style={{ height: `${heightPct}%`, backgroundColor: bar.fill }}
-                  title={`${bar.label}: ${formatCurrency(bar.value)}`}
-                />
-              </div>
-              <span className="text-xs font-medium text-slate-500">{bar.label}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <ChartCard
+      title="Revenue by period"
+      description="Estimated value from completed jobs (shop-local periods)."
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: "#64748B", fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: "#94A3B8", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v) => `$${v}`}
+            width={48}
+          />
+          <Tooltip
+            cursor={{ fill: "rgba(249,122,53,0.06)" }}
+            formatter={(value: number) => [formatCurrency(value), "Revenue"]}
+            contentStyle={{
+              borderRadius: 12,
+              border: "1px solid #E2E8F0",
+              boxShadow: "0 8px 24px rgba(10,15,28,0.08)",
+            }}
+          />
+          <Bar dataKey="value" radius={[8, 8, 4, 4]} maxBarSize={56}>
+            {data.map((entry) => (
+              <Cell key={entry.label} fill={entry.fill} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
   );
 }
 
@@ -129,39 +180,48 @@ function JobsTodayChart({
   cancelled: number;
   today: number;
 }) {
-  const rows = [
-    { label: "Completed", value: completed, color: "bg-emerald-500" },
-    { label: "Pending", value: pending, color: "bg-amber-500" },
-    { label: "Cancelled", value: cancelled, color: "bg-slate-400" },
+  const data = [
+    { label: "Completed", value: completed, fill: CHART.green },
+    { label: "Pending", value: pending, fill: CHART.amber },
+    { label: "Cancelled", value: cancelled, fill: CHART.slate },
   ];
-  const max = Math.max(...rows.map((r) => r.value), 1);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <h3 className="text-sm font-semibold text-slate-900">Jobs scheduled today</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        {today} job{today === 1 ? "" : "s"} on the calendar for today.
-      </p>
-      <div className="mt-5 space-y-4">
-        {rows.map((row) => {
-          const widthPct = Math.max((row.value / max) * 100, row.value > 0 ? 8 : 0);
-          return (
-            <div key={row.label}>
-              <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="font-medium text-slate-600">{row.label}</span>
-                <span className="font-semibold text-slate-900">{row.value}</span>
-              </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={`h-full rounded-full ${row.color}`}
-                  style={{ width: `${widthPct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <ChartCard
+      title="Jobs scheduled today"
+      description={`${today} job${today === 1 ? "" : "s"} on the calendar for today.`}
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          layout="vertical"
+          data={data}
+          margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+          <XAxis type="number" allowDecimals={false} hide />
+          <YAxis
+            type="category"
+            dataKey="label"
+            width={78}
+            tick={{ fill: "#64748B", fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip
+            formatter={(value: number) => [value, "Jobs"]}
+            contentStyle={{
+              borderRadius: 12,
+              border: "1px solid #E2E8F0",
+            }}
+          />
+          <Bar dataKey="value" radius={[0, 8, 8, 0]} maxBarSize={22}>
+            {data.map((entry) => (
+              <Cell key={entry.label} fill={entry.fill} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
   );
 }
 
@@ -174,40 +234,48 @@ function MissedVsCapturedChart({
   missed: number;
   captureRate: number;
 }) {
-  const total = Math.max(captured + missed, 1);
-  const capturedPct = (captured / total) * 100;
-  const missedPct = (missed / total) * 100;
+  const data = [
+    { name: "Captured", value: captured, fill: CHART.green },
+    { name: "Missed", value: missed, fill: CHART.red },
+  ];
+  const total = captured + missed;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <h3 className="text-sm font-semibold text-slate-900">Missed vs captured</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        Capture rate {formatPercent(captureRate)} · {captured} captured · {missed}{" "}
-        missed
-      </p>
-      <div className="mt-5 flex h-4 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full bg-emerald-500"
-          style={{ width: `${capturedPct}%` }}
-          title={`Captured: ${captured}`}
-        />
-        <div
-          className="h-full bg-red-400"
-          style={{ width: `${missedPct}%` }}
-          title={`Missed: ${missed}`}
-        />
-      </div>
-      <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          Captured
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-          Missed
-        </span>
-      </div>
-    </div>
+    <ChartCard
+      title="Missed vs captured"
+      description={`Capture rate ${formatPercent(captureRate)} · ${captured} captured · ${missed} missed`}
+    >
+      {total === 0 ? (
+        <div className="flex h-full items-center justify-center text-sm text-slate-500">
+          No call volume in this period yet.
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={52}
+              outerRadius={78}
+              paddingAngle={3}
+              stroke="none"
+            >
+              {data.map((entry) => (
+                <Cell key={entry.name} fill={entry.fill} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value: number, name: string) => [value, name]}
+              contentStyle={{
+                borderRadius: 12,
+                border: "1px solid #E2E8F0",
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      )}
+    </ChartCard>
   );
 }
 
@@ -216,39 +284,58 @@ function LeadSourcesChart({
 }: {
   sources: DashboardAnalytics["lead_sources"];
 }) {
-  const rows = sources.length > 0 ? sources : [{ source: "Unknown", count: 0, percentage: 0 }];
-  const max = Math.max(...rows.map((r) => r.count), 1);
+  const data =
+    sources.length > 0
+      ? sources.map((s) => ({
+          source: s.source,
+          count: s.count,
+          percentage: s.percentage,
+        }))
+      : [{ source: "Unknown", count: 0, percentage: 0 }];
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <h3 className="text-sm font-semibold text-slate-900">Lead sources</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        Where calls are coming from (normalized labels).
-      </p>
-      <div className="mt-5 space-y-3">
-        {rows.map((row) => {
-          const widthPct = Math.max((row.count / max) * 100, row.count > 0 ? 8 : 0);
-          return (
-            <div key={row.source}>
-              <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                <span className="font-medium text-slate-700">{row.source}</span>
-                <span className="shrink-0 text-slate-500">
-                  {row.count} · {formatPercent(row.percentage)}
-                </span>
-              </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-foreman-navy"
-                  style={{ width: `${widthPct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <ChartCard
+      title="Lead sources"
+      description="Where calls are coming from (normalized labels)."
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          layout="vertical"
+          data={data}
+          margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+          <XAxis type="number" allowDecimals={false} hide />
+          <YAxis
+            type="category"
+            dataKey="source"
+            width={88}
+            tick={{ fill: "#64748B", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip
+            formatter={(value: number, _name, item) => [
+              `${value} (${formatPercent(Number(item?.payload?.percentage ?? 0))})`,
+              "Calls",
+            ]}
+            contentStyle={{
+              borderRadius: 12,
+              border: "1px solid #E2E8F0",
+            }}
+          />
+          <Bar
+            dataKey="count"
+            fill={CHART.carbon}
+            radius={[0, 8, 8, 0]}
+            maxBarSize={20}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
   );
 }
+
 
 function LiveBookingFeed({ jobs }: { jobs: JobListItem[] }) {
   return (
@@ -460,14 +547,14 @@ export function RevenueDashboardPanel() {
         </button>
       </div>
 
-      <div className="rounded-xl bg-foreman-navy px-5 py-6 text-white shadow-sm sm:px-8 sm:py-8">
-        <p className="text-xs font-semibold uppercase tracking-widest text-amber-400 sm:text-sm">
+      <div className="rounded-2xl bg-gradient-to-br from-foreman-navy via-foreman-slate to-foreman-navy px-5 py-6 text-white shadow-lg shadow-foreman-navy/20 sm:px-8 sm:py-8">
+        <p className="text-xs font-semibold uppercase tracking-widest text-foreman-accent sm:text-sm">
           Revenue Captured this month
         </p>
         <p className="mt-2 text-3xl font-bold tracking-tight sm:mt-3 sm:text-5xl">
           {formatCurrency(analytics.revenue.month)}
         </p>
-        <p className="mt-2 text-sm text-slate-300">{heroHint}</p>
+        <p className="mt-2 text-sm text-foreman-muted">{heroHint}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

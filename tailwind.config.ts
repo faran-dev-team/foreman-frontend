@@ -10,10 +10,17 @@ const config: Config = {
     extend: {
       colors: {
         foreman: {
-          navy: "#0f172a",
-          slate: "#1e293b",
-          accent: "#f59e0b",
+          // Aligned with landing carbon / amber system
+          navy: "#0A0F1C",
+          slate: "#141C30",
+          accent: "#F97A35",
+          green: "#1FAA59",
+          muted: "#B8BFCC",
         },
+      },
+      fontFamily: {
+        sans: ["var(--font-outfit)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
     },
   },

@@ -1,11 +1,13 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { DashboardMain } from "@/components/dashboard/dashboard-main";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { ForemanLogo } from "@/lib/brand";
 
 type DashboardShellProps = {
   children: React.ReactNode;
@@ -31,6 +33,48 @@ function MenuIcon({ open }: { open: boolean }) {
         />
       )}
     </svg>
+  );
+}
+
+function SidebarUserCard() {
+  const { user, isLoaded } = useUser();
+
+  const displayName =
+    user?.fullName ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+    user?.username ||
+    "Account";
+  const email =
+    user?.primaryEmailAddress?.emailAddress ||
+    user?.emailAddresses?.[0]?.emailAddress ||
+    null;
+
+  return (
+    <div className="flex items-center gap-3">
+      <UserButton
+        afterSignOutUrl="/sign-in"
+        appearance={{
+          elements: {
+            avatarBox: "h-9 w-9",
+          },
+        }}
+      />
+      <div className="min-w-0 flex-1">
+        {!isLoaded ? (
+          <div className="space-y-1.5">
+            <div className="h-3.5 w-24 animate-pulse rounded bg-white/10" />
+            <div className="h-3 w-32 animate-pulse rounded bg-white/10" />
+          </div>
+        ) : (
+          <>
+            <p className="truncate text-sm font-medium text-white">{displayName}</p>
+            {email ? (
+              <p className="truncate text-xs text-foreman-muted">{email}</p>
+            ) : null}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -69,44 +113,53 @@ export function DashboardShell({ children }: DashboardShellProps) {
   }, [mobileNavOpen, closeMobileNav]);
 
   return (
-    <div className="min-h-screen bg-slate-50 lg:flex">
+    <div className="h-dvh overflow-hidden bg-[#F4F6F9] font-sans">
       {mobileNavOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-foreman-navy/50 lg:hidden"
           aria-label="Close navigation menu"
           onClick={closeMobileNav}
         />
       )}
 
+      {/* Fixed viewport sidebar — never scrolls with page content */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 max-w-[85vw] flex-col border-r border-slate-200 bg-foreman-navy text-white transition-transform duration-200 ease-out lg:static lg:z-auto lg:max-w-none lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-dvh w-64 max-w-[85vw] flex-col border-r border-white/10 bg-foreman-navy text-white transition-transform duration-200 ease-out lg:max-w-none lg:translate-x-0 ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="border-b border-slate-700 px-5 py-4 sm:px-6 sm:py-5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-amber-400">
-            Foreman
-          </p>
-          <h1 className="mt-1 text-lg font-semibold">Owner Dashboard</h1>
+        <div className="shrink-0 border-b border-white/10 px-5 py-4 sm:px-6 sm:py-5">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 rounded-lg outline-none ring-foreman-accent focus-visible:ring-2"
+            onClick={closeMobileNav}
+          >
+            <ForemanLogo size={36} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-widest text-foreman-accent">
+                Foreman
+              </p>
+              <h1 className="truncate text-base font-semibold tracking-tight">
+                Owner Dashboard
+              </h1>
+            </div>
+          </Link>
         </div>
 
-        <DashboardNav onNavigate={closeMobileNav} />
+        {/* Nav scrolls internally if links exceed height */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <DashboardNav onNavigate={closeMobileNav} />
+        </div>
 
-        <div className="border-t border-slate-700 px-4 py-4">
-          <UserButton
-            afterSignOutUrl="/sign-in"
-            appearance={{
-              elements: {
-                avatarBox: "h-9 w-9",
-              },
-            }}
-          />
+        <div className="shrink-0 border-t border-white/10 px-4 py-4">
+          <SidebarUserCard />
         </div>
       </aside>
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-8 lg:py-4">
+      {/* Main column offset for fixed sidebar; only this region scrolls */}
+      <div className="flex h-dvh min-w-0 flex-col lg:pl-64">
+        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-md sm:px-6 lg:px-8 lg:py-4">
           <button
             type="button"
             className="inline-flex rounded-lg p-2 text-slate-700 transition hover:bg-slate-100 lg:hidden"
@@ -119,9 +172,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </span>
             <MenuIcon open={mobileNavOpen} />
           </button>
-          <p className="min-w-0 truncate text-sm text-slate-500">
-            Foreman Launch+ · Owner portal
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <ForemanLogo size={22} className="hidden sm:block" />
+            <p className="min-w-0 truncate text-sm text-slate-500">
+              Foreman Launch+ · Owner portal
+            </p>
+          </div>
         </header>
 
         <DashboardMain>{children}</DashboardMain>

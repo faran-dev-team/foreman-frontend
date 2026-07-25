@@ -23,7 +23,7 @@ export function DashboardNav({ onNavigate }: DashboardNavProps) {
   return (
     <nav
       id="dashboard-navigation"
-      className="flex-1 space-y-1 px-3 py-4"
+      className="space-y-1 px-3 py-4"
       aria-label="Dashboard"
     >
       {navItems.map((item) => {
@@ -37,8 +37,8 @@ export function DashboardNav({ onNavigate }: DashboardNavProps) {
             onClick={onNavigate}
             className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
               isActive
-                ? "bg-slate-800 text-white"
-                : "text-slate-200 hover:bg-slate-800 hover:text-white"
+                ? "bg-foreman-accent/15 text-white ring-1 ring-inset ring-foreman-accent/40"
+                : "text-foreman-muted hover:bg-white/5 hover:text-white"
             }`}
             aria-current={isActive ? "page" : undefined}
           >

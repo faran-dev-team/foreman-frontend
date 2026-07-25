@@ -45,6 +45,8 @@ import {
   DoodleSunburst,
 } from "./foreman-illustrations";
 
+import { ForemanLogo, brand } from "@/lib/brand";
+
 import "./foreman-landing.css";
 
 const CALENDLY_LINK = CALENDLY_PILOT_URL;
@@ -56,34 +58,35 @@ const NAV_SECTIONS = [
 ] as const;
 
 /* ------------------------------------------------------------------ */
-/*  Brand tokens                                                       */
+/*  Brand tokens (shared with owner dashboard via @/lib/brand)         */
 /* ------------------------------------------------------------------ */
 export const C = {
   navBg: "#8B96A6",
-  bgPrimary: "#0A0F1C",
-  bgCard: "#141C30",
-  accentOrange: "#F97A35",
-  accentGreenText: "#1FAA59",
-  accentGreenBg: "#163C2A",
-  textBody: "#B8BFCC",
+  bgPrimary: brand.carbon,
+  bgCard: brand.carbonElevated,
+  accentOrange: brand.orange,
+  accentGreenText: brand.green,
+  accentGreenBg: brand.greenBg,
+  textBody: brand.textMuted,
   textHeading: "#FFFFFF",
-  textEyebrow: "#F97A35",
-  borderPrimary: "rgba(255,255,255,0.08)",
-  footerBg: "#05080F",
+  textEyebrow: brand.orange,
+  borderPrimary: brand.border,
+  footerBg: brand.carbonDeep,
 };
 
 /* ------------------------------------------------------------------ */
 /*  Reusable: F-monogram logo                                          */
 /* ------------------------------------------------------------------ */
-export function Logo({ size = 40, bg = C.accentOrange, fg = C.bgPrimary }: { size?: number; bg?: string; fg?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden>
-      <rect width="100" height="100" rx="24" fill={bg} />
-      <rect x="30" y="26" width="16" height="52" rx="2.5" fill={fg} />
-      <rect x="30" y="26" width="44" height="16" rx="2.5" fill={fg} />
-      <rect x="30" y="49" width="32" height="14" rx="2.5" fill={fg} />
-    </svg>
-  );
+export function Logo({
+  size = 40,
+  bg = C.accentOrange,
+  fg = C.bgPrimary,
+}: {
+  size?: number;
+  bg?: string;
+  fg?: string;
+}) {
+  return <ForemanLogo size={size} bg={bg} fg={fg} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -111,7 +114,7 @@ export function Reveal({
       style={style}
       initial={{ opacity: 0, y }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.75, delay, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>
@@ -798,9 +801,21 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
             <MagneticButton href={CALENDLY_LINK} className="fm-btn fm-btn-primary">Book your free pilot</MagneticButton>
             <motion.a href="#how" className="fm-btn fm-btn-ghost" whileHover={reducedMotion ? {} : { scale: 1.04 }} whileTap={{ scale: 0.97 }}>See how it works</motion.a>
           </motion.div>
-          <motion.div className="fm-hero-trust" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}>
-            {["No monthly fee during pilot", "Pay only per booking", "Live in 24 hours"].map((t) => (
-              <span key={t}><Check /> {t}</span>
+          <motion.div
+            className="fm-hero-trust"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {["No monthly fee during pilot", "Pay only per booking", "Live in 24 hours"].map((t, i) => (
+              <motion.span
+                key={t}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.88 + i * 0.08, duration: 0.45 }}
+              >
+                <Check /> {t}
+              </motion.span>
             ))}
           </motion.div>
         </div>
