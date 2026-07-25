@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useState } from "react";
 
 import { AgentGreetingForm } from "@/components/settings/agent-greeting-form";
+import { AutomationSettingsForm } from "@/components/settings/automation-settings-form";
 import { BusinessHoursForm } from "@/components/settings/business-hours-form";
 import { ServiceAreaForm } from "@/components/settings/service-area-form";
 import { ServicesForm } from "@/components/settings/services-form";
@@ -115,6 +116,27 @@ export function ShopSettingsForms() {
       return;
     }
 
+    const { reviewAutomation, appointmentReminders, followUpAutomation } =
+      settings;
+    if (
+      reviewAutomation.reviewDelayMinutes < 0 ||
+      reviewAutomation.reviewDelayMinutes > 43200 ||
+      reviewAutomation.reviewMaxRetries < 0 ||
+      reviewAutomation.reviewMaxRetries > 20 ||
+      appointmentReminders.appointmentReminderMaxRetries < 0 ||
+      appointmentReminders.appointmentReminderMaxRetries > 20 ||
+      followUpAutomation.followUpDelayMinutes < 0 ||
+      followUpAutomation.followUpDelayMinutes > 43200 ||
+      followUpAutomation.followUpMaxRetries < 0 ||
+      followUpAutomation.followUpMaxRetries > 20
+    ) {
+      setSaveMessage({
+        type: "error",
+        text: "Automation delays must be 0–43200 minutes and retries 0–20.",
+      });
+      return;
+    }
+
     setSaving(true);
     setSaveMessage(null);
 
@@ -126,7 +148,7 @@ export function ShopSettingsForms() {
       setIsDirty(false);
       setSaveMessage({
         type: "success",
-        text: "Settings saved. Greeting, hours, services, and service area are now in the database.",
+        text: "Settings saved — including automation toggles for reviews, reminders, and follow-ups.",
       });
     } catch (error) {
       setSaveMessage({
@@ -197,6 +219,21 @@ export function ShopSettingsForms() {
       <ServiceAreaForm
         value={settings.serviceArea}
         onChange={(serviceArea) => updateSettings("serviceArea", serviceArea)}
+      />
+
+      <AutomationSettingsForm
+        reviewAutomation={settings.reviewAutomation}
+        appointmentReminders={settings.appointmentReminders}
+        followUpAutomation={settings.followUpAutomation}
+        onReviewChange={(reviewAutomation) =>
+          updateSettings("reviewAutomation", reviewAutomation)
+        }
+        onRemindersChange={(appointmentReminders) =>
+          updateSettings("appointmentReminders", appointmentReminders)
+        }
+        onFollowUpChange={(followUpAutomation) =>
+          updateSettings("followUpAutomation", followUpAutomation)
+        }
       />
 
       {saveMessage && (

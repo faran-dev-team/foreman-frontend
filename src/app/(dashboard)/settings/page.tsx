@@ -19,7 +19,8 @@ export default function SettingsPage() {
       <div>
         <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Settings</h2>
         <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Manage integrations and shop configuration for your Foreman agent.
+          Manage integrations, shop configuration, and automation for reviews,
+          reminders, and follow-ups.
         </p>
       </div>
 

@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import type { ShopSettingsForm } from "@/lib/settings/types";
+import { defaultShopSettings } from "@/lib/settings/defaults";
 import { DAYS_OF_WEEK } from "@/lib/settings/types";
 
 const DASHBOARD_BASE = "/api/v1/dashboard";
@@ -27,11 +28,32 @@ type ApiServiceArea = {
   center_zip: string;
 };
 
+type ApiReviewAutomation = {
+  google_review_url?: string | null;
+  review_automation_enabled?: boolean;
+  review_delay_minutes?: number;
+  review_max_retries?: number;
+};
+
+type ApiAppointmentReminders = {
+  appointment_reminder_enabled?: boolean;
+  appointment_reminder_max_retries?: number;
+};
+
+type ApiFollowUpAutomation = {
+  follow_up_automation_enabled?: boolean;
+  follow_up_delay_minutes?: number;
+  follow_up_max_retries?: number;
+};
+
 type ApiShopSettings = {
   greeting: string;
   business_hours: Record<string, ApiDayHours>;
   services: ApiServiceItem[];
   service_area: ApiServiceArea;
+  review_automation?: ApiReviewAutomation | null;
+  appointment_reminders?: ApiAppointmentReminders | null;
+  follow_up_automation?: ApiFollowUpAutomation | null;
 };
 
 export function mapApiToShopSettings(api: ApiShopSettings): ShopSettingsForm {
@@ -46,6 +68,10 @@ export function mapApiToShopSettings(api: ApiShopSettings): ShopSettingsForm {
       };
     }
   }
+
+  const review = api.review_automation;
+  const reminders = api.appointment_reminders;
+  const followUp = api.follow_up_automation;
 
   return {
     greeting: api.greeting,
@@ -63,6 +89,35 @@ export function mapApiToShopSettings(api: ApiShopSettings): ShopSettingsForm {
       zipCodes: api.service_area?.zip_codes || "",
       radiusMiles: api.service_area?.radius_miles ?? 25,
       centerZip: api.service_area?.center_zip || "",
+    },
+    reviewAutomation: {
+      googleReviewUrl: review?.google_review_url ?? "",
+      reviewAutomationEnabled: Boolean(review?.review_automation_enabled),
+      reviewDelayMinutes:
+        review?.review_delay_minutes ??
+        defaultShopSettings.reviewAutomation.reviewDelayMinutes,
+      reviewMaxRetries:
+        review?.review_max_retries ??
+        defaultShopSettings.reviewAutomation.reviewMaxRetries,
+    },
+    appointmentReminders: {
+      appointmentReminderEnabled: Boolean(
+        reminders?.appointment_reminder_enabled,
+      ),
+      appointmentReminderMaxRetries:
+        reminders?.appointment_reminder_max_retries ??
+        defaultShopSettings.appointmentReminders.appointmentReminderMaxRetries,
+    },
+    followUpAutomation: {
+      followUpAutomationEnabled: Boolean(
+        followUp?.follow_up_automation_enabled,
+      ),
+      followUpDelayMinutes:
+        followUp?.follow_up_delay_minutes ??
+        defaultShopSettings.followUpAutomation.followUpDelayMinutes,
+      followUpMaxRetries:
+        followUp?.follow_up_max_retries ??
+        defaultShopSettings.followUpAutomation.followUpMaxRetries,
     },
   };
 }
@@ -94,6 +149,25 @@ function mapShopSettingsToApi(settings: ShopSettingsForm): ApiShopSettings {
       zip_codes: settings.serviceArea.zipCodes,
       radius_miles: settings.serviceArea.radiusMiles,
       center_zip: settings.serviceArea.centerZip,
+    },
+    review_automation: {
+      google_review_url: settings.reviewAutomation.googleReviewUrl.trim() || null,
+      review_automation_enabled:
+        settings.reviewAutomation.reviewAutomationEnabled,
+      review_delay_minutes: settings.reviewAutomation.reviewDelayMinutes,
+      review_max_retries: settings.reviewAutomation.reviewMaxRetries,
+    },
+    appointment_reminders: {
+      appointment_reminder_enabled:
+        settings.appointmentReminders.appointmentReminderEnabled,
+      appointment_reminder_max_retries:
+        settings.appointmentReminders.appointmentReminderMaxRetries,
+    },
+    follow_up_automation: {
+      follow_up_automation_enabled:
+        settings.followUpAutomation.followUpAutomationEnabled,
+      follow_up_delay_minutes: settings.followUpAutomation.followUpDelayMinutes,
+      follow_up_max_retries: settings.followUpAutomation.followUpMaxRetries,
     },
   };
 }

@@ -52,6 +52,21 @@ export const defaultShopSettings: ShopSettingsForm = {
     radiusMiles: 25,
     centerZip: "90210",
   },
+  reviewAutomation: {
+    googleReviewUrl: "",
+    reviewAutomationEnabled: false,
+    reviewDelayMinutes: 60,
+    reviewMaxRetries: 3,
+  },
+  appointmentReminders: {
+    appointmentReminderEnabled: false,
+    appointmentReminderMaxRetries: 3,
+  },
+  followUpAutomation: {
+    followUpAutomationEnabled: false,
+    followUpDelayMinutes: 1440,
+    followUpMaxRetries: 3,
+  },
 };
 
 export function createEmptyService(): ServiceItem {

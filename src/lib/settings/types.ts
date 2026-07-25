@@ -36,9 +36,30 @@ export type ServiceArea = {
   centerZip: string;
 };
 
+export type ReviewAutomationSettings = {
+  googleReviewUrl: string;
+  reviewAutomationEnabled: boolean;
+  reviewDelayMinutes: number;
+  reviewMaxRetries: number;
+};
+
+export type AppointmentReminderSettings = {
+  appointmentReminderEnabled: boolean;
+  appointmentReminderMaxRetries: number;
+};
+
+export type FollowUpAutomationSettings = {
+  followUpAutomationEnabled: boolean;
+  followUpDelayMinutes: number;
+  followUpMaxRetries: number;
+};
+
 export type ShopSettingsForm = {
   greeting: string;
   businessHours: BusinessHours;
   services: ServiceItem[];
   serviceArea: ServiceArea;
+  reviewAutomation: ReviewAutomationSettings;
+  appointmentReminders: AppointmentReminderSettings;
+  followUpAutomation: FollowUpAutomationSettings;
 };
