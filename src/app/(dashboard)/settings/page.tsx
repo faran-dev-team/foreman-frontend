@@ -8,6 +8,7 @@ import {
 import { ShopSettingsForms } from "@/components/settings/shop-settings-forms";
 
 import { NotificationToggle } from "@/components/settings/notification-toggle";
+import { NotificationPreferenceToggle } from "@/components/settings/notification-preference-toggle";
 
 export const metadata: Metadata = {
   title: "Settings | Foreman",
@@ -23,6 +24,8 @@ export default function SettingsPage() {
           reminders, and follow-ups.
         </p>
       </div>
+
+      <NotificationPreferenceToggle />
 
       <NotificationToggle />
 

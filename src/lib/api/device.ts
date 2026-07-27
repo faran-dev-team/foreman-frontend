@@ -1,4 +1,7 @@
-import { apiFetch } from "@/lib/api/client";
+import {
+  registerNotificationDeviceToken,
+  unregisterNotificationDeviceToken,
+} from "@/lib/api/notifications";
 
 export interface RegisterDeviceResponse {
   success: boolean;
@@ -6,15 +9,25 @@ export interface RegisterDeviceResponse {
 }
 
 /**
- * Registers an FCM push notification device token for the current authenticated user.
+ * Registers an FCM device token via POST /api/v1/notifications/device-token.
  */
 export async function registerDeviceToken(
   token: string,
   clerkToken?: string | null,
 ): Promise<RegisterDeviceResponse> {
-  return apiFetch<RegisterDeviceResponse>("/api/v1/dashboard/register-device", {
-    method: "POST",
-    body: JSON.stringify({ token }),
-    token: clerkToken,
-  });
+  await registerNotificationDeviceToken(token, clerkToken, "web");
+  return {
+    success: true,
+    message: "Device token registered.",
+  };
+}
+
+/**
+ * Unregisters an FCM device token via DELETE /api/v1/notifications/device-token.
+ */
+export async function unregisterDeviceToken(
+  token: string,
+  clerkToken?: string | null,
+): Promise<void> {
+  await unregisterNotificationDeviceToken(token, clerkToken);
 }
