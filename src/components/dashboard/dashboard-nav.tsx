@@ -8,6 +8,7 @@ const navItems = [
   { href: "/calls", label: "Calls" },
   { href: "/live-transcript", label: "Live Transcript" },
   { href: "/jobs", label: "Jobs" },
+  { href: "/reports", label: "Reports" },
   { href: "/reviews", label: "Reviews" },
   { href: "/reminders", label: "Reminders" },
   { href: "/follow-ups", label: "Follow-ups" },
