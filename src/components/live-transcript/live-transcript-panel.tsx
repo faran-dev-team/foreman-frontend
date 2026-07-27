@@ -193,6 +193,7 @@ export function LiveTranscriptPanel() {
   }, [
     getToken,
     loadActiveCalls,
+    monitor,
     monitor?.call.call_id,
     monitor?.pollIntervalMs,
     monitor?.sessionId,
