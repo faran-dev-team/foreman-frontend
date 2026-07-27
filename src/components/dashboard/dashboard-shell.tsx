@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { DashboardMain } from "@/components/dashboard/dashboard-main";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ForemanLogo } from "@/lib/brand";
 
 type DashboardShellProps = {
@@ -172,12 +173,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </span>
             <MenuIcon open={mobileNavOpen} />
           </button>
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <ForemanLogo size={22} className="hidden sm:block" />
             <p className="min-w-0 truncate text-sm text-slate-500">
               Foreman Launch+ · Owner portal
             </p>
           </div>
+          <NotificationBell />
         </header>
 
         <DashboardMain>{children}</DashboardMain>

@@ -3,7 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { getToken, deleteToken, onMessage, MessagePayload } from "firebase/messaging";
 import { getMessagingInstance } from "@/lib/firebase";
-import { registerDeviceToken } from "@/lib/api/device";
+import {
+  registerDeviceToken,
+  unregisterDeviceToken,
+} from "@/lib/api/device";
 import { useAuth } from "@clerk/nextjs";
 
 export interface FCMNotificationPayload {
@@ -118,6 +121,17 @@ export function useFCM() {
   const unsubscribe = useCallback(async () => {
     try {
       setIsRegistering(true);
+      const tokenToRemove = fcmToken;
+
+      if (tokenToRemove && isSignedIn) {
+        try {
+          const clerkToken = await getClerkToken();
+          await unregisterDeviceToken(tokenToRemove, clerkToken);
+        } catch (apiErr) {
+          console.error("[useFCM] Error unregistering token with backend:", apiErr);
+        }
+      }
+
       const messaging = await getMessagingInstance();
       if (messaging) {
         await deleteToken(messaging);
@@ -131,7 +145,7 @@ export function useFCM() {
       setIsRegistering(false);
       return false;
     }
-  }, []);
+  }, [fcmToken, getClerkToken, isSignedIn]);
 
   // Listen for foreground notifications
   useEffect(() => {
