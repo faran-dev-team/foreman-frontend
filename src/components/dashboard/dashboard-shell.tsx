@@ -1,6 +1,6 @@
 "use client";
 
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -38,7 +38,9 @@ function MenuIcon({ open }: { open: boolean }) {
 }
 
 function SidebarUserCard() {
+  const { signOut } = useClerk();
   const { user, isLoaded } = useUser();
+  const [signingOut, setSigningOut] = useState(false);
 
   const displayName =
     user?.fullName ||
@@ -49,17 +51,23 @@ function SidebarUserCard() {
     user?.primaryEmailAddress?.emailAddress ||
     user?.emailAddresses?.[0]?.emailAddress ||
     null;
+  const initials =
+    (user?.firstName?.[0] || user?.fullName?.[0] || user?.username?.[0] || "A").toUpperCase();
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut({ redirectUrl: "/sign-in" });
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <div className="flex items-center gap-3">
-      <UserButton
-        afterSignOutUrl="/sign-in"
-        appearance={{
-          elements: {
-            avatarBox: "h-9 w-9",
-          },
-        }}
-      />
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
+        {initials}
+      </div>
       <div className="min-w-0 flex-1">
         {!isLoaded ? (
           <div className="space-y-1.5">
@@ -75,6 +83,14 @@ function SidebarUserCard() {
           </>
         )}
       </div>
+      <button
+        type="button"
+        onClick={() => void handleSignOut()}
+        disabled={signingOut}
+        className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-foreman-muted transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {signingOut ? "Signing out..." : "Sign out"}
+      </button>
     </div>
   );
 }
@@ -149,7 +165,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </div>
 
         {/* Nav scrolls internally if links exceed height */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:overflow-y-visible">
           <DashboardNav onNavigate={closeMobileNav} />
         </div>
 
