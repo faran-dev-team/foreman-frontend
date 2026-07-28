@@ -44,6 +44,8 @@ const STEPS = [
   { id: 5, title: "Calendar", description: "Connect Google Calendar" },
 ] as const;
 
+type StepId = (typeof STEPS)[number]["id"];
+
 function OnboardingSkeleton() {
   return (
     <div className="space-y-4">
@@ -148,6 +150,17 @@ export function OnboardingWizardPanel() {
       { label: "Calendar", done: status.is_calendar_connected },
     ];
   }, [status]);
+
+  const stepDoneMap = useMemo<Record<StepId, boolean>>(
+    () => ({
+      1: status?.is_business_info_set ?? false,
+      2: status?.is_hours_set ?? false,
+      3: status?.is_service_area_set ?? false,
+      4: status?.is_services_set ?? false,
+      5: status?.is_calendar_connected ?? false,
+    }),
+    [status],
+  );
 
   const saveStep = async () => {
     if (!shopId) return;
@@ -326,29 +339,40 @@ export function OnboardingWizardPanel() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {STEPS.map((step) => (
+        {STEPS.map((step) => {
+          const isActive = activeStep === step.id;
+          const isDone = stepDoneMap[step.id];
+          return (
           <button
             key={step.id}
             type="button"
             onClick={() => setActiveStep(step.id)}
             className={`shrink-0 rounded-lg px-3 py-2 text-left text-sm transition ${
-              activeStep === step.id
+              isActive
                 ? "bg-foreman-navy text-white"
-                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : isDone
+                  ? "border border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
             <span className="block font-semibold">
+              {isDone ? "✓ " : ""}
               {step.id}. {step.title}
             </span>
             <span
               className={`mt-0.5 block text-xs ${
-                activeStep === step.id ? "text-white/80" : "text-slate-500"
+                isActive
+                  ? "text-white/80"
+                  : isDone
+                    ? "text-emerald-700"
+                    : "text-slate-500"
               }`}
             >
               {step.description}
             </span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {errorMessage ? (
@@ -386,6 +410,9 @@ export function OnboardingWizardPanel() {
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+1..."
                 />
+                <p className="mt-1 text-xs text-slate-500">
+                  Required to complete onboarding and support callbacks.
+                </p>
               </div>
               <div>
                 <label className={labelClassName} htmlFor="ob-timezone">
