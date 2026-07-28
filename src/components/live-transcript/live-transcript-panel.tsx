@@ -81,6 +81,7 @@ export function LiveTranscriptPanel() {
   const [takeOverResult, setTakeOverResult] =
     useState<LiveListenTakeOverResponse | null>(null);
 
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
   const monitorRef = useRef<MonitorState | null>(null);
 
@@ -202,7 +203,9 @@ export function LiveTranscriptPanel() {
   ]);
 
   useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const box = transcriptScrollRef.current;
+    if (!box) return;
+    box.scrollTop = box.scrollHeight;
   }, [monitor?.transcript]);
 
   const handleStart = async (call: ActiveLiveCallItem) => {
@@ -375,34 +378,47 @@ export function LiveTranscriptPanel() {
         ) : null}
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Monitoring
               </p>
-              <h3 className="mt-1 text-lg font-bold text-slate-900">
+              <h3 className="mt-1 truncate text-lg font-bold text-slate-900">
                 {monitor.call.caller_name?.trim() || "Unknown caller"}
               </h3>
-              <p className="mt-0.5 text-sm text-slate-600">
-                {monitor.call.caller_phone} · Call status:{" "}
-                <span className="font-medium text-slate-800">
-                  {monitor.callStatus}
-                </span>
-                {" · "}
-                Session:{" "}
-                <span className="font-medium text-slate-800">
-                  {monitor.sessionStatus}
-                </span>
-              </p>
+              <dl className="mt-2 grid gap-1 text-sm text-slate-600 sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-slate-400">
+                    Phone
+                  </dt>
+                  <dd className="break-all font-medium text-slate-800">
+                    {monitor.call.caller_phone}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-slate-400">
+                    Call status
+                  </dt>
+                  <dd className="font-medium text-slate-800">{monitor.callStatus}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-slate-400">
+                    Session
+                  </dt>
+                  <dd className="font-medium text-slate-800">
+                    {monitor.sessionStatus}
+                  </dd>
+                </div>
+              </dl>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
               {isListening ? (
                 <>
                   <button
                     type="button"
                     onClick={() => void handleStop()}
                     disabled={stopping || takingOver}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
                   >
                     {stopping ? "Stopping…" : "Stop monitoring"}
                   </button>
@@ -411,7 +427,7 @@ export function LiveTranscriptPanel() {
                       type="button"
                       onClick={() => void handleTakeOver()}
                       disabled={takingOver || stopping}
-                      className="rounded-lg bg-foreman-accent px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+                      className="w-full rounded-lg bg-foreman-accent px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 sm:w-auto"
                     >
                       {takingOver ? "Taking over…" : "Take over"}
                     </button>
@@ -421,7 +437,7 @@ export function LiveTranscriptPanel() {
                 <button
                   type="button"
                   onClick={leaveMonitor}
-                  className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                  className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 sm:w-auto"
                 >
                   Back to active calls
                 </button>
@@ -429,9 +445,12 @@ export function LiveTranscriptPanel() {
             </div>
           </div>
 
-          <div className="mt-4 max-h-[32rem] overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/80 p-4">
+          <div
+            ref={transcriptScrollRef}
+            className="mt-4 max-h-[32rem] overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/80 p-4"
+          >
             {monitor.transcript.trim() ? (
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800">
+              <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-slate-800">
                 {monitor.transcript}
               </pre>
             ) : (
@@ -542,7 +561,7 @@ export function LiveTranscriptPanel() {
                   type="button"
                   onClick={() => void handleStart(call)}
                   disabled={startingCallId === call.call_id}
-                  className="shrink-0 rounded-lg bg-foreman-accent px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+                  className="w-full shrink-0 rounded-lg bg-foreman-accent px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 sm:w-auto"
                 >
                   {startingCallId === call.call_id
                     ? "Starting…"

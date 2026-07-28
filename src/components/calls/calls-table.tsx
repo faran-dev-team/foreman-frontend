@@ -263,75 +263,116 @@ export function CallsTable() {
       )}
 
       {viewState === "ready" && calls.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Time</th>
-                <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Caller</th>
-                <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Intent</th>
-                <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Outcome</th>
-                <th className="px-3 py-2.5 font-semibold text-slate-600 text-right sm:px-6 sm:py-3">
-                  Est. value
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {calls.map((call) => {
-                const caller = formatCaller(call);
-                return (
-                  <tr
-                    key={call.id}
-                    className="transition hover:bg-slate-50/80"
+        <>
+          {/* Mobile card list */}
+          <ul className="space-y-3 sm:hidden">
+            {calls.map((call) => {
+              const caller = formatCaller(call);
+              return (
+                <li key={call.id}>
+                  <Link
+                    href={`/calls/${call.id}`}
+                    className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-foreman-accent/40"
                   >
-                    <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
-                      <Link
-                        href={`/calls/${call.id}`}
-                        className="block hover:text-foreman-navy hover:underline"
-                      >
-                        {formatCallTime(call.started_at)}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <Link href={`/calls/${call.id}`} className="block">
-                        <div className="font-medium text-slate-900 hover:text-foreman-navy">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">
                           {caller.primary}
-                        </div>
-                        {caller.secondary && (
-                          <div className="text-xs text-slate-500">
+                        </p>
+                        {caller.secondary ? (
+                          <p className="truncate text-xs text-slate-500">
                             {caller.secondary}
-                          </div>
-                        )}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <Link href={`/calls/${call.id}`} className="block">
-                        <IntentBadge intent={call.intent} />
-                      </Link>
-                    </td>
-                    <td className="px-3 py-3 sm:px-6 sm:py-4">
-                      <Link href={`/calls/${call.id}`} className="block">
-                        <OutcomeBadge outcome={call.outcome} />
-                      </Link>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
-                      <Link
-                        href={`/calls/${call.id}`}
-                        className="block hover:text-foreman-navy hover:underline"
-                      >
+                          </p>
+                        ) : null}
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatCallTime(call.started_at)}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold text-slate-900">
                         {formatCurrency(call.est_value_usd)}
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400 sm:px-6">
-            Click a call to open details, recording, intake, and transcript.
-            Intent and value fill in when intake is saved or a job is booked.
-          </p>
-        </div>
+                      </p>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <IntentBadge intent={call.intent} />
+                      <OutcomeBadge outcome={call.outcome} />
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Desktop / tablet table */}
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm sm:block">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Time</th>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Caller</th>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Intent</th>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Outcome</th>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 text-right sm:px-6 sm:py-3">
+                    Est. value
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {calls.map((call) => {
+                  const caller = formatCaller(call);
+                  return (
+                    <tr
+                      key={call.id}
+                      className="transition hover:bg-slate-50/80"
+                    >
+                      <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
+                        <Link
+                          href={`/calls/${call.id}`}
+                          className="block hover:text-foreman-navy hover:underline"
+                        >
+                          {formatCallTime(call.started_at)}
+                        </Link>
+                      </td>
+                      <td className="min-w-0 px-3 py-3 sm:px-6 sm:py-4">
+                        <Link href={`/calls/${call.id}`} className="block min-w-0">
+                          <div className="truncate font-medium text-slate-900 hover:text-foreman-navy">
+                            {caller.primary}
+                          </div>
+                          {caller.secondary && (
+                            <div className="truncate text-xs text-slate-500">
+                              {caller.secondary}
+                            </div>
+                          )}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4">
+                        <Link href={`/calls/${call.id}`} className="block">
+                          <IntentBadge intent={call.intent} />
+                        </Link>
+                      </td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4">
+                        <Link href={`/calls/${call.id}`} className="block">
+                          <OutcomeBadge outcome={call.outcome} />
+                        </Link>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
+                        <Link
+                          href={`/calls/${call.id}`}
+                          className="block hover:text-foreman-navy hover:underline"
+                        >
+                          {formatCurrency(call.est_value_usd)}
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400 sm:px-6">
+              Click a call to open details, recording, intake, and transcript.
+              Intent and value fill in when intake is saved or a job is booked.
+            </p>
+          </div>
+        </>
       )}
     </div>
   );

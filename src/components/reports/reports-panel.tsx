@@ -226,15 +226,15 @@ export function ReportsPanel() {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Report controls
             </p>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 break-words text-sm text-slate-600">
               {report.metadata.shop_name} · {report.metadata.timezone}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 break-words text-xs text-slate-500">
               Range: {dateRangeLabel} · Generated {formatWhen(report.metadata.generated_at)}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2">
             <label className="text-xs text-slate-600">
               Type
               <select
@@ -271,11 +271,11 @@ export function ReportsPanel() {
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <button
             type="button"
             onClick={() => void loadReport()}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
           >
             <Download className="h-4 w-4" />
             Refresh report
@@ -284,7 +284,7 @@ export function ReportsPanel() {
             type="button"
             onClick={() => void handleExport("csv")}
             disabled={exporting !== null}
-            className="inline-flex items-center gap-1 rounded-lg bg-foreman-accent px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-foreman-accent px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60 sm:w-auto"
           >
             {exporting === "csv" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -297,7 +297,7 @@ export function ReportsPanel() {
             type="button"
             onClick={() => void handleExport("pdf")}
             disabled={exporting !== null}
-            className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
           >
             {exporting === "pdf" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -363,10 +363,12 @@ export function ReportsPanel() {
               {report.lead_sources.map((lead) => (
                 <li
                   key={lead.source}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
                 >
-                  <span className="font-medium text-slate-800">{lead.source}</span>
-                  <span className="text-slate-600">
+                  <span className="min-w-0 truncate font-medium text-slate-800">
+                    {lead.source}
+                  </span>
+                  <span className="shrink-0 text-slate-600">
                     {lead.count} ({formatPercent(lead.percentage)})
                   </span>
                 </li>
