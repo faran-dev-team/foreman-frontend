@@ -236,63 +236,104 @@ export function JobsPanel() {
         )}
 
         {viewState === "ready" && jobs.length > 0 && (
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
-                    Scheduled
-                  </th>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
-                    Customer
-                  </th>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
-                    Service
-                  </th>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
-                    Status
-                  </th>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 text-right sm:px-6 sm:py-3">
-                    Est. value
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {jobs.map((job) => {
-                  const customer = formatCustomer(job);
-                  return (
-                    <tr
-                      key={job.id}
-                      className="transition hover:bg-slate-50/80"
-                    >
-                      <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
-                        {formatScheduledTime(job.scheduled_at)}
-                      </td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4">
-                        <div className="font-medium text-slate-900">
+          <>
+            <ul className="space-y-3 sm:hidden">
+              {jobs.map((job) => {
+                const customer = formatCustomer(job);
+                return (
+                  <li
+                    key={job.id}
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">
                           {customer.primary}
-                        </div>
-                        {customer.secondary && (
-                          <div className="text-xs text-slate-500">
+                        </p>
+                        {customer.secondary ? (
+                          <p className="truncate text-xs text-slate-500">
                             {customer.secondary}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
-                        {formatServiceLabel(job.service)}
-                      </td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4">
-                        <JobStatusBadge status={job.status} />
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
+                          </p>
+                        ) : null}
+                        <p className="mt-1 truncate text-sm text-slate-700">
+                          {formatServiceLabel(job.service)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatScheduledTime(job.scheduled_at)}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold text-slate-900">
                         {formatCurrency(job.est_value_usd)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </p>
+                    </div>
+                    <div className="mt-3">
+                      <JobStatusBadge status={job.status} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm sm:block">
+              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
+                      Scheduled
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
+                      Customer
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
+                      Service
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
+                      Status
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold text-slate-600 text-right sm:px-6 sm:py-3">
+                      Est. value
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {jobs.map((job) => {
+                    const customer = formatCustomer(job);
+                    return (
+                      <tr
+                        key={job.id}
+                        className="transition hover:bg-slate-50/80"
+                      >
+                        <td className="whitespace-nowrap px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
+                          {formatScheduledTime(job.scheduled_at)}
+                        </td>
+                        <td className="min-w-0 px-3 py-3 sm:px-6 sm:py-4">
+                          <div className="truncate font-medium text-slate-900">
+                            {customer.primary}
+                          </div>
+                          {customer.secondary && (
+                            <div className="truncate text-xs text-slate-500">
+                              {customer.secondary}
+                            </div>
+                          )}
+                        </td>
+                        <td className="min-w-0 px-3 py-3 text-slate-900 sm:px-6 sm:py-4">
+                          <span className="line-clamp-2">
+                            {formatServiceLabel(job.service)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
+                          <JobStatusBadge status={job.status} />
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900 sm:px-6 sm:py-4">
+                          {formatCurrency(job.est_value_usd)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

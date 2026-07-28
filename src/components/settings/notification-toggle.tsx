@@ -21,7 +21,7 @@ export function NotificationToggle() {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md sm:p-7">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:shadow-md sm:p-6">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         {/* Left Side: Icon & Title */}
         <div className="flex items-start gap-4">

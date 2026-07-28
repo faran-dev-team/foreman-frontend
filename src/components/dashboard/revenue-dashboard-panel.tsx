@@ -202,8 +202,8 @@ function JobsTodayChart({
           <YAxis
             type="category"
             dataKey="label"
-            width={78}
-            tick={{ fill: "#64748B", fontSize: 12 }}
+            width={64}
+            tick={{ fill: "#64748B", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
           />
@@ -256,8 +256,8 @@ function MissedVsCapturedChart({
               data={data}
               dataKey="value"
               nameKey="name"
-              innerRadius={52}
-              outerRadius={78}
+              innerRadius={40}
+              outerRadius={68}
               paddingAngle={3}
               stroke="none"
             >
@@ -309,7 +309,7 @@ function LeadSourcesChart({
           <YAxis
             type="category"
             dataKey="source"
-            width={88}
+            width={72}
             tick={{ fill: "#64748B", fontSize: 11 }}
             axisLine={false}
             tickLine={false}

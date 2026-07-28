@@ -64,11 +64,11 @@ function CallDetailSkeleton() {
 
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {label}
       </dt>
-      <dd className="mt-1 text-sm text-slate-900">{value}</dd>
+      <dd className="mt-1 break-words text-sm text-slate-900">{value}</dd>
     </div>
   );
 }
@@ -211,7 +211,11 @@ export function CallDetailPanel({ callId }: CallDetailPanelProps) {
       </div>
 
       <SettingsSection
-        title={displayName}
+        title={
+          displayName.length > 48
+            ? `${displayName.slice(0, 45)}…`
+            : displayName
+        }
         description="Call overview — who called, when, and how long."
       >
         <dl className="grid gap-4 sm:grid-cols-2">

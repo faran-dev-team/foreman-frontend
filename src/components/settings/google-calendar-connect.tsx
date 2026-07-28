@@ -258,15 +258,15 @@ export function GoogleCalendarConnect() {
           {isConnected ? (
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               {status.email && (
-                <div>
+                <div className="min-w-0">
                   <dt className="font-medium text-slate-500">Google account</dt>
-                  <dd className="text-slate-900">{status.email}</dd>
+                  <dd className="break-all text-slate-900">{status.email}</dd>
                 </div>
               )}
               {status.calendar_id && (
-                <div>
+                <div className="min-w-0">
                   <dt className="font-medium text-slate-500">Calendar</dt>
-                  <dd className="text-slate-900">{status.calendar_id}</dd>
+                  <dd className="break-all text-slate-900">{status.calendar_id}</dd>
                 </div>
               )}
             </dl>
