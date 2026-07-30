@@ -1,18 +1,11 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
-import { useCallback, useEffect, useState } from "react";
-
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
-import { useShop } from "@/components/dashboard/shop-provider";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import { RevenueCapturedCard } from "@/components/jobs/revenue-captured-card";
-import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
+import { useJobsListQuery } from "@/hooks/use-dashboard-queries";
 import { ApiError } from "@/lib/api/client";
-import { fetchJobs } from "@/lib/api/jobs";
 import type { JobListItem } from "@/lib/api/types";
-
-type ViewState = "loading" | "ready" | "error";
 
 function formatScheduledTime(iso?: string | null): string {
   if (!iso) {
@@ -72,6 +65,15 @@ function formatCustomer(job: JobListItem): { primary: string; secondary?: string
   return { primary: "Unknown customer" };
 }
 
+function formatUpdatedAt(ms: number | undefined): string | null {
+  if (!ms) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(ms));
+}
+
 function JobsTableSkeleton() {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -94,82 +96,26 @@ function JobsTableSkeleton() {
   );
 }
 
+function resolveErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof TypeError) {
+    return "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?";
+  }
+  return "Failed to load jobs.";
+}
+
 export function JobsPanel() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading } = useShop();
+  const jobsQuery = useJobsListQuery({ poll: true });
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
-  const [jobs, setJobs] = useState<JobListItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [revenueCaptured, setRevenueCaptured] = useState<number>(0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const jobs = jobsQuery.data?.jobs ?? [];
+  const total = jobsQuery.data?.total ?? jobs.length;
+  const revenueCaptured = jobsQuery.data?.revenue_captured_usd ?? 0;
 
-  const loadJobs = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
+  const showInitialSkeleton = jobsQuery.isPending && !jobsQuery.data;
+  const isRefreshing = jobsQuery.isFetching && !jobsQuery.isPending;
+  const lastUpdatedLabel = formatUpdatedAt(jobsQuery.dataUpdatedAt);
 
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to load jobs.");
-      return;
-    }
-
-    if (!shopId) {
-      if (shopLoading) {
-        setViewState("loading");
-        return;
-      }
-      setViewState("error");
-      setErrorMessage(
-        "No shop resolved for this account. Confirm Clerk sign-in and backend DEFAULT_SHOP_ID.",
-      );
-      return;
-    }
-
-    setViewState("loading");
-    setErrorMessage(null);
-
-    try {
-      const response = await withClerkAuthRetry(getToken, (token) =>
-        fetchJobs(shopId, token),
-      );
-      const nextJobs = response.jobs ?? [];
-      setJobs(nextJobs);
-      setTotal(response.total ?? nextJobs.length);
-      setRevenueCaptured(response.revenue_captured_usd ?? 0);
-      setLastUpdatedAt(new Date());
-      setViewState("ready");
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        setJobs([]);
-        setTotal(0);
-        setRevenueCaptured(0);
-        setLastUpdatedAt(new Date());
-        setViewState("ready");
-        return;
-      }
-
-      setViewState("error");
-      if (error instanceof ApiError) {
-        setErrorMessage(error.message);
-      } else if (error instanceof TypeError) {
-        setErrorMessage(
-          "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
-        );
-      } else {
-        setErrorMessage("Failed to load jobs.");
-      }
-    }
-  }, [getToken, shopId, shopLoading, isLoaded, isSignedIn]);
-
-  useEffect(() => {
-    void loadJobs();
-  }, [loadJobs]);
-
-  if ((!isLoaded || (!shopId && shopLoading)) && viewState === "loading") {
+  if (showInitialSkeleton) {
     return (
       <div className="space-y-6">
         <RevenueCapturedCard loading />
@@ -178,64 +124,59 @@ export function JobsPanel() {
     );
   }
 
+  if (jobsQuery.isError && !jobsQuery.data) {
+    return (
+      <div className="space-y-6">
+        <RevenueCapturedCard amount={0} jobCount={0} />
+        <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
+          <p className="text-sm font-medium text-red-800">Unable to load jobs</p>
+          <p className="mt-1 text-sm text-red-700">
+            {resolveErrorMessage(jobsQuery.error)}
+          </p>
+          <button
+            type="button"
+            onClick={() => void jobsQuery.refetch()}
+            className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <RevenueCapturedCard
-        amount={revenueCaptured}
-        jobCount={total}
-        loading={viewState === "loading"}
-      />
+      <RevenueCapturedCard amount={revenueCaptured} jobCount={total} />
 
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <p className="text-sm text-slate-500">
-              {viewState === "ready"
-                ? `${total} job${total === 1 ? "" : "s"} booked`
-                : "Booked jobs"}
+              {total} job{total === 1 ? "" : "s"} booked · auto-refresh every 15s
             </p>
-            {lastUpdatedAt && viewState === "ready" && (
-              <p className="text-xs text-slate-400">
-                Updated{" "}
-                {new Intl.DateTimeFormat(undefined, {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  second: "2-digit",
-                }).format(lastUpdatedAt)}
-              </p>
-            )}
+            {lastUpdatedLabel ? (
+              <p className="text-xs text-slate-400">Updated {lastUpdatedLabel}</p>
+            ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => void loadJobs()}
-            disabled={viewState === "loading"}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Refresh
-          </button>
-        </div>
-
-        {viewState === "loading" && <JobsTableSkeleton />}
-
-        {viewState === "error" && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
-            <p className="text-sm font-medium text-red-800">Unable to load jobs</p>
-            <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+          <div className="flex items-center gap-2">
+            {isRefreshing ? (
+              <span className="text-xs text-slate-400">Refreshing…</span>
+            ) : null}
             <button
               type="button"
-              onClick={() => void loadJobs()}
-              className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
+              onClick={() => void jobsQuery.refetch()}
+              disabled={jobsQuery.isFetching}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Retry
+              Refresh
             </button>
           </div>
-        )}
+        </div>
 
-        {viewState === "ready" && jobs.length === 0 && (
-          <DashboardGettingStarted variant="jobs" />
-        )}
+        {jobs.length === 0 && <DashboardGettingStarted variant="jobs" />}
 
-        {viewState === "ready" && jobs.length > 0 && (
+        {jobs.length > 0 && (
           <>
             <ul className="space-y-3 sm:hidden">
               {jobs.map((job) => {

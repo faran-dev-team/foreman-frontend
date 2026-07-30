@@ -1,8 +1,7 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -16,19 +15,15 @@ import {
   YAxis,
 } from "recharts";
 
-import { useShop } from "@/components/dashboard/shop-provider";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import {
-  fetchDashboardAnalytics,
-  type DashboardAnalytics,
-} from "@/lib/api/analytics";
+  useDashboardAnalyticsQuery,
+  useJobsListQuery,
+} from "@/hooks/use-dashboard-queries";
 import { ApiError } from "@/lib/api/client";
-import { fetchJobs } from "@/lib/api/jobs";
+import type { DashboardAnalytics } from "@/lib/api/analytics";
 import type { JobListItem } from "@/lib/api/types";
-import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 import { brand } from "@/lib/brand";
-
-type ViewState = "loading" | "ready" | "error";
 
 const CHART = {
   orange: brand.orange,
@@ -71,6 +66,15 @@ function formatJobTime(iso?: string | null): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function formatUpdatedAt(ms: number | undefined): string | null {
+  if (!ms) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(ms));
 }
 
 function KpiCard({
@@ -336,8 +340,13 @@ function LeadSourcesChart({
   );
 }
 
-
-function LiveBookingFeed({ jobs }: { jobs: JobListItem[] }) {
+function LiveBookingFeed({
+  jobs,
+  loading,
+}: {
+  jobs: JobListItem[];
+  loading?: boolean;
+}) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -346,7 +355,7 @@ function LiveBookingFeed({ jobs }: { jobs: JobListItem[] }) {
             Live booking feed
           </h3>
           <p className="mt-1 text-xs text-slate-500">
-            Recent jobs booked for this shop.
+            Recent jobs booked for this shop · refreshes every 15s
           </p>
         </div>
         <Link
@@ -357,7 +366,13 @@ function LiveBookingFeed({ jobs }: { jobs: JobListItem[] }) {
         </Link>
       </div>
 
-      {jobs.length === 0 ? (
+      {loading && jobs.length === 0 ? (
+        <div className="mt-4 space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+          ))}
+        </div>
+      ) : jobs.length === 0 ? (
         <p className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
           No booked jobs yet. When the voice agent books an appointment, it will
           show up here.
@@ -415,78 +430,29 @@ function DashboardSkeleton() {
   );
 }
 
+function resolveErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof TypeError) {
+    return "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?";
+  }
+  return "Failed to load revenue analytics.";
+}
+
 export function RevenueDashboardPanel() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading, resolvingMe } = useShop();
+  const analyticsQuery = useDashboardAnalyticsQuery();
+  const jobsQuery = useJobsListQuery({ poll: true });
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
-  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [recentJobs, setRecentJobs] = useState<JobListItem[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const analytics = analyticsQuery.data;
+  const recentJobs = jobsQuery.data?.jobs ?? [];
 
-  const loadDashboard = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to view revenue analytics.");
-      return;
-    }
-    // Wait for /dashboard/me so shop membership is ready — avoids a 403 flash
-    // when analytics fires with env shopId before Clerk→shop mapping settles.
-    if (resolvingMe || shopLoading) {
-      setViewState("loading");
-      return;
-    }
-    if (!shopId) {
-      setViewState("error");
-      setErrorMessage("No shop resolved for this account.");
-      return;
-    }
+  const showInitialSkeleton =
+    analyticsQuery.isPending && !analyticsQuery.data;
 
-    setViewState("loading");
-    setErrorMessage(null);
+  const isRefreshing = analyticsQuery.isFetching || jobsQuery.isFetching;
 
-    try {
-      const data = await withClerkAuthRetry(getToken, (token) =>
-        fetchDashboardAnalytics(shopId, token),
-      );
-
-      let jobs: JobListItem[] = [];
-      try {
-        const jobsResponse = await withClerkAuthRetry(getToken, (token) =>
-          fetchJobs(shopId, token),
-        );
-        jobs = jobsResponse.jobs ?? [];
-      } catch {
-        // Analytics can still render if jobs feed fails.
-        jobs = [];
-      }
-
-      setAnalytics(data);
-      setRecentJobs(jobs);
-      setLastUpdatedAt(new Date());
-      setViewState("ready");
-    } catch (error) {
-      setViewState("error");
-      if (error instanceof ApiError) {
-        setErrorMessage(error.message);
-      } else if (error instanceof TypeError) {
-        setErrorMessage(
-          "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
-        );
-      } else {
-        setErrorMessage("Failed to load revenue analytics.");
-      }
-    }
-  }, [getToken, isLoaded, isSignedIn, shopId, shopLoading, resolvingMe]);
-
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+  const lastUpdatedLabel = formatUpdatedAt(
+    Math.max(analyticsQuery.dataUpdatedAt, jobsQuery.dataUpdatedAt),
+  );
 
   const heroHint = useMemo(() => {
     if (!analytics) return "";
@@ -497,24 +463,25 @@ export function RevenueDashboardPanel() {
     return `Conversion ${formatPercent(analytics.conversion_rate)} · Capture ${formatPercent(analytics.calls.capture_rate)} · ${jobsToday} job${jobsToday === 1 ? "" : "s"} today`;
   }, [analytics]);
 
-  if (
-    !isLoaded ||
-    resolvingMe ||
-    shopLoading ||
-    viewState === "loading" ||
-    (!analytics && viewState !== "error")
-  ) {
+  const handleRefresh = () => {
+    void analyticsQuery.refetch();
+    void jobsQuery.refetch();
+  };
+
+  if (showInitialSkeleton) {
     return <DashboardSkeleton />;
   }
 
-  if (viewState === "error" || !analytics) {
+  if (analyticsQuery.isError && !analytics) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
         <p className="text-sm font-medium text-red-800">Unable to load analytics</p>
-        <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+        <p className="mt-1 text-sm text-red-700">
+          {resolveErrorMessage(analyticsQuery.error)}
+        </p>
         <button
           type="button"
-          onClick={() => void loadDashboard()}
+          onClick={handleRefresh}
           className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
         >
           Retry
@@ -523,25 +490,28 @@ export function RevenueDashboardPanel() {
     );
   }
 
+  if (!analytics) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          {lastUpdatedAt && (
-            <p className="text-xs text-slate-400">
-              Updated{" "}
-              {new Intl.DateTimeFormat(undefined, {
-                hour: "numeric",
-                minute: "2-digit",
-                second: "2-digit",
-              }).format(lastUpdatedAt)}
-            </p>
-          )}
+        <div className="flex flex-wrap items-center gap-2">
+          {lastUpdatedLabel ? (
+            <p className="text-xs text-slate-400">Updated {lastUpdatedLabel}</p>
+          ) : null}
+          {isRefreshing ? (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+              Refreshing…
+            </span>
+          ) : null}
         </div>
         <button
           type="button"
-          onClick={() => void loadDashboard()}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
         >
           Refresh
         </button>
@@ -623,7 +593,10 @@ export function RevenueDashboardPanel() {
         <LeadSourcesChart sources={analytics.lead_sources ?? []} />
       </div>
 
-      <LiveBookingFeed jobs={recentJobs} />
+      <LiveBookingFeed
+        jobs={recentJobs}
+        loading={jobsQuery.isPending && recentJobs.length === 0}
+      />
     </div>
   );
 }
