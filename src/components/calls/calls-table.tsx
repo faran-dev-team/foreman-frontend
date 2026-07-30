@@ -14,6 +14,29 @@ import type { CallListItem } from "@/lib/api/types";
 
 type ViewState = "loading" | "ready" | "error";
 
+const CALLS_POLL_INTERVAL_MS = 15_000;
+const CALLS_CACHE_TTL_MS = 60_000;
+
+type CallsCacheEntry = {
+  calls: CallListItem[];
+  total: number;
+  lastUpdatedAt: Date;
+  cachedAtMs: number;
+};
+
+let callsCache: CallsCacheEntry | null = null;
+
+function getCallsCache(): CallsCacheEntry | null {
+  if (!callsCache) {
+    return null;
+  }
+  if (Date.now() - callsCache.cachedAtMs > CALLS_CACHE_TTL_MS) {
+    callsCache = null;
+    return null;
+  }
+  return callsCache;
+}
+
 function formatCallTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
@@ -40,7 +63,10 @@ function formatCurrency(value?: number | null): string {
   }).format(value);
 }
 
-function formatCaller(call: CallListItem): { primary: string; secondary?: string } {
+function formatCaller(call: CallListItem): {
+  primary: string;
+  secondary?: string;
+} {
   const rawNumber = (call.caller_number || "").trim();
   const isUnknownNumber =
     !rawNumber || rawNumber.toLowerCase() === "unknown" || rawNumber === "n/a";
@@ -84,74 +110,129 @@ function CallsTableSkeleton() {
 export function CallsTable() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const { shopId, loading: shopLoading } = useShop();
+  const cached = getCallsCache();
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
-  const [calls, setCalls] = useState<CallListItem[]>([]);
-  const [total, setTotal] = useState(0);
+  const [viewState, setViewState] = useState<ViewState>(
+    cached ? "ready" : "loading",
+  );
+  const [calls, setCalls] = useState<CallListItem[]>(cached?.calls ?? []);
+  const [total, setTotal] = useState(cached?.total ?? 0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(
+    cached?.lastUpdatedAt ?? null,
+  );
 
-  const loadCalls = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
+  const loadCalls = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
 
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to load calls.");
-      return;
-    }
-
-    if (!shopId) {
-      if (shopLoading) {
-        setViewState("loading");
-        return;
-      }
-      setViewState("error");
-      setErrorMessage(
-        "No shop resolved for this account. Confirm Clerk sign-in and backend DEFAULT_SHOP_ID.",
-      );
-      return;
-    }
-
-    setViewState("loading");
-    setErrorMessage(null);
-
-    try {
-      const response = await withClerkAuthRetry(getToken, (token) =>
-        fetchCalls(shopId, token),
-      );
-      const nextCalls = response.calls ?? [];
-      setCalls(nextCalls);
-      setTotal(response.total ?? nextCalls.length);
-      setLastUpdatedAt(new Date());
-      setViewState("ready");
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        setCalls([]);
-        setTotal(0);
-        setLastUpdatedAt(new Date());
-        setViewState("ready");
+      if (!isLoaded) {
+        if (!silent) {
+          setViewState("loading");
+        }
         return;
       }
 
-      setViewState("error");
-      if (error instanceof ApiError) {
-        setErrorMessage(error.message);
-      } else if (error instanceof TypeError) {
-        setErrorMessage(
-          "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
+      if (!isSignedIn) {
+        if (!silent) {
+          setViewState("error");
+          setErrorMessage("Sign in required to load calls.");
+        }
+        return;
+      }
+
+      if (!shopId) {
+        if (shopLoading) {
+          if (!silent) {
+            setViewState("loading");
+          }
+          return;
+        }
+        if (!silent) {
+          setViewState("error");
+          setErrorMessage(
+            "No shop resolved for this account. Confirm Clerk sign-in and backend DEFAULT_SHOP_ID.",
+          );
+        }
+        return;
+      }
+
+      if (!silent) {
+        setViewState((prev) => (prev === "ready" ? prev : "loading"));
+        setErrorMessage(null);
+      }
+
+      try {
+        const response = await withClerkAuthRetry(getToken, (token) =>
+          fetchCalls(shopId, token),
         );
-      } else {
-        setErrorMessage("Failed to load calls.");
+        const nextCalls = response.calls ?? [];
+        setCalls(nextCalls);
+        setTotal(response.total ?? nextCalls.length);
+        const now = new Date();
+        setLastUpdatedAt(now);
+        callsCache = {
+          calls: nextCalls,
+          total: response.total ?? nextCalls.length,
+          lastUpdatedAt: now,
+          cachedAtMs: Date.now(),
+        };
+        setViewState("ready");
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          setCalls([]);
+          setTotal(0);
+          const now = new Date();
+          setLastUpdatedAt(now);
+          callsCache = {
+            calls: [],
+            total: 0,
+            lastUpdatedAt: now,
+            cachedAtMs: Date.now(),
+          };
+          setViewState("ready");
+          return;
+        }
+
+        if (silent) {
+          return;
+        }
+
+        setViewState("error");
+        if (error instanceof ApiError) {
+          setErrorMessage(error.message);
+        } else if (error instanceof TypeError) {
+          setErrorMessage(
+            "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
+          );
+        } else {
+          setErrorMessage("Failed to load calls.");
+        }
       }
-    }
-  }, [getToken, shopId, shopLoading, isLoaded, isSignedIn]);
+    },
+    [getToken, shopId, shopLoading, isLoaded, isSignedIn],
+  );
 
   useEffect(() => {
     void loadCalls();
   }, [loadCalls]);
+
+  useEffect(() => {
+    if (!shopId || !isLoaded || !isSignedIn || shopLoading) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      void loadCalls({ silent: true });
+    }, CALLS_POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loadCalls, shopId, isLoaded, isSignedIn, shopLoading]);
 
   const outcomeCounts = useMemo(() => {
     const counts = {
@@ -246,7 +327,9 @@ export function CallsTable() {
 
       {viewState === "error" && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
-          <p className="text-sm font-medium text-red-800">Unable to load calls</p>
+          <p className="text-sm font-medium text-red-800">
+            Unable to load calls
+          </p>
           <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
           <button
             type="button"
@@ -307,10 +390,18 @@ export function CallsTable() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Time</th>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Caller</th>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Intent</th>
-                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">Outcome</th>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
+                    Time
+                  </th>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
+                    Caller
+                  </th>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
+                    Intent
+                  </th>
+                  <th className="px-3 py-2.5 font-semibold text-slate-600 sm:px-6 sm:py-3">
+                    Outcome
+                  </th>
                   <th className="px-3 py-2.5 font-semibold text-slate-600 text-right sm:px-6 sm:py-3">
                     Est. value
                   </th>
@@ -333,7 +424,10 @@ export function CallsTable() {
                         </Link>
                       </td>
                       <td className="min-w-0 px-3 py-3 sm:px-6 sm:py-4">
-                        <Link href={`/calls/${call.id}`} className="block min-w-0">
+                        <Link
+                          href={`/calls/${call.id}`}
+                          className="block min-w-0"
+                        >
                           <div className="truncate font-medium text-slate-900 hover:text-foreman-navy">
                             {caller.primary}
                           </div>

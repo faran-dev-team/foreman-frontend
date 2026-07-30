@@ -50,7 +50,10 @@ function formatServiceLabel(service: string): string {
     .replace(/\bAc\b/g, "AC");
 }
 
-function formatCustomer(job: JobListItem): { primary: string; secondary?: string } {
+function formatCustomer(job: JobListItem): {
+  primary: string;
+  secondary?: string;
+} {
   const name = job.customer_name?.trim();
   const phone = job.customer_phone?.trim();
 
@@ -59,7 +62,7 @@ function formatCustomer(job: JobListItem): { primary: string; secondary?: string
   }
 
   if (phone) {
-    return { primary: phone };
+    return { primary: phone || "Unknown customer" };
   }
 
   return { primary: "Unknown customer" };
@@ -129,7 +132,9 @@ export function JobsPanel() {
       <div className="space-y-6">
         <RevenueCapturedCard amount={0} jobCount={0} />
         <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
-          <p className="text-sm font-medium text-red-800">Unable to load jobs</p>
+          <p className="text-sm font-medium text-red-800">
+            Unable to load jobs
+          </p>
           <p className="mt-1 text-sm text-red-700">
             {resolveErrorMessage(jobsQuery.error)}
           </p>
@@ -153,10 +158,13 @@ export function JobsPanel() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <p className="text-sm text-slate-500">
-              {total} job{total === 1 ? "" : "s"} booked · auto-refresh every 15s
+              {total} job{total === 1 ? "" : "s"} booked · auto-refresh every
+              15s
             </p>
             {lastUpdatedLabel ? (
-              <p className="text-xs text-slate-400">Updated {lastUpdatedLabel}</p>
+              <p className="text-xs text-slate-400">
+                Updated {lastUpdatedLabel}
+              </p>
             ) : null}
           </div>
           <div className="flex items-center gap-2">

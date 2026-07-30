@@ -139,7 +139,11 @@ function RevenueBarChart({
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            vertical={false}
+            stroke="#E2E8F0"
+          />
           <XAxis
             dataKey="label"
             tick={{ fill: "#64748B", fontSize: 12 }}
@@ -201,7 +205,11 @@ function JobsTodayChart({
           data={data}
           margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            horizontal={false}
+            stroke="#E2E8F0"
+          />
           <XAxis type="number" allowDecimals={false} hide />
           <YAxis
             type="category"
@@ -308,7 +316,11 @@ function LeadSourcesChart({
           data={data}
           margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            horizontal={false}
+            stroke="#E2E8F0"
+          />
           <XAxis type="number" allowDecimals={false} hide />
           <YAxis
             type="category"
@@ -369,7 +381,10 @@ function LiveBookingFeed({
       {loading && jobs.length === 0 ? (
         <div className="mt-4 space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+            <div
+              key={i}
+              className="h-12 animate-pulse rounded-lg bg-slate-100"
+            />
           ))}
         </div>
       ) : jobs.length === 0 ? (
@@ -386,10 +401,15 @@ function LiveBookingFeed({
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-slate-900">
-                  {job.customer_name || "Unknown customer"}
+                  {job.customer_name?.trim() ||
+                    job.customer_phone ||
+                    "Unknown customer"}
                 </p>
                 <p className="truncate text-xs text-slate-500">
-                  {job.service || "Service"} · {formatJobTime(job.scheduled_at)}
+                  {job.customer_name?.trim() && job.customer_phone
+                    ? job.customer_phone
+                    : job.service || "Service"}{" "}
+                  · {formatJobTime(job.scheduled_at)}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -445,8 +465,7 @@ export function RevenueDashboardPanel() {
   const analytics = analyticsQuery.data;
   const recentJobs = jobsQuery.data?.jobs ?? [];
 
-  const showInitialSkeleton =
-    analyticsQuery.isPending && !analyticsQuery.data;
+  const showInitialSkeleton = analyticsQuery.isPending && !analyticsQuery.data;
 
   const isRefreshing = analyticsQuery.isFetching || jobsQuery.isFetching;
 
@@ -475,7 +494,9 @@ export function RevenueDashboardPanel() {
   if (analyticsQuery.isError && !analytics) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
-        <p className="text-sm font-medium text-red-800">Unable to load analytics</p>
+        <p className="text-sm font-medium text-red-800">
+          Unable to load analytics
+        </p>
         <p className="mt-1 text-sm text-red-700">
           {resolveErrorMessage(analyticsQuery.error)}
         </p>

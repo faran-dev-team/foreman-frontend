@@ -168,7 +168,9 @@ export function CallDetailPanel({ callId }: CallDetailPanelProps) {
           ← Back to Calls
         </Link>
         <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
-          <p className="text-sm font-medium text-red-800">Unable to load call</p>
+          <p className="text-sm font-medium text-red-800">
+            Unable to load call
+          </p>
           <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
           <button
             type="button"
@@ -212,9 +214,7 @@ export function CallDetailPanel({ callId }: CallDetailPanelProps) {
 
       <SettingsSection
         title={
-          displayName.length > 48
-            ? `${displayName.slice(0, 45)}…`
-            : displayName
+          displayName.length > 48 ? `${displayName.slice(0, 45)}…` : displayName
         }
         description="Call overview — who called, when, and how long."
       >
@@ -266,14 +266,20 @@ export function CallDetailPanel({ callId }: CallDetailPanelProps) {
       >
         {intake ? (
           <dl className="grid gap-4 sm:grid-cols-2">
-            <MetaItem label="Name" value={intake.customer_name || "—"} />
+            <MetaItem
+              label="Name"
+              value={
+                intake.customer_name ||
+                call.caller_name ||
+                call.caller_phone ||
+                "—"
+              }
+            />
             <MetaItem label="Phone" value={intake.phone || "—"} />
             <MetaItem label="Email" value={intake.email || "—"} />
             <MetaItem
               label="Service"
-              value={
-                intake.service ? formatServiceLabel(intake.service) : "—"
-              }
+              value={intake.service ? formatServiceLabel(intake.service) : "—"}
             />
             <MetaItem label="City" value={intake.city || "—"} />
             <MetaItem
