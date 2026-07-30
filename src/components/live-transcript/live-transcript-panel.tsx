@@ -29,6 +29,8 @@ type MonitorState = {
   audioUnavailableReason: string;
 };
 
+const ACTIVE_CALLS_POLL_INTERVAL_MS = 10_000;
+
 function formatWhen(iso?: string | null): string {
   if (!iso) return "—";
   const date = new Date(iso);
@@ -80,6 +82,8 @@ export function LiveTranscriptPanel() {
   const [monitor, setMonitor] = useState<MonitorState | null>(null);
   const [takeOverResult, setTakeOverResult] =
     useState<LiveListenTakeOverResponse | null>(null);
+  const [activeCallsRefreshing, setActiveCallsRefreshing] = useState(false);
+  const [transcriptRefreshing, setTranscriptRefreshing] = useState(false);
 
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
@@ -89,43 +93,68 @@ export function LiveTranscriptPanel() {
     monitorRef.current = monitor;
   }, [monitor]);
 
-  const loadActiveCalls = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to monitor live conversations.");
-      return;
-    }
-    if (resolvingMe || shopLoading) {
-      setViewState("loading");
-      return;
-    }
-    if (!shopId) {
-      setViewState("error");
-      setErrorMessage("No shop resolved for this account.");
-      return;
-    }
+  const loadActiveCalls = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
 
-    try {
-      const data = await withClerkAuthRetry(getToken, (token) =>
-        fetchActiveLiveCalls(shopId, token),
-      );
-      setActiveCalls(data.active_calls);
-      setLastUpdatedAt(new Date());
-      setErrorMessage(null);
-      setViewState("ready");
-    } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to load active calls.";
-      setErrorMessage(message);
-      setViewState("error");
-    }
-  }, [getToken, isLoaded, isSignedIn, resolvingMe, shopId, shopLoading]);
+      if (!isLoaded) {
+        if (!silent) {
+          setViewState("loading");
+        }
+        return;
+      }
+      if (!isSignedIn) {
+        if (!silent) {
+          setViewState("error");
+          setErrorMessage("Sign in required to monitor live conversations.");
+        }
+        return;
+      }
+      if (resolvingMe || shopLoading) {
+        if (!silent) {
+          setViewState("loading");
+        }
+        return;
+      }
+      if (!shopId) {
+        if (!silent) {
+          setViewState("error");
+          setErrorMessage("No shop resolved for this account.");
+        }
+        return;
+      }
+
+      if (!silent) {
+        setActiveCallsRefreshing(true);
+      }
+
+      try {
+        const data = await withClerkAuthRetry(getToken, (token) =>
+          fetchActiveLiveCalls(shopId, token),
+        );
+        setActiveCalls(data.active_calls);
+        setLastUpdatedAt(new Date());
+        setErrorMessage(null);
+        setViewState("ready");
+      } catch (err) {
+        if (silent) {
+          return;
+        }
+
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : "Failed to load active calls.";
+        setErrorMessage(message);
+        setViewState("error");
+      } finally {
+        if (!silent) {
+          setActiveCallsRefreshing(false);
+        }
+      }
+    },
+    [getToken, isLoaded, isSignedIn, resolvingMe, shopId, shopLoading],
+  );
 
   useEffect(() => {
     void loadActiveCalls();
@@ -135,8 +164,11 @@ export function LiveTranscriptPanel() {
   useEffect(() => {
     if (monitor || viewState === "error") return;
     const id = window.setInterval(() => {
-      void loadActiveCalls();
-    }, 8000);
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      void loadActiveCalls({ silent: true });
+    }, ACTIVE_CALLS_POLL_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [loadActiveCalls, monitor, viewState]);
 
@@ -151,6 +183,8 @@ export function LiveTranscriptPanel() {
     const tick = async () => {
       const current = monitorRef.current;
       if (!current || cancelled) return;
+
+      setTranscriptRefreshing(true);
 
       try {
         const session = await withClerkAuthRetry(getToken, (token) =>
@@ -175,10 +209,14 @@ export function LiveTranscriptPanel() {
         );
 
         if (session.status !== "listening" || !session.is_active) {
-          void loadActiveCalls();
+          void loadActiveCalls({ silent: true });
         }
       } catch {
         // Keep last transcript; next poll may recover.
+      } finally {
+        if (!cancelled) {
+          setTranscriptRefreshing(false);
+        }
       }
     };
 
@@ -333,6 +371,11 @@ export function LiveTranscriptPanel() {
           <p className="mt-1 text-amber-900/90">
             {monitor.audioUnavailableReason}
           </p>
+          <p className="mt-2 text-xs text-amber-900/70">
+            {transcriptRefreshing
+              ? "Refreshing transcript…"
+              : "Transcript polling is active."}
+          </p>
         </div>
 
         {actionError ? (
@@ -371,7 +414,9 @@ export function LiveTranscriptPanel() {
                 <dt className="text-xs font-medium uppercase tracking-wide text-emerald-800/80">
                   AI stopped
                 </dt>
-                <dd>{takeOverResult.ai_stopped ? "Yes" : "No — call manually"}</dd>
+                <dd>
+                  {takeOverResult.ai_stopped ? "Yes" : "No — call manually"}
+                </dd>
               </div>
             </dl>
           </div>
@@ -384,7 +429,9 @@ export function LiveTranscriptPanel() {
                 Monitoring
               </p>
               <h3 className="mt-1 truncate text-lg font-bold text-slate-900">
-                {monitor.call.caller_name?.trim() || "Unknown caller"}
+                {monitor.call.caller_name?.trim() ||
+                  monitor.call.caller_phone ||
+                  "Unknown caller"}
               </h3>
               <dl className="mt-2 grid gap-1 text-sm text-slate-600 sm:grid-cols-3">
                 <div>
@@ -399,7 +446,9 @@ export function LiveTranscriptPanel() {
                   <dt className="text-xs uppercase tracking-wide text-slate-400">
                     Call status
                   </dt>
-                  <dd className="font-medium text-slate-800">{monitor.callStatus}</dd>
+                  <dd className="font-medium text-slate-800">
+                    {monitor.callStatus}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-slate-400">
@@ -498,6 +547,9 @@ export function LiveTranscriptPanel() {
           {activeCalls.length === 0
             ? "No active calls right now."
             : `${activeCalls.length} active call${activeCalls.length === 1 ? "" : "s"}`}
+          {activeCallsRefreshing ? (
+            <span className="text-slate-400"> · Refreshing…</span>
+          ) : null}
           {lastUpdatedAt ? (
             <span className="text-slate-400">
               {" "}
@@ -541,7 +593,9 @@ export function LiveTranscriptPanel() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-semibold text-slate-900">
-                      {call.caller_name?.trim() || "Unknown caller"}
+                      {call.caller_name?.trim() ||
+                        call.caller_phone ||
+                        "Unknown caller"}
                     </p>
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-semibold ${priorityBadgeClass(call.priority)}`}
