@@ -2532,7 +2532,7 @@ function FlipFeatureCard({ feat, index }: { feat: { title: string; desc: string;
           boxShadow: `0 24px 60px rgba(0,0,0,0.7), 0 0 35px ${C.accentOrange}45`,
           display: "flex",
           flexDirection: "column",
-          justify: "center",
+          justifyContent: "center",
           overflow: "hidden"
         }}>
           {/* Top Neon Accent Line */}
@@ -2818,7 +2818,6 @@ function InfiniteDraggableMarquee({ items, baseSpeed = -0.5, style }: { items: t
       <motion.div
         ref={trackRef}
         drag="x"
-        dragFree
         style={{ x: wrappedX, display: "flex", gap: 24, width: "max-content", cursor: "none" }}
         onDragStart={() => setIsDragging(true)}
         onDragEnd={() => setIsDragging(false)}
