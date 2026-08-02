@@ -970,21 +970,24 @@ function DashboardPreview() {
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         {/* Eyebrow + headline */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          style={{ textAlign: "center", marginBottom: 48 }}
-        >
-          <p className="fm-eyebrow" style={{ marginBottom: 12 }}>Owner Dashboard</p>
-          <h2 className="fm-h2" style={{ maxWidth: 560, margin: "0 auto" }}>
-            Your shop&apos;s performance,{" "}
-            <span style={{ color: brand.orange }}>live in one place</span>
+        <Reveal className="fm-sechead" style={{ marginBottom: 48, textAlign: "center", maxWidth: "100%" }}>
+          <div className="fm-eyebrow">OWNER DASHBOARD</div>
+          <h2 style={{
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 5vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            maxWidth: 750,
+            margin: "0 auto 16px",
+          }}>
+            <ScrollTextReveal text="Your shop's performance, live in one place." as="span" />
           </h2>
-          <p style={{ color: brand.textMuted, maxWidth: 480, margin: "16px auto 0", fontSize: 16, lineHeight: 1.6 }}>
-            Every call, booking, and dollar Foreman captures shows up here in real time.
-          </p>
-        </motion.div>
+          <div className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
+            <ScrollTextReveal text="Every call, booking, and dollar Foreman captures shows up here in real time." as="p" />
+          </div>
+        </Reveal>
 
         {/* Browser chrome frame */}
         <motion.div
@@ -1425,94 +1428,7 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
           </Reveal>
         </div>
 
-        <Reveal delay={0.2} style={{ marginTop: 64, maxWidth: 1040, margin: "64px auto 0" }}>
-          {/* Browser chrome frame */}
-          <div style={{
-            border: `1px solid ${brand.border}`,
-            borderRadius: 20,
-            overflow: "hidden",
-            boxShadow: "0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)",
-          }}>
-            {/* Mac-style top bar */}
-            <div style={{
-              borderBottom: `1px solid ${brand.border}`,
-              padding: "10px 18px",
-              display: "flex", alignItems: "center", gap: 8,
-              background: "rgba(5,8,15,0.95)",
-            }}>
-              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#F87171" }} />
-              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FBBF24" }} />
-              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#34D399" }} />
-              <div style={{ flex: 1, margin: "0 16px", height: 22, borderRadius: 6, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>app.foreman.ai / dashboard</span>
-              </div>
-              <div style={{ width: 36, height: 22, borderRadius: 6, background: "rgba(255,255,255,0.04)" }} />
-            </div>
 
-            {/* App layout */}
-            <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 560, overflow: "hidden" }}>
-              {/* Sidebar */}
-              <div style={{ width: 220, flexShrink: 0, background: brand.carbon, borderRight: `1px solid ${brand.border}`, display: "flex", flexDirection: "column" }}>
-                <div style={{ padding: "16px 18px 14px", borderBottom: `1px solid ${brand.border}`, display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 9, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <svg width="16" height="16" viewBox="0 0 100 100" fill="none">
-                      <rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} />
-                      <rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} />
-                      <rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} />
-                    </svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", color: brand.orange, textTransform: "uppercase" }}>Foreman</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>Owner Dashboard</div>
-                  </div>
-                </div>
-                <div style={{ padding: "10px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-                  {[
-                    { label: "Dashboard", active: true },
-                    { label: "Calls", active: false },
-                    { label: "Jobs", active: false },
-                    { label: "Reports", active: false },
-                    { label: "Settings", active: false },
-                  ].map((item) => (
-                    <div key={item.label} style={{
-                      display: "flex", alignItems: "center", gap: 9, padding: "8px 11px", borderRadius: 7,
-                      background: item.active ? `${brand.orange}20` : "transparent",
-                      color: item.active ? brand.orange : brand.textMuted,
-                      fontSize: 12, fontWeight: item.active ? 600 : 400,
-                    }}>
-                      {item.label}
-                      {item.active && <div style={{ width: 3, height: 16, borderRadius: 2, background: brand.orange, marginLeft: "auto" }} />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Main area */}
-              <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-                {/* Top bar */}
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "10px 24px",
-                  background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)",
-                  borderBottom: "1px solid rgba(203,213,225,0.8)",
-                }}>
-                  <div style={{ width: 18, height: 18, borderRadius: 5, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="9" height="9" viewBox="0 0 100 100" fill="none"><rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} /><rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} /><rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} /></svg>
-                  </div>
-                  <span style={{ fontSize: 12, color: "#64748B" }}>Foreman Launch+ · Owner portal</span>
-                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: `${brand.green}22`, border: `1px solid ${brand.green}44`, borderRadius: 99, padding: "3px 10px 3px 7px" }}>
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: brand.green, display: "inline-block" }} />
-                    <span style={{ fontSize: 10, color: brand.green, fontWeight: 600 }}>AI Live</span>
-                  </div>
-                </div>
-
-                {/* Dashboard content */}
-                <div style={{ padding: "20px 24px" }}>
-                  <DashboardOverview preview />
-                </div>
-              </div>
-            </div>
-          </div>
-        </Reveal>
       </div>
 
       {/* Optional faint scrolling ribbon */}
