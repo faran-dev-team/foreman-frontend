@@ -18,6 +18,8 @@ import {
   useMotionValue,
   useMotionTemplate,
   useSpring,
+  useAnimationFrame,
+  wrap,
 } from "framer-motion";
 import { ReactLenis } from "@studio-freight/react-lenis";
 
@@ -118,6 +120,48 @@ export function Reveal({
     >
       {children}
     </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reusable: scroll-driven word-by-word text reveal                  */
+/* ------------------------------------------------------------------ */
+function ScrollWord({ word, range, progress }: { word: string; range: [number, number]; progress: any }) {
+  const opacity = useTransform(progress, range, [0.15, 1.0]);
+  return (
+    <span style={{ position: "relative", display: "inline-block", marginRight: "0.28em" }}>
+      <motion.span style={{ opacity }}>{word}</motion.span>
+    </span>
+  );
+}
+
+export function ScrollTextReveal({
+  text,
+  className,
+  style,
+  as: Component = "div",
+}: {
+  text: string;
+  className?: string;
+  style?: React.CSSProperties;
+  as?: any;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start 0.85", "end 0.40"],
+  });
+
+  const words = text.split(" ");
+
+  return (
+    <Component ref={containerRef} className={className} style={{ ...style, display: "inline-block" }}>
+      {words.map((word, i) => {
+        const start = i / words.length;
+        const end = start + 1 / words.length;
+        return <ScrollWord key={i} word={word} range={[start, end]} progress={scrollYProgress} />;
+      })}
+    </Component>
   );
 }
 
@@ -736,8 +780,19 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
   const reducedMotion = useReducedMotion();
   const content = HERO_COPY[mode] || HERO_COPY.main;
 
+  const [isHovered, setIsHovered] = useState(false);
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCursorPos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
   return (
-    <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "80px 0 140px", position: "relative", overflow: "hidden" }}>
+    <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "60px 0 60px", position: "relative", overflow: "hidden" }}>
       {/* Primary radial glow — top right */}
       <motion.div
         aria-hidden
@@ -775,25 +830,86 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
           <motion.div className="fm-eyebrow" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             {content.eyebrow}
           </motion.div>
-          <h1 className="fm-h1" style={mode === "main" ? { fontFamily: '"Times New Roman", Times, serif' } : {}}>
-            {content.headline.map((line, i) => (
-              <motion.span key={i} style={{ display: "block", overflow: "hidden", paddingBottom: "0.4em", marginBottom: "-0.4em" }}>
-                <motion.span
-                  style={{ display: "inline-block", paddingBottom: "0.1em" }}
-                  initial={{ y: "120%", rotate: reducedMotion ? 0 : 2 }}
-                  animate={{ y: 0, rotate: 0 }}
-                  transition={{ duration: 0.9, delay: 0.15 + i * 0.15, ease: [0.16, 1, 0.3, 1] }}
+          <a
+            href={CALENDLY_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="fm-hero-headline-link"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onMouseMove={handleMouseMove}
+            style={{ position: "relative", display: "inline-block" }}
+          >
+            <h1 className="fm-h1" style={mode === "main" ? { fontFamily: '"Playfair Display", "Times New Roman", serif' } : {}}>
+              {content.headline.map((line, i) => {
+                const words = line.trim().split(" ");
+                return (
+                  <span key={i} style={{ display: "block", overflow: "hidden", paddingBottom: "0.3em", marginBottom: "-0.3em" }}>
+                    {words.map((w, wIdx) => (
+                      <motion.span
+                        key={wIdx}
+                        style={{ display: "inline-block", marginRight: "0.28em", transformStyle: "preserve-3d" }}
+                        initial={{ opacity: 0, y: "100%", rotateX: reducedMotion ? 0 : -25, scale: 0.95 }}
+                        animate={{ opacity: 1, y: "0%", rotateX: 0, scale: 1 }}
+                        transition={{
+                          duration: 0.95,
+                          delay: 0.12 + (i * 0.15) + (wIdx * 0.08),
+                          ease: [0.16, 1, 0.3, 1]
+                        }}
+                      >
+                        {w}
+                      </motion.span>
+                    ))}
+                    {i === content.headline.length - 1 && (
+                      <motion.span
+                        initial={{ opacity: 0, y: "100%", scale: 0.85, filter: "blur(8px)" }}
+                        animate={{ opacity: 1, y: "0%", scale: 1, filter: "blur(0px)" }}
+                        transition={{ duration: 1.1, delay: 0.12 + (i * 0.15) + (words.length * 0.08), ease: [0.16, 1, 0.3, 1] }}
+                        className="fm-serif-italic"
+                        style={{
+                          color: C.accentOrange,
+                          WebkitTextFillColor: C.accentOrange,
+                          position: "relative",
+                          display: "inline-block",
+                          filter: "drop-shadow(0 0 24px rgba(249,122,53,0.5))"
+                        }}
+                      >
+                        {content.headlineItalic}
+                      </motion.span>
+                    )}
+                  </span>
+                );
+              })}
+            </h1>
+            <AnimatePresence>
+              {isHovered && (
+                <motion.div
+                  className="fm-headline-hover-badge-centered"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    x: cursorPos.x,
+                    y: cursorPos.y,
+                  }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 28, mass: 0.3 }}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    pointerEvents: "none",
+                    zIndex: 50,
+                  }}
                 >
-                  {line}
-                  {i === content.headline.length - 1 && (
-                    <span className="fm-serif-italic" style={{ color: C.accentOrange, WebkitTextFillColor: C.accentOrange, position: "relative", display: "inline-block" }}>
-                      {content.headlineItalic}
-                    </span>
-                  )}
-                </motion.span>
-              </motion.span>
-            ))}
-          </h1>
+                  <span>Request a Demo</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 17L17 7M17 7H7M17 7V17" />
+                  </svg>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </a>
           <motion.p className="fm-hero-sub" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             {content.sub}
           </motion.p>
@@ -819,39 +935,182 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
             ))}
           </motion.div>
         </div>
-        <motion.div
-          style={{ position: "relative" }}
-          initial={{ opacity: 0, x: 40, rotate: reducedMotion ? 0 : 2, y: 20 }}
-          animate={{ opacity: 1, x: 0, rotate: 0, y: 0 }}
-          transition={{ delay: 0.4, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {/* Subtle glow bloom behind the card */}
-          <div aria-hidden style={{
-            position: "absolute", inset: -40, borderRadius: "50%",
-            background: `radial-gradient(ellipse, ${C.accentOrange}12 0%, transparent 70%)`,
-            zIndex: 0, pointerEvents: "none",
-          }} />
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <CallCard />
-          </div>
-          {!reducedMotion && (
-            <motion.div
-              className="fm-hero-technician"
-              style={{ position: "absolute", zIndex: 10, filter: "drop-shadow(0 24px 32px rgba(0,0,0,0.5))" }}
-              animate={{ y: [-8, 8], rotate: [-2, 2] }}
-              whileHover={{ scale: 1.1, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
-              transition={{ duration: 5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-            >
-              <DoodleTechnicianOnCall style={{ width: "100%", height: "auto" }} />
-            </motion.div>
-          )}
-        </motion.div>
       </div>
     </header>
   );
 }
 
 /* ================================================================== */
+/*  DASHBOARD PREVIEW (landing only — renders real DashboardOverview)  */
+/* ================================================================== */
+
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+
+function DashboardPreview() {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+
+  return (
+    <section
+      ref={ref}
+      style={{
+        background: brand.carbon,
+        padding: "80px 0 96px",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Ambient glow */}
+      <div aria-hidden style={{
+        position: "absolute", top: -120, left: "50%", transform: "translateX(-50%)",
+        width: 900, height: 450, borderRadius: "50%",
+        background: `radial-gradient(ellipse, ${brand.orange}18 0%, transparent 70%)`,
+        pointerEvents: "none",
+      }} />
+
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
+        {/* Eyebrow + headline */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          style={{ textAlign: "center", marginBottom: 48 }}
+        >
+          <p className="fm-eyebrow" style={{ marginBottom: 12 }}>Owner Dashboard</p>
+          <h2 className="fm-h2" style={{ maxWidth: 560, margin: "0 auto" }}>
+            Your shop&apos;s performance,{" "}
+            <span style={{ color: brand.orange }}>live in one place</span>
+          </h2>
+          <p style={{ color: brand.textMuted, maxWidth: 480, margin: "16px auto 0", fontSize: 16, lineHeight: 1.6 }}>
+            Every call, booking, and dollar Foreman captures shows up here in real time.
+          </p>
+        </motion.div>
+
+        {/* Browser chrome frame */}
+        <motion.div
+          initial={{ opacity: 0, y: 40, scale: 0.97 }}
+          animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+          transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+          style={{
+            border: `1px solid ${brand.border}`,
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)",
+          }}
+        >
+          {/* Mac-style top bar */}
+          <div style={{
+            borderBottom: `1px solid ${brand.border}`,
+            padding: "11px 18px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "rgba(5,8,15,0.9)",
+            backdropFilter: "blur(12px)",
+          }}>
+            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#F87171", flexShrink: 0 }} />
+            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FBBF24", flexShrink: 0 }} />
+            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#34D399", flexShrink: 0 }} />
+            <div style={{ flex: 1, margin: "0 16px", height: 24, borderRadius: 6, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", letterSpacing: "0.03em" }}>app.foreman.ai / dashboard</span>
+            </div>
+            <div style={{ width: 36, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.04)", flexShrink: 0 }} />
+          </div>
+
+          {/* App layout: sidebar + main */}
+          <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 640, overflow: "hidden" }}>
+            {/* Sidebar (matches real dashboard-shell.tsx sidebar) */}
+            <div style={{
+              width: 256, flexShrink: 0,
+              background: brand.carbon,
+              borderRight: `1px solid ${brand.border}`,
+              display: "flex", flexDirection: "column",
+            }}>
+              {/* Logo */}
+              <div style={{ padding: "18px 20px 16px", borderBottom: `1px solid ${brand.border}`, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="18" height="18" viewBox="0 0 100 100" fill="none">
+                    <rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} />
+                    <rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} />
+                    <rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} />
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: brand.orange, textTransform: "uppercase" }}>Foreman</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Owner Dashboard</div>
+                </div>
+              </div>
+              {/* Nav items */}
+              <div style={{ padding: "12px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+                {[
+                  { label: "Dashboard", active: true, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
+                  { label: "Calls", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498A1 1 0 0121 15.72V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg> },
+                  { label: "Jobs", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> },
+                  { label: "Reports", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg> },
+                  { label: "Settings", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg> },
+                ].map((item) => (
+                  <div key={item.label} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 12px", borderRadius: 8,
+                    background: item.active ? `${brand.orange}20` : "transparent",
+                    color: item.active ? brand.orange : brand.textMuted,
+                    fontSize: 13, fontWeight: item.active ? 600 : 400,
+                    cursor: "default",
+                  }}>
+                    <span style={{ color: item.active ? brand.orange : brand.textMuted }}>{item.icon}</span>
+                    {item.label}
+                    {item.active && <div style={{ width: 3, height: 18, borderRadius: 2, background: brand.orange, marginLeft: "auto" }} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dashboard content — render the REAL component */}
+            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+              {/* Top header bar (matches dashboard-shell.tsx header) */}
+              <div style={{
+                position: "sticky", top: 0, zIndex: 10,
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "12px 32px",
+                background: "rgba(255,255,255,0.92)",
+                backdropFilter: "blur(12px)",
+                borderBottom: "1px solid rgba(203,213,225,0.8)",
+              }}>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="11" height="11" viewBox="0 0 100 100" fill="none">
+                    <rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} />
+                    <rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} />
+                    <rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} />
+                  </svg>
+                </div>
+                <span style={{ fontSize: 13, color: "#64748B" }}>Foreman Launch+ · Owner portal</span>
+                {/* Notification bell */}
+                <div style={{ marginLeft: "auto", width: 32, height: 32, borderRadius: 8, background: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                </div>
+              </div>
+
+              {/* Actual DashboardOverview rendered inside */}
+              <div style={{ padding: "28px 32px" }}>
+                <DashboardOverview preview />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Caption */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : {}}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          style={{ textAlign: "center", marginTop: 20, fontSize: 12, color: brand.textMuted }}
+        >
+          Real-time owner dashboard · calls, bookings, and revenue in one view
+        </motion.p>
+      </div>
+    </section>
+  );
+}
 /*  TRADE SELECTOR ROW                                                 */
 /* ================================================================== */
 const TRADES = [
@@ -950,19 +1209,18 @@ export function TradeSelector() {
   }, [isAutoPlaying]);
 
   return (
-    <section className="fm-island" style={{ background: C.bgCard, padding: "40px 0", zIndex: 3 }}>
+    <section className="fm-island" style={{ background: C.bgCard, padding: "28px 0 56px", zIndex: 3 }}>
       <div className="fm-wrap">
-        <Reveal className="fm-sechead" style={{ marginBottom: 40 }}>
-          <motion.div
-            style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}
-            animate={{ y: [-5, 5] }}
-            transition={{ duration: 3, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-          >
-            <DoodleQuestion style={{ filter: "drop-shadow(0 15px 20px rgba(0,0,0,0.25))" }} />
-          </motion.div>
-          <div className="fm-eyebrow">BUILT FOR YOUR TRADE</div>
-          <h2 className="fm-h2" style={{ fontSize: 40 }}>
-            Knows your trade. Asks the right questions. Books the job.
+        <Reveal className="fm-sechead" style={{ marginBottom: 40, maxWidth: "100%" }}>
+          <h2 style={{
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 5vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading
+          }}>
+            <ScrollTextReveal text="Knows your trade. Asks the right questions. Books the job." as="span" />
           </h2>
         </Reveal>
 
@@ -1065,25 +1323,6 @@ export function TradeSelector() {
               </motion.div>
             );
           })}
-
-          <div className="fm-trade-img-left" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
-            <img src="/images/foreman.png" alt="Foreman" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-          </div>
-
-          <div className="fm-trade-img-right" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.45))" }}>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTrade.id}
-                initial={{ opacity: 0, scale: 0.8, y: 15 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: -15 }}
-                transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
-              >
-                {tradeIconMap[activeTrade.id]}
-              </motion.div>
-            </AnimatePresence>
-          </div>
         </Reveal>
       </div>
     </section>
@@ -1131,13 +1370,25 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
   const pCopy = PROBLEM_COPY[mode] || PROBLEM_COPY.main;
 
   return (
-    <section className="fm-island" style={{ background: C.bgPrimary, padding: "48px 0", zIndex: 4, overflow: "hidden" }}>
+    <section className="fm-island" style={{ background: C.bgPrimary, padding: "28px 0", zIndex: 4, overflow: "hidden" }}>
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
-        <Reveal className="fm-sechead" style={{ marginBottom: 64 }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 64, maxWidth: 900 }}>
           <div className="fm-eyebrow">{pCopy.eyebrow}</div>
-          <h2 className="fm-h2" style={{ fontSize: 40 }}>{pCopy.headline}</h2>
-          <p className="fm-secsub" style={{ maxWidth: 700, margin: "0 auto" }}>{pCopy.body}</p>
+          <h2 style={{
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 4.8vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            marginBottom: 20
+          }}>
+            <ScrollTextReveal text={pCopy.headline} as="span" />
+          </h2>
+          <div className="fm-secsub" style={{ maxWidth: 700, margin: "0 auto" }}>
+            <ScrollTextReveal text={pCopy.body} as="p" />
+          </div>
         </Reveal>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch", maxWidth: 1000, margin: "0 auto" }}>
@@ -1146,21 +1397,10 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
               <div style={{ fontSize: 16, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Missed calls without Foreman:</div>
               <div className="fm-statnum" style={{ color: C.textBody }}>40%</div>
             </div>
-            {!reducedMotion && (
-              <motion.div
-                className="fm-phone-img"
-                style={{ position: "absolute", zIndex: 3, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.4))" }}
-                animate={{ rotate: [-6, 6], y: [-5, 5] }}
-                whileHover={{ scale: 1.12, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
-                transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-              >
-                <img src="/images/phone.png" alt="Phone" loading="lazy" decoding="async" style={{ width: "100%", height: "auto" }} />
-              </motion.div>
-            )}
           </Reveal>
           <Reveal delay={0.1} style={{ position: "relative" }}>
             <div className="fm-hoverlift" style={{ background: C.accentOrange, borderRadius: 28, padding: 48, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-              <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 600, marginBottom: 12 }}>Missed calls with Foreman:</div>
+              <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 600, marginBottom: 12 }}>Missed calls:</div>
               <div className="fm-statnum" style={{ color: C.bgPrimary, position: "relative", display: "inline-block" }}>
                 0%
                 <motion.div
@@ -1186,91 +1426,92 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
         </div>
 
         <Reveal delay={0.2} style={{ marginTop: 64, maxWidth: 1040, margin: "64px auto 0" }}>
-          <TiltCard
-            className="fm-dashboard-container"
-            style={{
-              background: "rgba(20, 28, 48, 0.4)",
-              border: `1px solid ${C.accentOrange}40`,
-              borderRadius: 24,
-              backdropFilter: "blur(12px)",
-            }}
-          >
-            <div style={{ textAlign: "center", marginBottom: 32 }}>
-              <h3 style={{
-                fontSize: 22, fontWeight: 700, letterSpacing: 2,
-                color: C.textHeading, textTransform: "uppercase"
-              }}>
-                <span style={{ color: C.accentOrange }}>AI</span> BUSINESS DASHBOARD
-              </h3>
+          {/* Browser chrome frame */}
+          <div style={{
+            border: `1px solid ${brand.border}`,
+            borderRadius: 20,
+            overflow: "hidden",
+            boxShadow: "0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)",
+          }}>
+            {/* Mac-style top bar */}
+            <div style={{
+              borderBottom: `1px solid ${brand.border}`,
+              padding: "10px 18px",
+              display: "flex", alignItems: "center", gap: 8,
+              background: "rgba(5,8,15,0.95)",
+            }}>
+              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#F87171" }} />
+              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FBBF24" }} />
+              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#34D399" }} />
+              <div style={{ flex: 1, margin: "0 16px", height: 22, borderRadius: 6, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>app.foreman.ai / dashboard</span>
+              </div>
+              <div style={{ width: 36, height: 22, borderRadius: 6, background: "rgba(255,255,255,0.04)" }} />
             </div>
-            <div className="fm-dashboard-grid">
-              {/* Card 1 */}
-              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(249,122,53,0.1)", border: `1px solid rgba(249,122,53,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: C.accentOrange }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+
+            {/* App layout */}
+            <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 560, overflow: "hidden" }}>
+              {/* Sidebar */}
+              <div style={{ width: 220, flexShrink: 0, background: brand.carbon, borderRight: `1px solid ${brand.border}`, display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "16px 18px 14px", borderBottom: `1px solid ${brand.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 9, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="16" height="16" viewBox="0 0 100 100" fill="none">
+                      <rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} />
+                      <rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} />
+                      <rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} />
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", color: brand.orange, textTransform: "uppercase" }}>Foreman</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>Owner Dashboard</div>
+                  </div>
                 </div>
-                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Calls Today</div>
-                <div style={{ fontSize: 36, fontWeight: 700, color: C.textHeading, marginBottom: 12 }}>24</div>
-                <div style={{ fontSize: 13, color: C.accentGreenText, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
-                  +18%
+                <div style={{ padding: "10px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+                  {[
+                    { label: "Dashboard", active: true },
+                    { label: "Calls", active: false },
+                    { label: "Jobs", active: false },
+                    { label: "Reports", active: false },
+                    { label: "Settings", active: false },
+                  ].map((item) => (
+                    <div key={item.label} style={{
+                      display: "flex", alignItems: "center", gap: 9, padding: "8px 11px", borderRadius: 7,
+                      background: item.active ? `${brand.orange}20` : "transparent",
+                      color: item.active ? brand.orange : brand.textMuted,
+                      fontSize: 12, fontWeight: item.active ? 600 : 400,
+                    }}>
+                      {item.label}
+                      {item.active && <div style={{ width: 3, height: 16, borderRadius: 2, background: brand.orange, marginLeft: "auto" }} />}
+                    </div>
+                  ))}
                 </div>
-                <div style={{ fontSize: 12, color: "rgba(184,191,204,0.5)", marginTop: 4 }}>vs yesterday</div>
               </div>
 
-              {/* Card 2 */}
-              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(167,139,250,0.1)", border: `1px solid rgba(167,139,250,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "#A78BFA" }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4" /><path d="M5.5 21v-2a4.5 4.5 0 0 1 4.5-4.5h4a4.5 4.5 0 0 1 4.5 4.5v2" /><path d="M19 11a2 2 0 0 1 0 4" /><path d="M22 9a4 4 0 0 1 0 8" /></svg>
+              {/* Main area */}
+              <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+                {/* Top bar */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "10px 24px",
+                  background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)",
+                  borderBottom: "1px solid rgba(203,213,225,0.8)",
+                }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 5, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="9" height="9" viewBox="0 0 100 100" fill="none"><rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} /><rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} /><rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} /></svg>
+                  </div>
+                  <span style={{ fontSize: 12, color: "#64748B" }}>Foreman Launch+ · Owner portal</span>
+                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: `${brand.green}22`, border: `1px solid ${brand.green}44`, borderRadius: 99, padding: "3px 10px 3px 7px" }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: brand.green, display: "inline-block" }} />
+                    <span style={{ fontSize: 10, color: brand.green, fontWeight: 600 }}>AI Live</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Answer Rate</div>
-                <div style={{ fontSize: 36, fontWeight: 700, color: C.textHeading, marginBottom: 12 }}>98.6%</div>
-                <div style={{ fontSize: 13, color: C.accentGreenText, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
-                  +3.2%
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(184,191,204,0.5)", marginTop: 4 }}>vs yesterday</div>
-              </div>
 
-              {/* Card 3 */}
-              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(249,122,53,0.1)", border: `1px solid rgba(249,122,53,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: C.accentOrange }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><rect x="8" y="14" width="2" height="2" /><rect x="12" y="14" width="2" height="2" /><rect x="16" y="14" width="2" height="2" /></svg>
+                {/* Dashboard content */}
+                <div style={{ padding: "20px 24px" }}>
+                  <DashboardOverview preview />
                 </div>
-                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Jobs Booked</div>
-                <div style={{ fontSize: 36, fontWeight: 700, color: C.textHeading, marginBottom: 12 }}>7</div>
-                <div style={{ fontSize: 13, color: C.accentGreenText, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
-                  +40%
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(184,191,204,0.5)", marginTop: 4 }}>vs yesterday</div>
-              </div>
-
-              {/* Card 4 */}
-              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(31,170,89,0.1)", border: `1px solid rgba(31,170,89,0.4)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: C.accentGreenText }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-                </div>
-                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Revenue</div>
-                <div style={{ fontSize: 36, fontWeight: 700, color: C.textHeading, marginBottom: 12 }}>$4,250</div>
-                <div style={{ fontSize: 13, color: C.accentGreenText, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
-                  +28%
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(184,191,204,0.5)", marginTop: 4 }}>vs yesterday</div>
-              </div>
-
-              {/* Card 5 */}
-              <div style={{ background: C.bgPrimary, border: `1px solid ${C.borderPrimary}`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(31,170,89,0.05)", border: `1px solid rgba(31,170,89,0.2)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: C.accentGreenText, boxShadow: `0 0 12px ${C.accentGreenText}` }} />
-                </div>
-                <div style={{ fontSize: 14, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>AI Status</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: C.accentGreenText, marginBottom: 12, marginTop: 4 }}>Online</div>
-                <div style={{ fontSize: 13, color: "rgba(184,191,204,0.6)", fontWeight: 500, marginTop: "auto" }}>All Systems Go</div>
               </div>
             </div>
-          </TiltCard>
+          </div>
         </Reveal>
       </div>
 
@@ -1306,7 +1547,7 @@ const PROOF_COPY: Record<LandingMode, { eyebrow: string; headline: string; sub: 
 function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
   const pCopy = PROOF_COPY[mode] || PROOF_COPY.main;
   return (
-    <section className="fm-island" style={{ position: "relative", background: C.bgCard, padding: "60px 0", zIndex: 5 }}>
+    <section className="fm-island" style={{ position: "relative", background: C.bgCard, padding: "36px 0", zIndex: 5 }}>
       <div className="fm-wrap">
         <Reveal className="fm-sechead" style={{ marginBottom: 40 }}>
           <div className="fm-eyebrow">{pCopy.eyebrow}</div>
@@ -1324,10 +1565,12 @@ function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
               <span style={{ position: "absolute", top: -15, left: -30, zIndex: -1, pointerEvents: "none" }}>
                 <DoodleSunburst style={{ width: 80, height: 80 }} />
               </span>
-              {pCopy.headline}
+              <ScrollTextReveal text={pCopy.headline} as="span" />
             </h2>
           </div>
-          <p className="fm-secsub">{pCopy.sub}</p>
+          <div className="fm-secsub">
+            <ScrollTextReveal text={pCopy.sub} as="p" />
+          </div>
         </Reveal>
 
         <div style={{ position: "relative", maxWidth: 1000, margin: "0 auto", padding: "40px 0" }}>
@@ -1457,7 +1700,7 @@ function IntegrationsRow() {
     { name: "Twilio", iconUrl: "https://www.twilio.com/favicon.ico" }
   ];
   return (
-    <section className="fm-island" style={{ background: C.bgPrimary, padding: "96px 0", zIndex: 6, overflow: "hidden" }}>
+    <section className="fm-island" style={{ background: C.bgPrimary, padding: "48px 0", zIndex: 6, overflow: "hidden" }}>
       <div style={{ textAlign: "center" }}>
         <Reveal style={{ position: "relative" }}>
           <style dangerouslySetInnerHTML={{
@@ -1498,7 +1741,7 @@ function IntegrationsRow() {
               <span className="fm-sunburst-wrapper">
                 <DoodleSunburst />
               </span>
-              Plays nice with your tools
+              <ScrollTextReveal text="Plays nice with your tools" as="span" />
             </h2>
           </div>
 
@@ -1561,7 +1804,7 @@ const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; fe
       { title: "Texts back missed callers", desc: "If someone hangs up before booking, Foreman sends them a booking link in seconds.", icon: <MessageSquare /> },
       { title: "You listen live and take over", desc: "Jump into any call from your phone. You are always in control of your front desk.", icon: <Headphones /> },
       { title: "Shows you the money", desc: "A live dashboard of exactly how much revenue Foreman captured that you would have lost.", icon: <Dollar /> },
-      { title: "Grows your reviews", desc: "After each job, it asks happy customers for a Google review, so more calls come in.", icon: <Star /> }
+      { title: "Grows your reviews", desc: "After each job, it asks happy customers for a 5-star review, so more calls come in.", icon: <Star /> }
     ]
   },
   hvac: {
@@ -1572,7 +1815,7 @@ const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; fe
       { title: "Speaks English and Spanish", desc: "Never lose a caller to a language barrier.", icon: <Globe /> },
       { title: "Texts back missed callers", desc: "If someone hangs up before booking, Foreman sends a booking link in seconds.", icon: <MessageSquare /> },
       { title: "Shows you the money", desc: "A live dashboard of the exact revenue Foreman captured that you would have lost.", icon: <Dollar /> },
-      { title: "Grows your reviews", desc: "After each job, it asks happy customers for a Google review, so more calls come in.", icon: <Star /> },
+      { title: "Grows your reviews", desc: "After each job, it asks happy customers for a 5-star review, so more calls come in.", icon: <Star /> },
       { title: "You stay in control", desc: "Listen to any call live and take over from your phone, anytime.", icon: <Headphones /> }
     ]
   },
@@ -1584,7 +1827,7 @@ const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; fe
       { title: "Speaks English and Spanish", desc: "Never lose a caller to a language barrier.", icon: <Globe /> },
       { title: "Texts back missed callers", desc: "Sends a booking link to anyone who couldn't get through.", icon: <MessageSquare /> },
       { title: "Shows you the money", desc: "A live dashboard of the revenue Foreman captured for you.", icon: <Dollar /> },
-      { title: "Grows your reviews", desc: "Asks happy customers for a Google review after each job.", icon: <Star /> },
+      { title: "Grows your reviews", desc: "Asks happy customers for a 5-star review after each job.", icon: <Star /> },
       { title: "You stay in control", desc: "Listen live and take over any call from your phone.", icon: <Headphones /> }
     ]
   },
@@ -1607,7 +1850,7 @@ const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; fe
       { title: "Speaks English and Spanish", desc: "Never lose a caller to a language barrier.", icon: <Globe /> },
       { title: "Texts back missed callers", desc: "Sends a booking link to anyone who couldn't get through.", icon: <MessageSquare /> },
       { title: "Shows you the money", desc: "A live dashboard of the revenue Foreman captured for you.", icon: <Dollar /> },
-      { title: "Grows your reviews", desc: "Asks happy customers for a Google review after each job.", icon: <Star /> },
+      { title: "Grows your reviews", desc: "Asks happy customers for a 5-star review after each job.", icon: <Star /> },
       { title: "You stay in control", desc: "Listen live and take over any call from your phone.", icon: <Headphones /> }
     ]
   },
@@ -1624,14 +1867,696 @@ const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; fe
   }
 };
 
+function FeatureGraphicWidget({ title }: { title: string }) {
+  const t = title.toLowerCase();
+  const reducedMotion = useReducedMotion();
+
+  // 1. Bilingual Support Animation
+  if (t.includes("english") || t.includes("spanish") || t.includes("bilingual")) {
+    const [langIndex, setLangIndex] = useState(0);
+    const phrases = [
+      { lang: "ES", text: "“Hola, mi aire acondicionado echa aire caliente. ¿Tienen servicio de emergencia hoy?”" },
+      { lang: "EN", text: "“Hello, my AC is blowing warm air. Do you have emergency repair technicians today?”" }
+    ];
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setLangIndex((prev) => (prev + 1) % phrases.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }, []);
+
+    const current = phrases[langIndex];
+
+    return (
+      <div style={{
+        marginTop: 12,
+        padding: "16px 18px",
+        borderRadius: 16,
+        background: "rgba(15, 23, 42, 0.85)",
+        border: `1px solid ${C.accentOrange}60`,
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        minHeight: 124,
+        justifyContent: "center",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.4)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <span style={{
+              fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
+              background: current.lang === "EN" ? C.accentOrange : "rgba(255,255,255,0.08)",
+              color: "#FFFFFF", transition: "all 300ms ease"
+            }}>EN</span>
+            <span style={{
+              fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
+              background: current.lang === "ES" ? C.accentOrange : "rgba(255,255,255,0.08)",
+              color: "#FFFFFF", transition: "all 300ms ease"
+            }}>ES</span>
+          </div>
+          {/* Animated voice soundwave */}
+          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            {[10, 18, 12, 22, 14, 8].map((h, idx) => (
+              <motion.span
+                key={idx}
+                animate={reducedMotion ? {} : { height: [6, h, 6] }}
+                transition={{ duration: 0.6, repeat: Infinity, delay: idx * 0.1, repeatType: "reverse" }}
+                style={{ width: 3, borderRadius: 3, background: C.accentOrange }}
+              />
+            ))}
+          </div>
+        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current.lang}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.3 }}
+            style={{ fontSize: 13, fontStyle: "italic", color: "#F8FAFC", background: "rgba(255,255,255,0.06)", padding: "12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}
+          >
+            {current.text}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // 2. Emergency Detection Siren & Triage Animation
+  if (t.includes("emergenc") || t.includes("triage") || t.includes("first")) {
+    const [alertIndex, setAlertIndex] = useState(0);
+    const alerts = [
+      { label: "NO HEAT IN WINTER", status: "Priority #1 Dispatch", icon: "🔥", code: "CRIT-01", tag: "FREEZE RISK" },
+      { label: "GAS SMELL IN BASEMENT", status: "Priority #1 Dispatch", icon: "⚠️", code: "HAZ-99", tag: "HAZMAT LEAK" },
+      { label: "BURST PIPE / FLOODING", status: "Priority #1 Dispatch", icon: "🌊", code: "EMRG-04", tag: "WATER DAMAGE" }
+    ];
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setAlertIndex((prev) => (prev + 1) % alerts.length);
+      }, 2800);
+      return () => clearInterval(interval);
+    }, []);
+
+    const activeAlert = alerts[alertIndex];
+
+    return (
+      <div style={{
+        marginTop: 12,
+        padding: "16px 18px",
+        borderRadius: 18,
+        background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(153, 27, 27, 0.12) 100%)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        border: "1px solid rgba(239, 68, 68, 0.65)",
+        boxShadow: "0 12px 32px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        minHeight: 140,
+        justifyContent: "center",
+        position: "relative",
+        overflow: "hidden"
+      }}>
+        {/* Subtle animated laser sweep across top */}
+        <motion.div
+          animate={{ x: ["-100%", "200%"] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "50%",
+            height: 2,
+            background: "linear-gradient(90deg, transparent, #EF4444, transparent)",
+            opacity: 0.8
+          }}
+        />
+
+        {/* Header Bar with Pulsing Beacon & High-Tech Pill */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Multi-ring Siren Radar Pulse */}
+            <div style={{ position: "relative", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <motion.span
+                animate={reducedMotion ? {} : { scale: [1, 2.4], opacity: [0.8, 0] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "50%",
+                  border: "1px solid #EF4444",
+                  pointerEvents: "none"
+                }}
+              />
+              <motion.span
+                animate={reducedMotion ? {} : { scale: [1, 1.3, 1] }}
+                transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, #FF6B6B 0%, #EF4444 100%)",
+                  boxShadow: "0 0 12px #EF4444, 0 0 4px #FCA5A5"
+                }}
+              />
+            </div>
+
+            <span className="fm-mono" style={{ fontSize: 11, fontWeight: 900, color: "#FCA5A5", letterSpacing: 1.2, textTransform: "uppercase" }}>
+              EMERGENCY TRIAGE SIREN
+            </span>
+          </div>
+
+          <motion.div
+            animate={reducedMotion ? {} : { scale: [1, 1.05, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            style={{
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: 0.5,
+              color: "#FFFFFF",
+              background: "linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)",
+              padding: "4px 10px",
+              borderRadius: 20,
+              border: "1px solid rgba(254, 202, 202, 0.4)",
+              boxShadow: "0 4px 14px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              gap: 4
+            }}
+          >
+            <span style={{ fontSize: 10 }}>⚡</span> 0.1s INSTANT
+          </motion.div>
+        </div>
+
+        {/* Dynamic Alert Banner with 3D Glass Badge */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeAlert.code}
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            style={{
+              background: "rgba(15, 23, 42, 0.75)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(239, 68, 68, 0.45)",
+              boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {/* Glowing Alarm Icon Box */}
+                <motion.div
+                  animate={reducedMotion ? {} : { rotate: [-4, 4, -4], scale: [1, 1.08, 1] }}
+                  transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, rgba(239,68,68,0.4) 0%, rgba(185,28,28,0.2) 100%)",
+                    border: "1px solid rgba(239,68,68,0.7)",
+                    boxShadow: "0 0 14px rgba(239,68,68,0.5)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 16
+                  }}
+                >
+                  🚨
+                </motion.div>
+
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span className="fm-mono" style={{ fontSize: 9, fontWeight: 900, color: "#EF4444", background: "rgba(239,68,68,0.2)", padding: "1px 5px", borderRadius: 4, border: "1px solid rgba(239,68,68,0.4)" }}>
+                      {activeAlert.code}
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 800, color: "#FCA5A5", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      {activeAlert.tag}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#FFFFFF", marginTop: 2, letterSpacing: "-0.01em" }}>
+                    {activeAlert.icon} {activeAlert.label}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action dispatch status footer */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: 11,
+              background: "rgba(0, 0, 0, 0.4)",
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: "1px solid rgba(255, 255, 255, 0.08)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: "#F8FAFC" }}>
+                <span style={{ color: "#FCA5A5", fontWeight: 800 }}>Action:</span>
+                <span style={{ color: "#EF4444", fontWeight: 900 }}>{activeAlert.status}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#4ADE80", fontWeight: 800, fontSize: 10 }}>
+                <motion.span
+                  animate={{ opacity: [0.3, 1, 0.3], x: [0, 2, 0] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  style={{ display: "inline-block" }}
+                >
+                  📲 ➔
+                </motion.span>
+                Owner Alerted
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // 3. Texts back missed callers (Live SMS Typing & Delivery)
+  if (t.includes("text") || t.includes("missed") || t.includes("volume")) {
+    const [step, setStep] = useState<"CALL" | "TYPING" | "SENT">("CALL");
+
+    useEffect(() => {
+      const timer1 = setTimeout(() => setStep("TYPING"), 1000);
+      const timer2 = setTimeout(() => setStep("SENT"), 2500);
+      const timer3 = setTimeout(() => setStep("CALL"), 5500);
+      return () => { clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); };
+    }, [step]);
+
+    return (
+      <div style={{
+        marginTop: 12,
+        padding: "16px 18px",
+        borderRadius: 16,
+        background: "rgba(59, 130, 246, 0.15)",
+        border: "1px solid rgba(59, 130, 246, 0.4)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        minHeight: 124,
+        justifyContent: "center"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#93C5FD" }}>💬 AUTO-SMS RECOVERY</span>
+          {step === "SENT" && <span style={{ fontSize: 10, color: "#4ADE80", fontWeight: 800 }}>Delivered ✓✓</span>}
+        </div>
+        <AnimatePresence mode="wait">
+          {step === "CALL" && (
+            <motion.div key="call" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#F8FAFC", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <motion.span animate={{ rotate: [0, -15, 15, 0] }} transition={{ repeat: Infinity, duration: 0.5 }}>📞</motion.span>
+              <span>Caller hung up before booking...</span>
+            </motion.div>
+          )}
+          {step === "TYPING" && (
+            <motion.div key="typing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#93C5FD", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>Foreman SMS Bot typing</span>
+              <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.6 }}>• • •</motion.span>
+            </motion.div>
+          )}
+          {step === "SENT" && (
+            <motion.div key="sent" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#FFFFFF", background: "rgba(15, 23, 42, 0.85)", padding: "10px 12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}>
+              📲 “Hi! Sorry we missed your call. Tap here to book emergency repair: foreman.app/b/hvac”
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // 4. Live Audio & Control (Dancing Equalizer & Call Waveform)
+  if (t.includes("listen") || t.includes("control") || t.includes("trained") || t.includes("details")) {
+    return (
+      <div style={{
+        marginTop: 12,
+        padding: "16px 18px",
+        borderRadius: 16,
+        background: "rgba(16, 185, 129, 0.15)",
+        border: "1px solid rgba(16, 185, 129, 0.4)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        minHeight: 124,
+        justifyContent: "center"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#6EE7B7", display: "flex", alignItems: "center", gap: 6 }}>
+            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
+            LIVE AUDIO STREAM
+          </span>
+          <span style={{ fontSize: 10, color: "#A7F3D0", fontWeight: 800 }}>01:42 LIVE</span>
+        </div>
+        {/* Dancing 10-bar equalizer */}
+        <div style={{ display: "flex", gap: 4, alignItems: "center", justifyContent: "center", height: 28, background: "rgba(0,0,0,0.3)", padding: "4px 12px", borderRadius: 8 }}>
+          {[14, 24, 10, 28, 18, 22, 12, 26, 16, 20].map((h, idx) => (
+            <motion.span
+              key={idx}
+              animate={reducedMotion ? {} : { height: [4, h, 4] }}
+              transition={{ duration: 0.5, repeat: Infinity, delay: idx * 0.08, repeatType: "reverse" }}
+              style={{ width: 4, borderRadius: 4, background: "#10B981" }}
+            />
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+          <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: "rgba(16,185,129,0.3)", color: "#A7F3D0", padding: "6px", borderRadius: 8, textAlign: "center" }}>
+            🎧 Listening Live
+          </div>
+          <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: C.accentOrange, color: "#FFFFFF", padding: "6px", borderRadius: 8, textAlign: "center", boxShadow: "0 4px 12px rgba(249,122,53,0.4)" }}>
+            ⚡ Take Over
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 5. Dynamic Money Counter & Gradual Growth Bar Animation
+  if (t.includes("money") || t.includes("dashboard") || t.includes("price")) {
+    const [val, setVal] = useState(1400);
+    const [activeBarCount, setActiveBarCount] = useState(1);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setVal((prev) => {
+          if (prev >= 28400) {
+            setActiveBarCount(1);
+            return 1400;
+          }
+          const nextVal = prev + Math.floor(Math.random() * 2000 + 1500);
+          const nextBars = Math.min(7, Math.ceil((nextVal / 28400) * 7));
+          setActiveBarCount(nextBars);
+          return nextVal;
+        });
+      }, 1200); // Smooth gradual 1.2s growth pace
+      return () => clearInterval(interval);
+    }, []);
+
+    const basePcts = [30, 42, 55, 68, 78, 90, 100];
+
+    return (
+      <div style={{
+        marginTop: 12,
+        padding: "16px 18px",
+        borderRadius: 16,
+        background: "rgba(249, 122, 53, 0.15)",
+        border: `1px solid ${C.accentOrange}60`,
+        boxShadow: `0 0 25px ${C.accentOrange}30`,
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        minHeight: 124,
+        justifyContent: "center"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 1, fontWeight: 800 }}>REVENUE CAPTURED</div>
+            <motion.div
+              key={val}
+              initial={{ opacity: 0.6, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em" }}
+            >
+              +${val.toLocaleString()}
+            </motion.div>
+          </div>
+          <motion.div
+            key={`pill-${val}`}
+            animate={{ scale: [1, 1.08, 1] }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            style={{ fontSize: 11, fontWeight: 800, color: C.accentOrange, background: "rgba(249,122,53,0.25)", padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.accentOrange}60`, boxShadow: `0 0 12px ${C.accentOrange}30` }}
+          >
+            ▲ +{activeBarCount * 6}% Jobs
+          </motion.div>
+        </div>
+
+        {/* Gradual Smooth Bar Growth */}
+        <div style={{ position: "relative", height: 36, display: "flex", alignItems: "flex-end", gap: 5, padding: "0 4px" }}>
+          {basePcts.map((pct, idx) => {
+            const isLit = idx < activeBarCount;
+            const isLeadingBar = idx === activeBarCount - 1;
+
+            return (
+              <div key={idx} style={{ flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}>
+                <motion.div
+                  animate={{
+                    height: isLit ? `${pct}%` : "12%",
+                    opacity: isLit ? 1 : 0.18
+                  }}
+                  transition={{
+                    height: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                    opacity: { duration: 0.6, ease: "easeInOut" }
+                  }}
+                  style={{
+                    width: "100%",
+                    borderRadius: 4,
+                    background: isLeadingBar
+                      ? `linear-gradient(180deg, #FF9D54 0%, ${C.accentOrange} 100%)`
+                      : isLit
+                        ? `linear-gradient(180deg, ${C.accentOrange} 0%, rgba(249,122,53,0.4) 100%)`
+                        : "rgba(255,255,255,0.08)",
+                    boxShadow: isLeadingBar
+                      ? `0 0 12px ${C.accentOrange}A0`
+                      : isLit
+                        ? `0 0 6px ${C.accentOrange}40`
+                        : "none"
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // 6. Grows your reviews (Interactive 5-Star Engine & Review Pop-in)
+  const [starsCount, setStarsCount] = useState(1);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStarsCount((prev) => (prev >= 5 ? 1 : prev + 1));
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(250, 204, 21, 0.12)",
+      border: "1px solid rgba(250, 204, 21, 0.5)",
+      boxShadow: "0 8px 24px rgba(250, 204, 21, 0.15)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      minHeight: 124,
+      justifyContent: "center"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {[1, 2, 3, 4, 5].map((s) => {
+            const isLit = s <= starsCount;
+            return (
+              <motion.span
+                key={s}
+                animate={isLit ? { scale: [0.7, 1.3, 1], opacity: 1 } : { scale: 1, opacity: 0.2 }}
+                transition={{ duration: 0.3 }}
+                style={{
+                  fontSize: 18,
+                  color: isLit ? "#FACC15" : "#94A3B8",
+                  filter: isLit ? "drop-shadow(0 0 6px rgba(250,204,21,0.8))" : "none",
+                  display: "inline-block"
+                }}
+              >
+                ★
+              </motion.span>
+            );
+          })}
+        </div>
+        <motion.span
+          key={starsCount}
+          animate={{ scale: [1, 1.1, 1] }}
+          transition={{ duration: 0.3 }}
+          style={{ fontSize: 10, fontWeight: 900, color: "#FACC15", background: "rgba(250,204,21,0.2)", border: "1px solid rgba(250,204,21,0.4)", padding: "3px 9px", borderRadius: 999 }}
+        >
+          {starsCount}.0 STAR RATING
+        </motion.span>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {starsCount === 5 ? (
+          <motion.div
+            key="review-full"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            style={{ fontSize: 12, color: "#FFFFFF", background: "rgba(0,0,0,0.35)", padding: "10px 12px", borderRadius: 10, borderLeft: "3px solid #FACC15" }}
+          >
+            “Foreman sent a review text right after the job. Captured 18 new 5-star reviews this week!”
+          </motion.div>
+        ) : (
+          <motion.div
+            key="review-building"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ fontSize: 11, color: "#CBD5E1", fontStyle: "italic", padding: "6px 2px" }}
+          >
+            Collecting verified 5-star post-job reviews automatically...
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function FlipFeatureCard({ feat, index }: { feat: { title: string; desc: string; icon: any }; index: number }) {
+  const [isFlipped, setIsFlipped] = useState(false);
+  const reducedMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      className="fm-featcard-wrapper"
+      onMouseEnter={() => setIsFlipped(true)}
+      onMouseLeave={() => setIsFlipped(false)}
+      whileHover={reducedMotion ? {} : { y: -8, scale: 1.02 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      style={{
+        perspective: 1200,
+        height: 350,
+        position: "relative",
+        cursor: "pointer"
+      }}
+    >
+      <motion.div
+        animate={{ rotateY: isFlipped && !reducedMotion ? 180 : 0 }}
+        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "relative",
+          transformStyle: "preserve-3d"
+        }}
+      >
+        {/* FRONT FACE OF CARD (FRAMELESS GLASS) */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          background: `linear-gradient(135deg, rgba(20,28,48,0.92) 0%, rgba(10,15,28,0.96) 100%)`,
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          padding: "36px 30px",
+          borderRadius: 24,
+          border: `1px solid rgba(249, 122, 53, 0.35)`,
+          boxShadow: isFlipped
+            ? "0 24px 60px rgba(0,0,0,0.6)"
+            : "0 16px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          overflow: "hidden",
+          transition: "border-color 300ms ease, box-shadow 300ms ease"
+        }}>
+          {/* Top Neon Accent Line */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: 3,
+            background: `linear-gradient(90deg, transparent, ${C.accentOrange}, transparent)`
+          }} />
+
+          {/* Glowing Ambient Light Sphere */}
+          <div style={{
+            position: "absolute", top: "-25%", right: "-25%", width: "200px", height: "200px",
+            background: `radial-gradient(circle, ${C.accentOrange}25 0%, transparent 70%)`,
+            pointerEvents: "none", borderRadius: "50%", filter: "blur(10px)"
+          }} />
+
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+              <motion.div
+                animate={reducedMotion ? {} : { y: [-4, 4], rotate: [0, -4, 4, 0] }}
+                transition={{ duration: 3.2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: index * 0.15 }}
+                style={{
+                  width: 64, height: 64, borderRadius: 20,
+                  background: `linear-gradient(135deg, ${C.accentOrange}35 0%, ${C.accentOrange}10 100%)`,
+                  border: `1px solid ${C.accentOrange}70`,
+                  boxShadow: `0 10px 24px -4px ${C.accentOrange}50, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                  color: C.accentOrange, display: "flex", alignItems: "center", justifyContent: "center"
+                }}
+              >
+                <div style={{ filter: `drop-shadow(0 4px 12px ${C.accentOrange}80)` }}>{feat.icon}</div>
+              </motion.div>
+
+              <span className="fm-mono" style={{
+                fontSize: 12, fontWeight: 900, letterSpacing: 1.5, color: C.accentOrange,
+                background: "rgba(249,122,53,0.15)", border: `1px solid ${C.accentOrange}40`,
+                padding: "5px 12px", borderRadius: 999, boxShadow: `0 4px 12px ${C.accentOrange}20`
+              }}>
+                0{index + 1}
+              </span>
+            </div>
+
+            <h3 style={{ fontSize: 23, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 12, color: "#FFFFFF", lineHeight: 1.3 }}>
+              {feat.title}
+            </h3>
+
+            <p style={{ fontSize: 15, color: "#A0AEC0", margin: 0, lineHeight: 1.65 }}>
+              {feat.desc}
+            </p>
+          </div>
+        </div>
+
+        {/* BACK FACE OF CARD (HIGH-CONTRAST NEON DEMO) */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          transform: "rotateY(180deg)",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          background: `linear-gradient(135deg, rgba(26,36,58,0.98) 0%, rgba(12,18,32,0.99) 100%)`,
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          padding: "24px",
+          borderRadius: 24,
+          border: `1px solid ${C.accentOrange}`,
+          boxShadow: `0 24px 60px rgba(0,0,0,0.7), 0 0 35px ${C.accentOrange}45`,
+          display: "flex",
+          flexDirection: "column",
+          justify: "center",
+          overflow: "hidden"
+        }}>
+          {/* Top Neon Accent Line */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: 3,
+            background: C.accentOrange, boxShadow: `0 0 10px ${C.accentOrange}`
+          }} />
+
+          {/* Minimalist Live Functional Animation Component */}
+          <FeatureGraphicWidget title={feat.title} />
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
   const fCopy = FEATURES_COPY[mode] || FEATURES_COPY.main;
 
   return (
-    <section id="features" className="fm-island" style={{ background: C.bgCard, padding: "60px 0", zIndex: 7 }}>
+    <section id="features" className="fm-island" style={{ background: C.bgCard, padding: "64px 0", zIndex: 7 }}>
       <div className="fm-wrap">
-        <Reveal className="fm-sechead" style={{ marginBottom: 40 }}>
-          <div className="fm-eyebrow">{fCopy.eyebrow}</div>
+        <Reveal className="fm-sechead" style={{ marginBottom: 40, textAlign: "center", maxWidth: "100%" }}>
+          <div className="fm-eyebrow" style={{ display: "inline-block" }}>{fCopy.eyebrow}</div>
           <h2 style={{
             fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(36px, 5vw, 52px)",
@@ -1641,21 +2566,26 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
             color: C.textHeading,
             marginTop: 16
           }}>
-            {fCopy.headline}
+            <ScrollTextReveal text={fCopy.headline} as="span" />
           </h2>
         </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 32 }}>
-          {fCopy.feats.map((feat, i) => (
-            <Reveal key={i} delay={i * 0.1}>
-              <div className="fm-featcard fm-hoverlift" style={{ height: "100%", background: C.bgPrimary, padding: 40, borderRadius: 24, border: `1px solid ${C.borderPrimary}` }}>
-                <div style={{ width: 56, height: 56, borderRadius: 14, background: `rgba(59,130,246,0.1)`, color: C.accentOrange, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-                  <div style={{ transform: "scale(1.1)" }}>{feat.icon}</div>
-                </div>
-                <h3 className="fm-cardh3" style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 12, color: C.textHeading }}>{feat.title}</h3>
-                <p className="fm-cardp" style={{ fontSize: 16, color: C.textBody, margin: 0, lineHeight: 1.6 }}>{feat.desc}</p>
-              </div>
-            </Reveal>
-          ))}
+
+        {/* Interactive 3D Flip Feature Cards Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 28 }}>
+          <AnimatePresence mode="popLayout">
+            {fCopy.feats.map((feat, i) => (
+              <motion.div
+                key={feat.title}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+              >
+                <FlipFeatureCard feat={feat} index={i} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
     </section>
@@ -1702,7 +2632,7 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
   const content = CTA_COPY[mode] || CTA_COPY.main;
 
   return (
-    <section id="pilot" style={{ background: C.bgPrimary, padding: "80px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
+    <section id="pilot" style={{ background: C.bgPrimary, padding: "48px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
       <div style={{
         position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
         width: "100%", maxWidth: 1000, height: 600,
@@ -1711,23 +2641,19 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
       }} />
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
         <Reveal>
-          <motion.div
-            style={{ display: "flex", justifyContent: "center", marginBottom: 24, transformOrigin: "bottom center" }}
-            initial={{ scale: 0, rotate: -20 }}
-            whileInView={{ scale: 1, rotate: 0 }}
-            viewport={{ once: true }}
-            transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
-          >
-            <motion.div
-              animate={{ rotate: [-6, 6], y: [-3, 3] }}
-              whileHover={{ scale: 1.14, rotate: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
-              transition={{ duration: 2.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-            >
-              <DoodleThumbsUp style={{ filter: `drop-shadow(0 15px 25px ${C.accentOrange}50)` }} />
-            </motion.div>
-          </motion.div>
-          <h2 className="fm-h2" style={{ fontSize: 56 }}>{content.headline}</h2>
-          <p className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto", marginTop: 16 }}>{content.sub}</p>
+          <h2 style={{
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(36px, 5.5vw, 64px)",
+            lineHeight: 1.12,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading
+          }}>
+            <ScrollTextReveal text={content.headline} as="span" />
+          </h2>
+          <div className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto", marginTop: 16 }}>
+            <ScrollTextReveal text={content.sub} as="p" />
+          </div>
           <div className="fm-hero-cta" style={{ justifyContent: "center", marginTop: 40 }}>
             <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary">
               {content.button}
@@ -1739,6 +2665,368 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
         </Reveal>
       </div>
     </section>
+  );
+}
+
+/* ================================================================== */
+/*  TESTIMONIALS SECTION                                              */
+/* ================================================================== */
+const TESTIMONIALS = [
+  {
+    quote: "Captured 14 emergency heatwave calls while crew was out on jobs.",
+    highlight: "Booked $18,400 in revenue we used to lose to voicemail.",
+    author: "Dave Miller",
+    title: "Founder, Apex HVAC Services",
+    location: "Austin, TX",
+    trade: "HVAC",
+    metric: "+$18,400",
+    metricLabel: "1st Weekend Revenue",
+    initials: "DM",
+    avatarUrl: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
+    glow: "249,122,53",
+  },
+  {
+    quote: "2 AM burst pipe calls used to go straight to our competitors.",
+    highlight: "Foreman triages and dispatches emergencies before I wake up.",
+    author: "Marcus Vance",
+    title: "Owner, Vance & Sons Plumbing",
+    location: "Chicago, IL",
+    trade: "Plumbing",
+    metric: "0 Missed",
+    metricLabel: "Emergency Dispatches",
+    initials: "MV",
+    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
+    glow: "249,122,53",
+  },
+  {
+    quote: "Our missed call rate dropped from 35% to zero instantly.",
+    highlight: "Homeowners are blown away by how fast and professional it sounds.",
+    author: "Carlos Reyes",
+    title: "Master Electrician, Reyes Electric",
+    location: "Miami, FL",
+    trade: "Electrical",
+    metric: "100%",
+    metricLabel: "Call Answer Rate",
+    initials: "CR",
+    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
+    glow: "249,122,53",
+  },
+  {
+    quote: "In water damage restoration, speed is everything.",
+    highlight: "Booked two $12k mold & water mitigation assessments in 48 hrs.",
+    author: "Sarah Jenkins",
+    title: "Operations Director, NextGen Restoration",
+    location: "Denver, CO",
+    trade: "Restoration",
+    metric: "+$24,000",
+    metricLabel: "First 48 Hours",
+    initials: "SJ",
+    avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
+    glow: "249,122,53",
+  },
+  {
+    quote: "Paid for itself on day one with emergency garage door calls.",
+    highlight: "Books spring replacements before homeowners even hang up.",
+    author: "Jason Rodriguez",
+    title: "Owner, Titan Overhead Doors",
+    location: "Phoenix, AZ",
+    trade: "Garage Doors",
+    metric: "< 10 sec",
+    metricLabel: "Emergency Dispatch",
+    initials: "JR",
+    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
+    glow: "249,122,53",
+  },
+  {
+    quote: "Storm emergency calls were completely overwhelming us.",
+    highlight: "Handled 80+ calls in an afternoon and booked 34 inspections.",
+    author: "Brett Callahan",
+    title: "Managing Partner, Shield Roofing",
+    location: "Dallas, TX",
+    trade: "Roofing",
+    metric: "34 Jobs",
+    metricLabel: "Inspections Scheduled",
+    initials: "BC",
+    avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
+    glow: "249,122,53",
+  }
+];
+
+function InfiniteDraggableMarquee({ items, baseSpeed = -0.5, style }: { items: typeof TESTIMONIALS; baseSpeed?: number; style?: React.CSSProperties }) {
+  const reducedMotion = useReducedMotion();
+  const rawX = useMotionValue(0);
+  const smoothX = useSpring(rawX, { stiffness: 400, damping: 40, mass: 0.15 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [singleWidth, setSingleWidth] = useState(0);
+
+  useEffect(() => {
+    if (trackRef.current) {
+      setSingleWidth(trackRef.current.scrollWidth / 2);
+    }
+  }, [items]);
+
+  useAnimationFrame((_, delta) => {
+    if (!isDragging && !reducedMotion) {
+      const moveBy = baseSpeed * (delta / 16);
+      rawX.set(rawX.get() + moveBy);
+    }
+  });
+
+  const wrappedX = useTransform(smoothX, (v) => {
+    if (!singleWidth) return "0px";
+    const wrapped = wrap(-singleWidth, 0, v);
+    return `${wrapped}px`;
+  });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCursorPos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsDragging(false);
+      }}
+      onMouseMove={handleMouseMove}
+      className="fm-testimonial-marquee-wrapper"
+      style={{ ...style, touchAction: "none", position: "relative", cursor: "none", overflow: "hidden" }}
+    >
+      <motion.div
+        ref={trackRef}
+        drag="x"
+        dragFree
+        style={{ x: wrappedX, display: "flex", gap: 24, width: "max-content", cursor: "none" }}
+        onDragStart={() => setIsDragging(true)}
+        onDragEnd={() => setIsDragging(false)}
+        onDrag={(_, info) => {
+          rawX.set(rawX.get() + info.delta.x);
+        }}
+      >
+        {items.map((item, idx) => (
+          <TestimonialCard key={`m-${idx}`} item={item} />
+        ))}
+      </motion.div>
+
+      {/* Hover Badge matching Request a Demo style */}
+      <AnimatePresence>
+        {isHovered && (
+          <motion.div
+            className="fm-headline-hover-badge-centered"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{
+              opacity: 1,
+              scale: isDragging ? 1.08 : 1,
+              x: cursorPos.x,
+              y: cursorPos.y - 30,
+            }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ type: "spring", stiffness: 500, damping: 28, mass: 0.3 }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              pointerEvents: "none",
+              zIndex: 50,
+            }}
+          >
+            <span>{isDragging ? "Scroll" : "Drag"}</span>
+            <span style={{ fontSize: 14 }}>{isDragging ? "✊" : "🖐️"}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function TestimonialsSection() {
+  const row1 = [...TESTIMONIALS, ...TESTIMONIALS];
+  const row2 = [...TESTIMONIALS.slice(3), ...TESTIMONIALS.slice(0, 3), ...TESTIMONIALS.slice(3), ...TESTIMONIALS.slice(0, 3)];
+
+  return (
+    <section id="testimonials" className="fm-island" style={{ background: C.bgCard, padding: "72px 0 88px", zIndex: 7, overflow: "hidden", position: "relative" }}>
+      {/* Background glow ambiance */}
+      <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 800, height: 400, background: `radial-gradient(ellipse, ${C.accentOrange}12 0%, transparent 70%)`, filter: "blur(60px)", pointerEvents: "none" }} />
+
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 48, maxWidth: "100%", textAlign: "center" }}>
+          <div className="fm-eyebrow">REAL CONTRACTOR RESULTS</div>
+          <h2 style={{
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 5vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            marginBottom: 16
+          }}>
+            <ScrollTextReveal text="Trusted by trade owners who build America." as="span" />
+          </h2>
+          <div style={{ color: C.textBody, fontSize: 18, maxWidth: 640, margin: "0 auto", lineHeight: 1.6 }}>
+            <ScrollTextReveal text="See how HVAC, plumbing, electrical, and restoration contractors turn missed calls into booked revenue every single day." as="p" />
+          </div>
+        </Reveal>
+      </div>
+
+      {/* Marquee Track 1 (Infinite Draggable Loop) */}
+      <InfiniteDraggableMarquee items={row1} baseSpeed={-0.6} style={{ marginBottom: 20 }} />
+
+      {/* Marquee Track 2 (Reverse Infinite Draggable Loop) */}
+      <InfiniteDraggableMarquee items={row2} baseSpeed={0.6} />
+    </section>
+  );
+}
+
+function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
+  const [hovering, setHovering] = useState(false);
+
+  function handleMove(e: React.MouseEvent<HTMLDivElement>) {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    const ry = (px - 0.5) * 10;
+    const rx = (0.5 - py) * 6;
+    setTilt({ rx, ry, mx: px * 100, my: py * 100 });
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      whileHover={{
+        scale: 1.04,
+        rotate: 1,
+        cursor: "none",
+        transition: { type: "spring", stiffness: 350, damping: 22 }
+      }}
+      onMouseMove={handleMove}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => {
+        setHovering(false);
+        setTilt({ rx: 0, ry: 0, mx: 50, my: 50 });
+      }}
+      className="tcard select-none"
+      style={{
+        "--glow": item.glow,
+        transform: `perspective(900px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateZ(${hovering ? 10 : 0}px)`,
+      } as React.CSSProperties}
+    >
+      {/* animated gradient border ring */}
+      <div className="tcard-ring pointer-events-none" />
+
+      {/* cursor-tracking spotlight */}
+      <div
+        className="tcard-spot pointer-events-none"
+        style={{
+          background: `radial-gradient(280px circle at ${tilt.mx}% ${tilt.my}%, rgba(${item.glow},0.20), transparent 70%)`,
+          opacity: hovering ? 1 : 0,
+        }}
+      />
+
+      <div className="tcard-inner pointer-events-none">
+        {/* Card Header: Trade Pill & Star Badges */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span style={{
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: "0.05em",
+            textTransform: "uppercase",
+            color: `rgb(${item.glow})`,
+            background: `rgba(${item.glow}, 0.12)`,
+            border: `1px solid rgba(${item.glow}, 0.35)`,
+            padding: "3px 10px",
+            borderRadius: 999,
+            boxShadow: `0 2px 8px rgba(${item.glow}, 0.12)`
+          }}>
+            {item.trade}
+          </span>
+          <div className="tcard-stars" style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.3)", padding: "2px 6px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.06)" }}>
+            {Array.from({ length: item.rating }).map((_, i) => (
+              <span key={i} className="tcard-star" style={{ transitionDelay: `${i * 30}ms` }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="#F97A35" style={{ filter: "drop-shadow(0 0 4px rgba(249,122,53,0.8))" }}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Hero Metric Banner Box - Compact */}
+        <div style={{
+          marginBottom: 12,
+          background: "rgba(15, 23, 42, 0.65)",
+          padding: "10px 14px",
+          borderRadius: 14,
+          border: `1px solid rgba(${item.glow}, 0.3)`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between"
+        }}>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#FFFFFF", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+              {item.metric}
+            </div>
+            <div className="fm-mono" style={{ fontSize: 10, fontWeight: 800, color: `rgb(${item.glow})`, textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 2 }}>
+              {item.metricLabel}
+            </div>
+          </div>
+        </div>
+
+        {/* Concise Quote */}
+        <p style={{ color: "#E2E8F0", fontSize: 13, lineHeight: 1.45, fontWeight: 500, margin: "0 0 10px" }}>
+          &ldquo;{item.quote}&rdquo;
+        </p>
+
+        {/* Author Footer */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 10, marginTop: "auto" }}>
+          <div className="tcard-avatar" style={{ background: item.bgGradient, width: 34, height: 34, borderRadius: "50%", border: `1.5px solid rgba(${item.glow}, 0.5)` }}>
+            <div className="tcard-avatar-ring" />
+            {item.avatarUrl ? (
+              <img src={item.avatarUrl} alt={item.author} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              item.initials
+            )}
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: 13, color: "#FFFFFF", display: "flex", alignItems: "center", gap: 4 }}>
+              <span>{item.author}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill={C.accentOrange}>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+            </div>
+            <div style={{ fontSize: 11, color: "#94A3B8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {item.title} • {item.location}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -2083,12 +3371,12 @@ export function Pricing() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="pricing" className="py-32 relative" style={{ background: C.bgPrimary }}>
+    <section id="pricing" className="py-16 relative" style={{ background: C.bgPrimary }}>
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: `radial-gradient(ellipse at 50% -50%, ${C.accentOrange}, transparent 70%)` }} />
-      
+
       <div className="max-w-[1000px] mx-auto px-6" ref={ref}>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
@@ -2097,15 +3385,23 @@ export function Pricing() {
         >
           {/* Subtle noise texture or inner glow */}
           <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(circle at 50% 50%, ${C.accentOrange}, transparent 60%)` }} />
-          
+
           <div className="relative z-10">
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 text-white leading-tight">
-              Pricing that only wins when you do.
+            <h2 style={{
+              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontSize: "clamp(32px, 4.8vw, 56px)",
+              lineHeight: 1.15,
+              fontWeight: 400,
+              letterSpacing: "-0.02em",
+              color: "#FFFFFF",
+              marginBottom: "1.5rem"
+            }}>
+              <ScrollTextReveal text="Pricing that only wins when you do." as="span" />
             </h2>
-            <p className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto mb-12">
-              Foreman is priced to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit. You only pay when Foreman books you real work.
-            </p>
-            
+            <div className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto mb-12">
+              <ScrollTextReveal text="Foreman is priced to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit. You only pay when Foreman books you real work." as="p" />
+            </div>
+
             <div className="flex flex-col items-center justify-center">
               <MagneticButton href={CALENDLY_LINK} className="fm-btn fm-btn-primary" style={{ padding: "16px 32px", fontSize: "18px" }}>
                 Book your free pilot
@@ -2169,11 +3465,21 @@ export function FAQ({ mode = "main" }: { mode?: LandingMode }) {
   const qa = FAQ_COPY[mode] || FAQ_COPY.main;
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <section id="faq" className="fm-island" style={{ background: C.bgCard, padding: "48px 0", zIndex: 8 }}>
+    <section id="faq" className="fm-island" style={{ background: C.bgCard, padding: "32px 0", zIndex: 8 }}>
       <div className="fm-wrap">
         <Reveal className="fm-sechead">
           <div className="fm-eyebrow">STRAIGHT ANSWERS</div>
-          <h2 className="fm-h2">Questions, answered</h2>
+          <h2 style={{
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 4.8vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            marginBottom: "18px"
+          }}>
+            <ScrollTextReveal text="Questions, answered" as="span" />
+          </h2>
         </Reveal>
         <div className="fm-faqlist">
           {qa.map((item, i) => {
@@ -2356,7 +3662,7 @@ function CinematicWorkflow() {
   const activeProgress = isMobile ? scrollYProgress : autoProgress;
 
   return (
-    <section ref={containerRef} className="fm-island" style={{ background: C.bgPrimary, padding: "80px 0", position: "relative", overflow: "hidden", display: "flex", justifyContent: "center" }}>
+    <section ref={containerRef} className="fm-island" style={{ background: C.bgPrimary, padding: "48px 0", position: "relative", overflow: "hidden", display: "flex", justifyContent: "center" }}>
       {/* Background Ambience */}
       <div style={{ position: "absolute", top: "20%", left: "30%", width: "40%", height: 600, background: "radial-gradient(ellipse, rgba(167,139,250,0.08) 0%, transparent 60%)", filter: "blur(80px)", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "20%", right: "20%", width: "40%", height: 600, background: `radial-gradient(circle, ${C.accentOrange}0A 0%, transparent 60%)`, filter: "blur(80px)", pointerEvents: "none" }} />
@@ -2721,6 +4027,7 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
       >
         <Nav />
         <Hero mode={mode} />
+        <DashboardPreview />
         <div id={mode === "main" ? "how" : undefined}>
           <CinematicWorkflow />
         </div>
@@ -2735,6 +4042,7 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
         <div id="features">
           <AdvancedFeatures mode={mode} />
         </div>
+        <TestimonialsSection />
         <FinalCTA mode={mode} />
         <Pricing />
         <FAQ mode={mode} />
