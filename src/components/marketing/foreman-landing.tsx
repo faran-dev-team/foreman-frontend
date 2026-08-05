@@ -273,6 +273,92 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Reusable: 3D Draggable & Rotatable Card                            */
+/* ------------------------------------------------------------------ */
+export function Interactive3DCard({
+  children,
+  className = "",
+  style = {},
+}: {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const reducedMotion = useReducedMotion();
+  const [isDragging, setIsDragging] = useState(false);
+
+  const rotX = useSpring(0, { stiffness: 220, damping: 22 });
+  const rotY = useSpring(0, { stiffness: 220, damping: 22 });
+
+  const prevPos = useRef({ x: 0, y: 0 });
+  const currentRot = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (reducedMotion) return;
+    setIsDragging(true);
+    prevPos.current = { x: e.clientX, y: e.clientY };
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch { }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging || reducedMotion) return;
+    const deltaX = e.clientX - prevPos.current.x;
+    const deltaY = e.clientY - prevPos.current.y;
+
+    currentRot.current.y += deltaX * 0.7;
+    currentRot.current.x -= deltaY * 0.7;
+
+    rotX.set(currentRot.current.x);
+    rotY.set(currentRot.current.y);
+
+    prevPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(false);
+    currentRot.current = { x: 0, y: 0 };
+    rotX.set(0);
+    rotY.set(0);
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch { }
+  };
+
+  if (reducedMotion) {
+    return <div className={className} style={style}>{children}</div>;
+  }
+
+  return (
+    <div style={{ perspective: 1000, width: "100%", height: "100%" }}>
+      <motion.div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{
+          rotateX: rotX,
+          rotateY: rotY,
+          transformStyle: "preserve-3d",
+          cursor: isDragging ? "grabbing" : "grab",
+          userSelect: "none",
+          touchAction: "none",
+          height: "100%",
+          ...style,
+        }}
+        whileTap={{ scale: 1.05 }}
+        className={className}
+      >
+        <div style={{ transform: "translateZ(40px)", height: "100%", width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+          {children}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ================================================================== */
 /*  NAV                                                                */
 /* ================================================================== */
@@ -734,6 +820,79 @@ function CallCard() {
   );
 }
 
+/* ================================================================== */
+/*  WAVY TEXT COMPONENT (Nuwebu-style staggered character wave)      */
+/* ================================================================== */
+export function WavyText({
+  text,
+  className,
+  style,
+  waveHeight = 12,
+  duration = 1.8,
+  stagger = 0.05,
+}: {
+  text: string;
+  className?: string;
+  style?: React.CSSProperties;
+  waveHeight?: number;
+  duration?: number;
+  stagger?: number;
+}) {
+  const words = text.split(" ");
+
+  return (
+    <span
+      className={className}
+      style={{
+        display: "inline-flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        alignItems: "baseline",
+        paddingTop: "14px",
+        marginTop: "-14px",
+        overflow: "visible",
+        ...style,
+      }}
+    >
+      {words.map((word, wordIndex) => {
+        const letterOffset = words
+          .slice(0, wordIndex)
+          .reduce((acc, w) => acc + w.length + 1, 0);
+
+        return (
+          <span
+            key={wordIndex}
+            style={{
+              display: "inline-block",
+              whiteSpace: "nowrap",
+              marginRight: "0.28em",
+              paddingBottom: "4px",
+            }}
+          >
+            {Array.from(word).map((char, charIndex) => {
+              const totalIndex = letterOffset + charIndex;
+              const delay = totalIndex * stagger;
+
+              return (
+                <span
+                  key={charIndex}
+                  className="fm-wavy-letter"
+                  style={{
+                    animationDuration: `${duration}s`,
+                    animationDelay: `${delay}s`,
+                  }}
+                >
+                  {char}
+                </span>
+              );
+            })}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 const HERO_COPY: Record<LandingMode, { eyebrow: string; headline: string[]; headlineItalic: string; sub: string }> = {
   main: {
     eyebrow: "THE AI FRONT OFFICE FOR THE TRADES",
@@ -775,6 +934,7 @@ const HERO_COPY: Record<LandingMode, { eyebrow: string; headline: string[]; head
 
 function Hero({ mode = "main" }: { mode?: LandingMode }) {
   const ref = useRef(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const yGlow = useTransform(scrollYProgress, [0, 1], [0, 160]);
   const reducedMotion = useReducedMotion();
@@ -782,6 +942,12 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
 
   const [isHovered, setIsHovered] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => { });
+    }
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -793,6 +959,34 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
 
   return (
     <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "60px 0 60px", position: "relative", overflow: "hidden" }}>
+      {/* Background Video Layer */}
+      <video
+        ref={videoRef}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        onCanPlay={(e) => {
+          e.currentTarget.play().catch(() => { });
+        }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          zIndex: 0,
+          opacity: 0.38,
+          pointerEvents: "none"
+        }}
+      >
+        <source src="/videos/bg-wave.webm" type="video/webm" />
+        <source src="https://framerusercontent.com/assets/U83OMjeKVajyjISNUuuTiUXc.webm" type="video/webm" />
+        <source src="/videos/bg-trades.mp4" type="video/mp4" />
+      </video>
+
       {/* Primary radial glow — top right */}
       <motion.div
         aria-hidden
@@ -825,7 +1019,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
         }}
       />
 
-      <div className="fm-wrap fm-hero-grid" style={{ position: "relative", zIndex: 2 }}>
+      <div className="fm-wrap fm-hero-grid" style={{ position: "relative", zIndex: 3 }}>
         <div>
           <motion.div className="fm-eyebrow" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             {content.eyebrow}
@@ -947,169 +1141,192 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 
 function DashboardPreview() {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const trackRef = useRef<HTMLDivElement>(null);
+  const scrollableRef = useRef<HTMLDivElement>(null);
+
+  const { scrollYProgress } = useScroll({
+    target: trackRef,
+    offset: ["start -240px", "end end"],
+  });
+
+  useEffect(() => {
+    const updateInnerScroll = (progress: number) => {
+      if (scrollableRef.current) {
+        const maxScroll = scrollableRef.current.scrollHeight - scrollableRef.current.clientHeight;
+        scrollableRef.current.scrollTop = progress * Math.max(0, maxScroll);
+      }
+    };
+
+    updateInnerScroll(scrollYProgress.get());
+    return scrollYProgress.on("change", updateInnerScroll);
+  }, [scrollYProgress]);
 
   return (
     <section
-      ref={ref}
+      ref={trackRef}
       style={{
         background: brand.carbon,
-        padding: "80px 0 96px",
         position: "relative",
-        overflow: "hidden",
+        height: "250vh",
       }}
     >
-      {/* Ambient glow */}
-      <div aria-hidden style={{
-        position: "absolute", top: -120, left: "50%", transform: "translateX(-50%)",
-        width: 900, height: 450, borderRadius: "50%",
-        background: `radial-gradient(ellipse, ${brand.orange}18 0%, transparent 70%)`,
-        pointerEvents: "none",
-      }} />
+      {/* Sticky container — section scrolls further down into view so dashboard card is centered before sticking */}
+      <div
+        style={{
+          position: "sticky",
+          top: "-240px",
+          padding: "40px 0 60px",
+          overflow: "hidden",
+        }}
+      >
+        {/* Ambient glow */}
+        <div aria-hidden style={{
+          position: "absolute", top: -120, left: "50%", transform: "translateX(-50%)",
+          width: 900, height: 450, borderRadius: "50%",
+          background: `radial-gradient(ellipse, ${brand.orange}18 0%, transparent 70%)`,
+          pointerEvents: "none",
+        }} />
 
-      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
-        {/* Eyebrow + headline */}
-        <Reveal className="fm-sechead" style={{ marginBottom: 48, textAlign: "center", maxWidth: "100%" }}>
-          <div className="fm-eyebrow">OWNER DASHBOARD</div>
-          <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
-            fontSize: "clamp(32px, 5vw, 56px)",
-            lineHeight: 1.15,
-            fontWeight: 400,
-            letterSpacing: "-0.02em",
-            color: C.textHeading,
-            maxWidth: 750,
-            margin: "0 auto 16px",
-          }}>
-            <ScrollTextReveal text="Your shop's performance, live in one place." as="span" />
-          </h2>
-          <div className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
-            <ScrollTextReveal text="Every call, booking, and dollar Foreman captures shows up here in real time." as="p" />
-          </div>
-        </Reveal>
-
-        {/* Browser chrome frame */}
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.97 }}
-          animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
-          transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-          style={{
-            border: `1px solid ${brand.border}`,
-            borderRadius: 16,
-            overflow: "hidden",
-            boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)",
-          }}
-        >
-          {/* Mac-style top bar */}
-          <div style={{
-            borderBottom: `1px solid ${brand.border}`,
-            padding: "11px 18px",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: "rgba(5,8,15,0.9)",
-            backdropFilter: "blur(12px)",
-          }}>
-            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#F87171", flexShrink: 0 }} />
-            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FBBF24", flexShrink: 0 }} />
-            <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#34D399", flexShrink: 0 }} />
-            <div style={{ flex: 1, margin: "0 16px", height: 24, borderRadius: 6, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", letterSpacing: "0.03em" }}>app.foreman.ai / dashboard</span>
-            </div>
-            <div style={{ width: 36, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.04)", flexShrink: 0 }} />
-          </div>
-
-          {/* App layout: sidebar + main */}
-          <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 640, overflow: "hidden" }}>
-            {/* Sidebar (matches real dashboard-shell.tsx sidebar) */}
-            <div style={{
-              width: 256, flexShrink: 0,
-              background: brand.carbon,
-              borderRight: `1px solid ${brand.border}`,
-              display: "flex", flexDirection: "column",
+        <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
+          {/* Eyebrow + headline */}
+          <Reveal className="fm-sechead" style={{ marginBottom: 48, textAlign: "center", maxWidth: "100%" }}>
+            <div className="fm-eyebrow">OWNER DASHBOARD</div>
+            <h2 style={{
+              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontSize: "clamp(32px, 5vw, 56px)",
+              lineHeight: 1.15,
+              fontWeight: 400,
+              letterSpacing: "-0.02em",
+              color: C.textHeading,
+              maxWidth: 750,
+              margin: "0 auto 16px",
             }}>
-              {/* Logo */}
-              <div style={{ padding: "18px 20px 16px", borderBottom: `1px solid ${brand.border}`, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 100 100" fill="none">
-                    <rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} />
-                    <rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} />
-                    <rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} />
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: brand.orange, textTransform: "uppercase" }}>Foreman</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Owner Dashboard</div>
-                </div>
+              <ScrollTextReveal text="Your shop's performance, live in one place." as="span" />
+            </h2>
+            <div className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
+              <ScrollTextReveal text="Every call, booking, and dollar Foreman captures shows up here in real time." as="p" />
+            </div>
+          </Reveal>
+
+          {/* Browser chrome frame */}
+          <div
+            style={{
+              border: `1px solid ${brand.border}`,
+              borderRadius: 16,
+              overflow: "hidden",
+              boxShadow: "0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)",
+            }}
+          >
+            {/* Mac-style top bar */}
+            <div style={{
+              borderBottom: `1px solid ${brand.border}`,
+              padding: "11px 18px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(5,8,15,0.9)",
+              backdropFilter: "blur(12px)",
+            }}>
+              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#F87171", flexShrink: 0 }} />
+              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#FBBF24", flexShrink: 0 }} />
+              <div style={{ width: 11, height: 11, borderRadius: "50%", background: "#34D399", flexShrink: 0 }} />
+              <div style={{ flex: 1, margin: "0 16px", height: 24, borderRadius: 6, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", letterSpacing: "0.03em" }}>app.foreman.ai / dashboard</span>
               </div>
-              {/* Nav items */}
-              <div style={{ padding: "12px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-                {[
-                  { label: "Dashboard", active: true, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
-                  { label: "Calls", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498A1 1 0 0121 15.72V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg> },
-                  { label: "Jobs", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> },
-                  { label: "Reports", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg> },
-                  { label: "Settings", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg> },
-                ].map((item) => (
-                  <div key={item.label} style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "9px 12px", borderRadius: 8,
-                    background: item.active ? `${brand.orange}20` : "transparent",
-                    color: item.active ? brand.orange : brand.textMuted,
-                    fontSize: 13, fontWeight: item.active ? 600 : 400,
-                    cursor: "default",
-                  }}>
-                    <span style={{ color: item.active ? brand.orange : brand.textMuted }}>{item.icon}</span>
-                    {item.label}
-                    {item.active && <div style={{ width: 3, height: 18, borderRadius: 2, background: brand.orange, marginLeft: "auto" }} />}
-                  </div>
-                ))}
-              </div>
+              <div style={{ width: 36, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.04)", flexShrink: 0 }} />
             </div>
 
-            {/* Dashboard content — render the REAL component */}
-            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-              {/* Top header bar (matches dashboard-shell.tsx header) */}
+            {/* App layout: sidebar + main (restored original 640px height) */}
+            <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 640, height: 640, overflow: "hidden" }}>
+              {/* Sidebar */}
               <div style={{
-                position: "sticky", top: 0, zIndex: 10,
-                display: "flex", alignItems: "center", gap: 12,
-                padding: "12px 32px",
-                background: "rgba(255,255,255,0.92)",
-                backdropFilter: "blur(12px)",
-                borderBottom: "1px solid rgba(203,213,225,0.8)",
+                width: 256, flexShrink: 0,
+                background: brand.carbon,
+                borderRight: `1px solid ${brand.border}`,
+                display: "flex", flexDirection: "column",
               }}>
-                <div style={{ width: 22, height: 22, borderRadius: 6, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg width="11" height="11" viewBox="0 0 100 100" fill="none">
-                    <rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} />
-                    <rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} />
-                    <rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} />
-                  </svg>
+                {/* Logo */}
+                <div style={{ padding: "18px 20px 16px", borderBottom: `1px solid ${brand.border}`, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 100 100" fill="none">
+                      <rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} />
+                      <rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} />
+                      <rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} />
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: brand.orange, textTransform: "uppercase" }}>Foreman</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Owner Dashboard</div>
+                  </div>
                 </div>
-                <span style={{ fontSize: 13, color: "#64748B" }}>Foreman Launch+ · Owner portal</span>
-                {/* Notification bell */}
-                <div style={{ marginLeft: "auto", width: 32, height: 32, borderRadius: 8, background: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                {/* Nav items */}
+                <div style={{ padding: "12px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+                  {[
+                    { label: "Dashboard", active: true, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
+                    { label: "Calls", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498A1 1 0 0121 15.72V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg> },
+                    { label: "Jobs", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> },
+                    { label: "Reports", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
+                    { label: "Settings", active: false, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" /></svg> },
+                  ].map((item) => (
+                    <div key={item.label} style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "9px 12px", borderRadius: 8,
+                      background: item.active ? `${brand.orange}20` : "transparent",
+                      color: item.active ? brand.orange : brand.textMuted,
+                      fontSize: 13, fontWeight: item.active ? 600 : 400,
+                      cursor: "default",
+                    }}>
+                      <span style={{ color: item.active ? brand.orange : brand.textMuted }}>{item.icon}</span>
+                      {item.label}
+                      {item.active && <div style={{ width: 3, height: 18, borderRadius: 2, background: brand.orange, marginLeft: "auto" }} />}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Actual DashboardOverview rendered inside */}
-              <div style={{ padding: "28px 32px" }}>
-                <DashboardOverview preview />
+              {/* Dashboard content — scroll-synced to main page scroll */}
+              <div
+                ref={scrollableRef}
+                style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}
+              >
+                {/* Top header bar (matches dashboard-shell.tsx header) */}
+                <div style={{
+                  position: "sticky", top: 0, zIndex: 10,
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "12px 32px",
+                  background: "rgba(255,255,255,0.92)",
+                  backdropFilter: "blur(12px)",
+                  borderBottom: "1px solid rgba(203,213,225,0.8)",
+                }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, background: brand.orange, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="11" height="11" viewBox="0 0 100 100" fill="none">
+                      <rect x="30" y="26" width="16" height="52" rx="2.5" fill={brand.carbon} />
+                      <rect x="30" y="26" width="44" height="16" rx="2.5" fill={brand.carbon} />
+                      <rect x="30" y="49" width="32" height="14" rx="2.5" fill={brand.carbon} />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 13, color: "#64748B" }}>Foreman Launch+ · Owner portal</span>
+                  {/* Notification bell */}
+                  <div style={{ marginLeft: "auto", width: 32, height: 32, borderRadius: 8, background: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                  </div>
+                </div>
+
+                {/* Actual DashboardOverview rendered inside */}
+                <div style={{ padding: "28px 32px" }}>
+                  <DashboardOverview preview />
+                </div>
               </div>
             </div>
           </div>
-        </motion.div>
 
-        {/* Caption */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          style={{ textAlign: "center", marginTop: 20, fontSize: 12, color: brand.textMuted }}
-        >
-          Real-time owner dashboard · calls, bookings, and revenue in one view
-        </motion.p>
+          {/* Caption */}
+          <motion.p
+            style={{ textAlign: "center", marginTop: 20, fontSize: 12, color: brand.textMuted }}
+          >
+            Real-time owner dashboard · calls, bookings, and revenue in one view
+          </motion.p>
+        </div>
       </div>
     </section>
   );
@@ -1197,44 +1414,203 @@ const tradeIconMap: Record<string, React.ReactNode> = {
   "law-firm": <img src="/images/property.png" alt="Law Firms" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
 };
 
+/* ================================================================== */
+/*  INTERACTIVE CALL CARD (3D Tilt, Spotlight Glow, Spring Physics)   */
+/* ================================================================== */
+/* ================================================================== */
+/*  INTERACTIVE CALL CARD (3D Circular Cone Stack, Spotlight Glow)   */
+/* ================================================================== */
+/* ================================================================== */
+/*  INTERACTIVE CALL CARD (Awwwards/Framer Motion Minimalist 3D Deck) */
+/* ================================================================== */
+function TradeInteractiveCard({
+  trade,
+  offset,
+  isFront,
+  tradeIndex,
+}: {
+  trade: (typeof TRADES)[number];
+  offset: number;
+  isFront: boolean;
+  tradeIndex: number;
+}) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const rotateX = useTransform(y, [-100, 100], [6, -6]);
+  const rotateY = useTransform(x, [-100, 100], [-6, 6]);
+
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isFront) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+
+    x.set(offsetX - rect.width / 2);
+    y.set(offsetY - rect.height / 2);
+    setMousePos({ x: offsetX, y: offsetY });
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+    setIsHovered(false);
+  };
+
+  // Subtle ambient bottom glow palette for high-end minimalist deck
+  const glowColors = [
+    "rgba(249, 122, 53, 0.22)",  // HVAC - Orange
+    "rgba(56, 189, 248, 0.22)",  // Plumbing - Blue
+    "rgba(250, 204, 21, 0.22)",  // Electrical - Yellow
+    "rgba(168, 85, 247, 0.22)",  // Roofing - Purple
+    "rgba(52, 211, 153, 0.22)",  // Pest - Green
+    "rgba(236, 72, 153, 0.22)",  // Garage - Magenta
+    "rgba(239, 68, 68, 0.22)",   // Restoration - Red
+    "rgba(99, 102, 241, 0.22)",  // Property Mgmt - Indigo
+    "rgba(14, 165, 233, 0.22)",  // Law Firm - Sky
+  ];
+  const cardGlowColor = glowColors[tradeIndex % glowColors.length];
+
+  // Symmetrical Left & Right 3D Fanned Deck Math
+  const xOffset = offset * 170; // Sleek overlapping spacing
+  const coneRotateY = isFront ? rotateY : offset * -20; // Subtle 3D arc
+  const coneRotateZ = isFront ? 0 : offset * -3;
+  const scale = isFront ? 1 : 0.88 - Math.abs(offset) * 0.05;
+  const opacity = isFront ? 1 : Math.max(0.3, 0.65 - Math.abs(offset) * 0.2);
+  const zIndex = 30 - Math.abs(offset) * 10;
+
+  return (
+    <motion.div
+      className="fm-callcard"
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        position: "absolute",
+        width: "100%",
+        maxWidth: 440,
+        top: 0,
+        left: "50%",
+        marginLeft: -220,
+        background: `linear-gradient(180deg, rgba(14,21,38,0.95) 0%, rgba(10,15,28,0.98) 65%, ${cardGlowColor} 100%)`,
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        border: `1px solid ${isFront ? "rgba(249, 122, 53, 0.35)" : "rgba(255, 255, 255, 0.06)"}`,
+        borderRadius: 20,
+        boxShadow: isFront
+          ? "0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(249, 122, 53, 0.15)"
+          : "0 12px 32px rgba(0, 0, 0, 0.5)",
+        transformOrigin: "center center",
+        zIndex: zIndex,
+        pointerEvents: isFront ? "auto" : "none",
+        rotateX: isFront ? rotateX : 0,
+        rotateY: coneRotateY,
+        rotateZ: coneRotateZ,
+        transformStyle: "preserve-3d",
+        overflow: "hidden",
+      }}
+      initial={false}
+      animate={{
+        x: xOffset,
+        y: Math.abs(offset) * 10,
+        scale: scale,
+        opacity: opacity,
+      }}
+      whileHover={isFront ? { scale: 1.025, y: -4 } : { scale: scale * 1.03 }}
+      transition={{
+        type: "spring",
+        stiffness: 280,
+        damping: 26,
+      }}
+    >
+      {/* Dynamic Cursor Spotlight Glow Effect */}
+      {isFront && (
+        <div
+          style={{
+            pointerEvents: "none",
+            position: "absolute",
+            inset: -1,
+            opacity: isHovered ? 1 : 0,
+            transition: "opacity 300ms ease",
+            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(249, 122, 53, 0.18), transparent 80%)`,
+            zIndex: 1,
+          }}
+        />
+      )}
+
+      <div style={{ position: "relative", zIndex: 2 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span className="fm-mono" style={{ fontSize: 11, letterSpacing: 2, color: C.textBody, opacity: 0.8 }}>INCOMING CALLS</span>
+        </div>
+        <div className="fm-callrow">
+          <div className="fm-callic"><PhoneIcon /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>New {trade.label} Lead</div>
+            <div style={{ fontSize: 13, color: C.textBody }}>{trade.example}</div>
+          </div>
+          <span className="fm-badge fm-badge-booked">BOOKED</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export function TradeSelector() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
   const activeTrade = TRADES[activeIndex];
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (!isAutoPlaying) return;
+    if (isPaused) return;
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % TRADES.length);
-    }, 3500);
+    }, 3000);
     return () => clearInterval(timer);
-  }, [isAutoPlaying]);
+  }, [isPaused]);
 
   return (
-    <section className="fm-island" style={{ background: C.bgCard, padding: "28px 0 56px", zIndex: 3 }}>
-      <div className="fm-wrap">
-        <Reveal className="fm-sechead" style={{ marginBottom: 40, maxWidth: "100%" }}>
+    <section
+      className="fm-island"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      style={{ background: C.bgCard, padding: "36px 0 64px", zIndex: 3, position: "relative", overflow: "hidden" }}
+    >
+      {/* Subtle Ambient Radial Glow */}
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 700, height: 400, background: "radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.06) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 36, maxWidth: "100%", textAlign: "center" }}>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: "var(--font-outfit), sans-serif",
             fontSize: "clamp(32px, 5vw, 56px)",
             lineHeight: 1.15,
-            fontWeight: 400,
-            letterSpacing: "-0.02em",
+            fontWeight: 700,
+            letterSpacing: "-0.03em",
             color: C.textHeading
           }}>
-            <ScrollTextReveal text="Knows your trade. Asks the right questions. Books the job." as="span" />
+            <WavyText
+              text="Knows your trade. Asks the right questions. Books the job."
+              waveHeight={10}
+              duration={1.8}
+              stagger={0.04}
+            />
           </h2>
         </Reveal>
 
-        <Reveal delay={0.05} style={{ maxWidth: 900, margin: "0 auto 48px" }}>
+        <Reveal delay={0.05} style={{ maxWidth: 860, margin: "0 auto 40px" }}>
           <div className="fm-cta-banner" style={{
-            background: `linear-gradient(135deg, rgba(249,122,53,0.15) 0%, rgba(20,28,48,0.8) 100%)`,
-            border: `1px solid rgba(249,122,53,0.3)`,
-            borderRadius: 24,
-            boxShadow: "0 20px 40px rgba(0,0,0,0.2)"
+            background: "rgba(14, 21, 38, 0.75)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            borderRadius: 20,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
           }}>
-            <h3 className="fm-cta-banner-text" style={{ fontWeight: 700, color: C.textHeading, margin: 0, lineHeight: 1.3 }}>
+            <h3 className="fm-cta-banner-text" style={{ fontWeight: 400, color: C.textHeading, margin: 0, lineHeight: 1.3 }}>
               Book a free call with our AI Consultant today.
             </h3>
             <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary fm-cta-banner-btn">
@@ -1244,28 +1620,29 @@ export function TradeSelector() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginBottom: 48 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 44 }}>
             {TRADES.map((t, index) => {
               const isActive = t.id === activeTrade.id;
               return (
                 <Link key={t.id} href={`/${t.id}`} passHref legacyBehavior>
                   <motion.a
-                    onMouseEnter={() => { setActiveIndex(index); setIsAutoPlaying(false); }}
-                    whileHover={reducedMotion ? {} : { scale: 1.06, y: -2 }}
+                    onMouseEnter={() => { setActiveIndex(index); setIsPaused(true); }}
+                    whileHover={reducedMotion ? {} : { scale: 1.05, y: -2 }}
                     whileTap={{ scale: 0.95 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                    transition={{ type: "spring", stiffness: 420, damping: 26 }}
                     style={{
-                      background: isActive ? C.accentOrange : "transparent",
-                      color: isActive ? C.textHeading : C.textBody,
-                      border: `1px solid ${isActive ? C.accentOrange : C.borderPrimary}`,
+                      background: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.03)",
+                      color: isActive ? "#FFFFFF" : C.textBody,
+                      border: `1px solid ${isActive ? C.accentOrange : "rgba(255, 255, 255, 0.08)"}`,
                       borderRadius: 999,
-                      padding: "10px 20px",
+                      padding: "9px 20px",
                       fontFamily: "var(--font-outfit), sans-serif",
-                      fontWeight: 600,
-                      fontSize: 15,
+                      fontWeight: isActive ? 600 : 500,
+                      fontSize: 14.5,
                       cursor: "pointer",
                       textDecoration: "none",
-                      transition: "background 300ms cubic-bezier(0.16,1,0.3,1), color 300ms cubic-bezier(0.16,1,0.3,1), border-color 300ms cubic-bezier(0.16,1,0.3,1)",
+                      boxShadow: isActive ? `0 6px 20px ${C.accentOrange}40` : "none",
+                      transition: "background 250ms cubic-bezier(0.16,1,0.3,1), color 250ms cubic-bezier(0.16,1,0.3,1), border-color 250ms cubic-bezier(0.16,1,0.3,1), box-shadow 250ms cubic-bezier(0.16,1,0.3,1)",
                     }}
                   >
                     {t.label}
@@ -1276,54 +1653,26 @@ export function TradeSelector() {
           </div>
         </Reveal>
 
-        <Reveal delay={0.2} className="fm-trade-card-container" style={{ maxWidth: 500, position: "relative", perspective: 1000 }}>
+        <Reveal delay={0.2} className="fm-trade-card-container" style={{ maxWidth: 800, margin: "0 auto", minHeight: 180, position: "relative", perspective: 1200 }}>
           {TRADES.map((trade, i) => {
-            const distance = (i - activeIndex + TRADES.length) % TRADES.length;
-            const isFront = distance === 0;
-            const isVisible = distance < 3;
-            // The card that just exited is at the end of the line (TRADES.length - 1)
-            const isExiting = distance === TRADES.length - 1;
+            let offset = i - activeIndex;
+            const total = TRADES.length;
+            if (offset > total / 2) offset -= total;
+            if (offset < -total / 2) offset += total;
+
+            const isFront = offset === 0;
+            const isVisible = Math.abs(offset) <= 2;
+
+            if (!isVisible) return null;
 
             return (
-              <motion.div
+              <TradeInteractiveCard
                 key={trade.id}
-                className="fm-callcard"
-                style={{
-                  position: "absolute",
-                  width: "100%",
-                  top: 0,
-                  left: 0,
-                  background: C.bgPrimary,
-                  transformOrigin: "top center",
-                  zIndex: isExiting ? 10 : 10 - distance,
-                  pointerEvents: isFront ? "auto" : "none",
-                }}
-                initial={false}
-                animate={{
-                  y: isExiting ? -40 : (isVisible ? distance * 15 : 30),
-                  scale: isExiting ? 1.05 : (isVisible ? 1 - distance * 0.05 : 0.85),
-                  opacity: isExiting ? 0 : (isVisible ? 1 - distance * 0.2 : 0),
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span className="fm-mono" style={{ fontSize: 12, letterSpacing: 2, color: C.textBody }}>INCOMING CALLS</span>
-                </div>
-                <div className="fm-callrow">
-                  <div className="fm-callic"><PhoneIcon /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>New {trade.label} Lead</div>
-                    <div style={{ fontSize: 13, color: C.textBody }}>{trade.example}</div>
-                  </div>
-                  <span className="fm-badge fm-badge-booked">BOOKED</span>
-                </div>
-
-
-              </motion.div>
+                trade={trade}
+                offset={offset}
+                isFront={isFront}
+                tradeIndex={i}
+              />
             );
           })}
         </Reveal>
@@ -1396,15 +1745,48 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch", maxWidth: 1000, margin: "0 auto" }}>
           <Reveal style={{ position: "relative" }}>
-            <div className="fm-hoverlift" style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 28, padding: 48, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", position: "relative", zIndex: 2 }}>
-              <div style={{ fontSize: 16, color: C.textBody, fontWeight: 600, marginBottom: 12 }}>Missed calls without Foreman:</div>
-              <div className="fm-statnum" style={{ color: C.textBody }}>40%</div>
-            </div>
+            <Interactive3DCard
+              style={{
+                background: C.bgCard,
+                border: `1px solid ${C.borderPrimary}`,
+                borderRadius: 28,
+                padding: 48,
+                boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 16, color: C.textBody, fontWeight: 600, marginBottom: 12, transform: "translateZ(20px)" }}>
+                Missed calls without Foreman:
+              </div>
+              <div className="fm-statnum" style={{ color: C.textBody, transform: "translateZ(40px)" }}>
+                40%
+              </div>
+            </Interactive3DCard>
           </Reveal>
           <Reveal delay={0.1} style={{ position: "relative" }}>
-            <div className="fm-hoverlift" style={{ background: C.accentOrange, borderRadius: 28, padding: 48, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-              <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 600, marginBottom: 12 }}>Missed calls:</div>
-              <div className="fm-statnum" style={{ color: C.bgPrimary, position: "relative", display: "inline-block" }}>
+            <Interactive3DCard
+              style={{
+                background: C.accentOrange,
+                borderRadius: 28,
+                padding: 48,
+                boxShadow: "0 24px 48px rgba(249,122,53,0.35)",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 600, marginBottom: 12, transform: "translateZ(20px)" }}>
+                Missed calls:
+              </div>
+              <div className="fm-statnum" style={{ color: C.bgPrimary, position: "relative", display: "inline-block", transform: "translateZ(40px)" }}>
                 0%
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
@@ -1416,15 +1798,7 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
                   <DoodleCircle style={{ width: "100%", height: "100%" }} />
                 </motion.div>
               </div>
-            </div>
-            {!reducedMotion && (
-              <div
-                className="fm-zero-img"
-                style={{ position: "absolute", zIndex: 3, filter: "drop-shadow(0 20px 30px rgba(0,0,0,0.35))" }}
-              >
-                <img src="/images/zero.png" alt="Zero" loading="lazy" decoding="async" style={{ width: "100%", height: "auto" }} />
-              </div>
-            )}
+            </Interactive3DCard>
           </Reveal>
         </div>
 
@@ -1800,7 +2174,7 @@ function FeatureGraphicWidget({ title }: { title: string }) {
         setLangIndex((prev) => (prev + 1) % phrases.length);
       }, 3000);
       return () => clearInterval(interval);
-    }, []);
+    }, [phrases.length]);
 
     const current = phrases[langIndex];
 
@@ -1873,7 +2247,7 @@ function FeatureGraphicWidget({ title }: { title: string }) {
         setAlertIndex((prev) => (prev + 1) % alerts.length);
       }, 2800);
       return () => clearInterval(interval);
-    }, []);
+    }, [alerts.length]);
 
     const activeAlert = alerts[alertIndex];
 
@@ -2335,15 +2709,31 @@ function FeatureGraphicWidget({ title }: { title: string }) {
   );
 }
 
-function FlipFeatureCard({ feat, index }: { feat: { title: string; desc: string; icon: any }; index: number }) {
+function FlipFeatureCard({
+  feat,
+  index,
+  onCardHover,
+  onCardLeave
+}: {
+  feat: { title: string; desc: string; icon: any };
+  index: number;
+  onCardHover?: () => void;
+  onCardLeave?: () => void;
+}) {
   const [isFlipped, setIsFlipped] = useState(false);
   const reducedMotion = useReducedMotion();
 
   return (
     <motion.div
       className="fm-featcard-wrapper"
-      onMouseEnter={() => setIsFlipped(true)}
-      onMouseLeave={() => setIsFlipped(false)}
+      onMouseEnter={() => {
+        setIsFlipped(true);
+        onCardHover?.();
+      }}
+      onMouseLeave={() => {
+        setIsFlipped(false);
+        onCardLeave?.();
+      }}
       whileHover={reducedMotion ? {} : { y: -8, scale: 1.02 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       style={{
@@ -2376,7 +2766,7 @@ function FlipFeatureCard({ feat, index }: { feat: { title: string; desc: string;
           borderRadius: 24,
           border: `1px solid rgba(249, 122, 53, 0.35)`,
           boxShadow: isFlipped
-            ? "0 24px 60px rgba(0,0,0,0.6)"
+            ? "0 24px 60px rgba(0,0,0,0.6), 0 0 30px rgba(249,122,53,0.3)"
             : "0 16px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)",
           display: "flex",
           flexDirection: "column",
@@ -2467,10 +2857,143 @@ function FlipFeatureCard({ feat, index }: { feat: { title: string; desc: string;
 
 function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
   const fCopy = FEATURES_COPY[mode] || FEATURES_COPY.main;
+  const reducedMotion = useReducedMotion();
+  const [isSectionHovered, setIsSectionHovered] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  // Framer Motion spring physics cursor tracking
+  const rawX = useMotionValue(-100);
+  const rawY = useMotionValue(-100);
+
+  const springX = useSpring(rawX, { stiffness: 420, damping: 28, mass: 0.12 });
+  const springY = useSpring(rawY, { stiffness: 420, damping: 28, mass: 0.12 });
+
+  const dotX = useSpring(rawX, { stiffness: 950, damping: 38, mass: 0.05 });
+  const dotY = useSpring(rawY, { stiffness: 950, damping: 38, mass: 0.05 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!sectionRef.current) return;
+    const rect = sectionRef.current.getBoundingClientRect();
+    rawX.set(e.clientX - rect.left);
+    rawY.set(e.clientY - rect.top);
+  };
 
   return (
-    <section id="features" className="fm-island" style={{ background: C.bgCard, padding: "64px 0", zIndex: 7 }}>
-      <div className="fm-wrap">
+    <section
+      id="features"
+      ref={sectionRef}
+      onMouseEnter={() => setIsSectionHovered(true)}
+      onMouseLeave={() => {
+        setIsSectionHovered(false);
+        setHoveredIndex(null);
+      }}
+      onMouseMove={handleMouseMove}
+      className="fm-island"
+      style={{
+        background: C.bgCard,
+        padding: "64px 0",
+        zIndex: 7,
+        position: "relative",
+        overflow: "hidden"
+      }}
+    >
+      {/* Dynamic Background Glow Effect on Section Mouse Move */}
+      <motion.div
+        style={{
+          position: "absolute",
+          x: springX,
+          y: springY,
+          translateX: "-50%",
+          translateY: "-50%",
+          width: 500,
+          height: 500,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${C.accentOrange}18 0%, transparent 70%)`,
+          pointerEvents: "none",
+          zIndex: 1,
+          opacity: isSectionHovered ? 1 : 0,
+          transition: "opacity 300ms ease",
+          filter: "blur(30px)"
+        }}
+      />
+
+      {/* MINIMALIST SMALL FRAMER MOTION POINTER CIRCLE (CARD HOVER ONLY) */}
+      <AnimatePresence>
+        {hoveredIndex !== null && !reducedMotion && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.2 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.2 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              pointerEvents: "none",
+              zIndex: 99,
+            }}
+          >
+            {/* Minimalist Outer Ring (More Small) */}
+            <motion.div
+              style={{
+                x: springX,
+                y: springY,
+                translateX: "-50%",
+                translateY: "-50%",
+                position: "absolute",
+              }}
+            >
+              <motion.div
+                animate={{
+                  scale: [1, 1.08, 1],
+                  rotate: [0, 360],
+                }}
+                transition={{
+                  rotate: { duration: 10, repeat: Infinity, ease: "linear" },
+                  scale: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
+                }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  border: `1.5px solid ${C.accentOrange}`,
+                  boxShadow: `0 0 12px ${C.accentOrange}60, inset 0 0 6px ${C.accentOrange}30`,
+                  background: `radial-gradient(circle, ${C.accentOrange}20 0%, transparent 70%)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              />
+            </motion.div>
+
+            {/* Precision Center Dot (A Little Bigger) */}
+            <motion.div
+              style={{
+                x: dotX,
+                y: dotY,
+                translateX: "-50%",
+                translateY: "-50%",
+                position: "absolute",
+              }}
+            >
+              <motion.div
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius: "50%",
+                  background: C.accentOrange,
+                  boxShadow: `0 0 12px ${C.accentOrange}, 0 0 4px #FFFFFF`,
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <Reveal className="fm-sechead" style={{ marginBottom: 40, textAlign: "center", maxWidth: "100%" }}>
           <div className="fm-eyebrow" style={{ display: "inline-block" }}>{fCopy.eyebrow}</div>
           <h2 style={{
@@ -2498,7 +3021,12 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.3, delay: i * 0.05 }}
               >
-                <FlipFeatureCard feat={feat} index={i} />
+                <FlipFeatureCard
+                  feat={feat}
+                  index={i}
+                  onCardHover={() => setHoveredIndex(i)}
+                  onCardLeave={() => setHoveredIndex(null)}
+                />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -2777,6 +3305,239 @@ function InfiniteDraggableMarquee({ items, baseSpeed = -0.5, style }: { items: t
   );
 }
 
+/* ================================================================== */
+/*  3D TESTIMONIAL FAN CAROUSEL (Fanned 3D Deck with Ambient Glow)    */
+/* ================================================================== */
+function Testimonials3DFanDeck() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % TESTIMONIALS.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [isPaused]);
+
+  const handleNext = () => {
+    setActiveIndex((prev) => (prev + 1) % TESTIMONIALS.length);
+  };
+
+  const handlePrev = () => {
+    setActiveIndex((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      style={{ position: "relative", width: "100%", maxWidth: 1100, margin: "0 auto 40px", padding: "20px 0" }}
+    >
+      {/* 3D Container Stage */}
+      <div
+        style={{
+          position: "relative",
+          height: 480,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          perspective: 1200,
+          perspectiveOrigin: "50% 50%",
+        }}
+      >
+        {TESTIMONIALS.map((item, i) => {
+          let offset = i - activeIndex;
+          const total = TESTIMONIALS.length;
+          if (offset > total / 2) offset -= total;
+          if (offset < -total / 2) offset += total;
+
+          const isCenter = offset === 0;
+          const isVisible = Math.abs(offset) <= 2;
+
+          if (!isVisible) return null;
+
+          // Compute 3D Card Physics based on distance from center
+          const xOffset = offset * 290;
+          const scale = isCenter ? 1 : 0.85 - Math.abs(offset) * 0.05;
+          const rotateY = isCenter ? 0 : offset > 0 ? -26 : 26;
+          const rotateZ = isCenter ? 0 : offset > 0 ? 5 : -5;
+          const opacity = isCenter ? 1 : Math.max(0.3, 0.65 - (Math.abs(offset) - 1) * 0.35);
+          const zIndex = 30 - Math.abs(offset) * 10;
+
+          // Ambient bottom mesh gradient colors
+          const glowColors = [
+            "rgba(56, 189, 248, 0.35)",  // Sky blue
+            "rgba(52, 211, 153, 0.35)",  // Emerald
+            "rgba(249, 122, 53, 0.35)",  // Orange
+            "rgba(168, 85, 247, 0.35)",  // Purple
+            "rgba(236, 72, 153, 0.35)",  // Pink
+            "rgba(34, 211, 238, 0.35)",  // Cyan
+          ];
+          const bottomGlowColor = glowColors[i % glowColors.length];
+
+          return (
+            <motion.div
+              key={i}
+              onClick={() => setActiveIndex(i)}
+              initial={false}
+              animate={{
+                x: xOffset,
+                scale: scale,
+                rotateY: rotateY,
+                rotateZ: rotateZ,
+                opacity: opacity,
+                zIndex: zIndex,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 24,
+              }}
+              whileHover={isCenter ? { scale: 1.03, y: -8 } : { scale: scale * 1.05 }}
+              style={{
+                position: "absolute",
+                width: "100%",
+                maxWidth: 410,
+                minHeight: 400,
+                padding: "36px 32px",
+                borderRadius: 24,
+                background: `linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(30,41,59,0.98) 60%, ${bottomGlowColor} 100%)`,
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                border: `1px solid ${isCenter ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"}`,
+                boxShadow: isCenter
+                  ? "0 30px 70px rgba(0,0,0,0.85), 0 0 40px rgba(255,255,255,0.08)"
+                  : "0 15px 35px rgba(0,0,0,0.6)",
+                cursor: "pointer",
+                transformStyle: "preserve-3d",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                filter: isCenter ? "none" : "blur(0.5px)",
+              }}
+            >
+              {/* Quote Body matching reference text typography */}
+              <div>
+                <p
+                  style={{
+                    color: "#E2E8F0",
+                    fontSize: 16,
+                    lineHeight: 1.65,
+                    fontWeight: 400,
+                    margin: "0 0 24px",
+                    fontFamily: "var(--font-outfit), sans-serif",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  &ldquo;{item.quote} {item.highlight}&rdquo;
+                </p>
+              </div>
+
+              {/* Author & Role Footer matching reference layout */}
+              <div style={{ marginTop: "auto" }}>
+                <h4
+                  style={{
+                    fontFamily: "var(--font-outfit), sans-serif",
+                    fontWeight: 800,
+                    color: "#FFFFFF",
+                    fontSize: 24,
+                    lineHeight: 1.2,
+                    margin: "0 0 4px",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  {item.author}
+                </h4>
+                <p
+                  style={{
+                    fontFamily: "var(--font-outfit), sans-serif",
+                    fontWeight: 500,
+                    color: "#94A3B8",
+                    fontSize: 14,
+                    margin: 0,
+                  }}
+                >
+                  {item.title} &bull; {item.location}
+                </p>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Navigation Controls & Pagination Dots */}
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 10 }}>
+        <button
+          onClick={handlePrev}
+          aria-label="Previous Testimonial"
+          style={{
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            color: "#FFFFFF",
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = C.accentOrange)}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          {TESTIMONIALS.map((_, dotIdx) => (
+            <button
+              key={dotIdx}
+              onClick={() => setActiveIndex(dotIdx)}
+              style={{
+                width: activeIndex === dotIdx ? 24 : 8,
+                height: 8,
+                borderRadius: 999,
+                background: activeIndex === dotIdx ? C.accentOrange : "rgba(255,255,255,0.2)",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={handleNext}
+          aria-label="Next Testimonial"
+          style={{
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            color: "#FFFFFF",
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = C.accentOrange)}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function TestimonialsSection() {
   const row1 = [...TESTIMONIALS, ...TESTIMONIALS];
   const row2 = [...TESTIMONIALS.slice(3), ...TESTIMONIALS.slice(0, 3), ...TESTIMONIALS.slice(3), ...TESTIMONIALS.slice(0, 3)];
@@ -2804,6 +3565,9 @@ export function TestimonialsSection() {
             <ScrollTextReveal text="See how HVAC, plumbing, electrical, and restoration contractors turn missed calls into booked revenue every single day." as="p" />
           </div>
         </Reveal>
+
+        {/* 3D Fanned Testimonial Card Stack */}
+        <Testimonials3DFanDeck />
       </div>
 
       {/* Marquee Track 1 (Infinite Draggable Loop) */}
@@ -2945,11 +3709,250 @@ function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
   );
 }
 
+function InteractiveEyeballs({
+  isHovered,
+  mousePos,
+  containerRect,
+}: {
+  isHovered: boolean;
+  mousePos: { x: number; y: number };
+  containerRect: DOMRect | null;
+}) {
+  const [isBlinking, setIsBlinking] = useState(false);
+  const [eyeRotate, setEyeRotate] = useState(0);
+  const prevPos = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const blinkInterval = setInterval(() => {
+      setIsBlinking(true);
+      setTimeout(() => setIsBlinking(false), 160);
+    }, 3600);
+    return () => clearInterval(blinkInterval);
+  }, []);
+
+  const centerX = (containerRect?.width || 800) / 2;
+  const centerY = (containerRect?.height || 200) / 2;
+
+  const diffX = -(mousePos.x - centerX);
+  const diffY = mousePos.y - centerY;
+  const distance = Math.hypot(diffX, diffY) || 1;
+
+  const maxShiftX = 8;
+  const maxShiftY = 4;
+  const shiftX = (diffX / Math.max(distance, 80)) * maxShiftX;
+  const shiftY = (diffY / Math.max(distance, 80)) * maxShiftY;
+
+  // Inverted Gaze rotation on mouse movement
+  useEffect(() => {
+    const deltaX = mousePos.x - prevPos.current.x;
+    const targetRotate = Math.max(-25, Math.min(25, -deltaX * 2.5));
+    setEyeRotate(targetRotate);
+    prevPos.current = mousePos;
+  }, [mousePos]);
+
+  return (
+    <motion.div
+      animate={{
+        opacity: isHovered ? 1 : 0,
+        scale: isHovered ? (isBlinking ? 0.9 : 1) : 0.3,
+        scaleY: isBlinking ? 0.05 : 1,
+        rotate: eyeRotate,
+        x: mousePos.x - 34,
+        y: mousePos.y - 14,
+      }}
+      transition={{
+        x: { type: "spring", stiffness: 550, damping: 28, mass: 0.35 },
+        y: { type: "spring", stiffness: 550, damping: 28, mass: 0.35 },
+        rotate: { type: "spring", stiffness: 350, damping: 20 },
+        scaleY: { duration: 0.12 },
+      }}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        pointerEvents: "none",
+        zIndex: 20,
+        filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.6))",
+      }}
+    >
+      {/* Left Vertical Roundy Oval Eyeball */}
+      <div
+        style={{
+          width: 22,
+          height: 30,
+          borderRadius: "50%",
+          background: "radial-gradient(ellipse at 35% 35%, #ffffff 0%, #e2e8f0 70%, #cbd5e1 100%)",
+          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.5)",
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <motion.div
+          animate={{ x: shiftX, y: shiftY }}
+          transition={{ type: "spring", stiffness: 450, damping: 22 }}
+          style={{
+            width: 12,
+            height: 14,
+            borderRadius: "50%",
+            background: "radial-gradient(circle at 40% 40%, #1e293b 0%, #020617 85%)",
+            border: `1px solid ${C.accentOrange}`,
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#000" }} />
+          <div style={{ position: "absolute", top: 1, right: 2, width: 2.5, height: 2.5, borderRadius: "50%", background: "#ffffff" }} />
+        </motion.div>
+      </div>
+
+      {/* Right Vertical Roundy Oval Eyeball */}
+      <div
+        style={{
+          width: 22,
+          height: 30,
+          borderRadius: "50%",
+          background: "radial-gradient(ellipse at 35% 35%, #ffffff 0%, #e2e8f0 70%, #cbd5e1 100%)",
+          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.5)",
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <motion.div
+          animate={{ x: shiftX, y: shiftY }}
+          transition={{ type: "spring", stiffness: 450, damping: 22 }}
+          style={{
+            width: 12,
+            height: 14,
+            borderRadius: "50%",
+            background: "radial-gradient(circle at 40% 40%, #1e293b 0%, #020617 85%)",
+            border: `1px solid ${C.accentOrange}`,
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#000" }} />
+          <div style={{ position: "absolute", top: 1, right: 2, width: 2.5, height: 2.5, borderRadius: "50%", background: "#ffffff" }} />
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ForemanWordmarkSection({ yText, opacityText, scaleText }: { yText: any; opacityText: any; scaleText: any }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setContainerRect(rect);
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        position: "relative",
+        width: "100%",
+        marginTop: 44,
+        marginBottom: 32,
+        borderTop: `1px solid ${C.borderPrimary}`,
+        borderBottom: `1px solid ${C.borderPrimary}`,
+        overflow: "hidden",
+        padding: "60px 16px 44px",
+        background: "rgba(255,255,255,0.012)",
+        cursor: isHovered ? "none" : "default",
+        userSelect: "none",
+      }}
+    >
+      {/* Glowing backlight beam — subtle orange light shining through */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "100%",
+          height: "140%",
+          background: `radial-gradient(ellipse at center, rgba(249,122,53,0.12) 0%, rgba(249,122,53,0.03) 55%, transparent 75%)`,
+          pointerEvents: "none",
+          filter: "blur(20px)",
+        }}
+      />
+
+      <motion.div
+        style={{
+          y: yText,
+          opacity: opacityText,
+          scale: scaleText,
+          transformOrigin: "bottom center",
+          textAlign: "center",
+          width: "100%",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <span
+          style={{
+            display: "block",
+            fontFamily: "var(--font-outfit), sans-serif",
+            fontWeight: 900,
+            fontSize: "clamp(60px, 18vw, 270px)",
+            lineHeight: 0.92,
+            paddingBottom: 10,
+            letterSpacing: "-0.045em",
+            background: `linear-gradient(180deg, #FFFFFF 0%, rgba(255,255,255,0.85) 60%, rgba(255,255,255,0.3) 100%)`,
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            filter: "drop-shadow(0 0 30px rgba(249,122,53,0.18)) drop-shadow(0 10px 25px rgba(0,0,0,0.4))",
+          }}
+        >
+          FOREMAN
+        </span>
+      </motion.div>
+
+      {/* Interactive Eyeballs with Dynamic Pupil Movement & Blinking */}
+      <InteractiveEyeballs isHovered={isHovered} mousePos={mousePos} containerRect={containerRect} />
+    </div>
+  );
+}
+
 /* ================================================================== */
 /*  FOOTER                                                             */
 /* ================================================================== */
 export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolean }) {
   const router = useRouter();
+  const footerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: footerRef,
+    offset: ["start end", "end end"],
+  });
+
+  const yText = useTransform(scrollYProgress, [0.1, 0.95], [140, 0]);
+  const opacityText = useTransform(scrollYProgress, [0.1, 0.95], [0.05, 1]);
+  const scaleText = useTransform(scrollYProgress, [0.1, 0.95], [0.85, 1]);
 
   const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (href.startsWith("#") || href.startsWith("/#")) {
@@ -2971,12 +3974,23 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
   };
 
   return (
-    <footer style={{ background: C.footerBg, color: C.textBody, paddingTop: 60, paddingBottom: 60, position: "relative", overflow: "hidden", borderTop: `1px solid ${C.borderPrimary}` }}>
+    <footer
+      ref={footerRef}
+      style={{
+        background: C.footerBg,
+        color: C.textBody,
+        paddingTop: 80,
+        paddingBottom: 24,
+        position: "relative",
+        overflow: "hidden",
+        borderTop: `1px solid ${C.borderPrimary}`,
+      }}
+    >
 
       {/* Background glow effects */}
-      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, ${C.accentOrange}10, transparent 70%)`, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, ${C.accentOrange}15, transparent 70%)`, pointerEvents: "none" }} />
 
-      <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 60, marginBottom: 80, justifyContent: "space-between" }}>
 
           {/* Brand Column */}
@@ -3070,9 +4084,14 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Bottom Bar */}
-        <div style={{ borderTop: `1px solid ${C.borderPrimary}`, paddingTop: 32, paddingBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24, position: "relative", zIndex: 2 }}>
+      {/* 100% FULL SCREEN WIDTH Edge-to-Edge Slit Reveal Container with Custom Eyes Cursor Tracker */}
+      <ForemanWordmarkSection yText={yText} opacityText={opacityText} scaleText={scaleText} />
+
+      {/* Bottom Bar inside fm-wrap */}
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
+        <div style={{ paddingTop: 12, paddingBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24 }}>
           <div style={{ fontSize: 14, color: C.textBody, fontWeight: 500 }}>
             &copy; {new Date().getFullYear()} Foreman Inc. All rights reserved.
           </div>
@@ -3084,15 +4103,6 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
             All systems operational
           </motion.div>
         </div>
-      </div>
-
-      {/* Oversized low-opacity wordmark graphic */}
-      <div style={{ width: "100%", display: "flex", justifyContent: "center", opacity: 0.025, pointerEvents: "none", userSelect: "none", position: "absolute", bottom: -20, left: 0, zIndex: 0 }}>
-        <svg viewBox="0 0 1000 200" style={{ width: "100%", height: "auto", maxWidth: "1600px", overflow: "visible" }} aria-hidden>
-          <text x="50%" y="78%" textAnchor="middle" fill={C.textHeading} style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 900, fontSize: "220px", letterSpacing: "-0.04em" }}>
-            FOREMAN
-          </text>
-        </svg>
       </div>
     </footer>
   );
@@ -3627,37 +4637,57 @@ function CinematicWorkflow() {
 }
 
 // ------------------------------------------------------------------
-// STEP COMPONENTS
+// STEP COMPONENTS (Strict 8px Grid System & Alignment)
 // ------------------------------------------------------------------
 
 function StepPhone({ active }: { active: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: C.accentOrange }}>1 INCOMING CALL</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "#0a0a0c", borderRadius: 36, border: "6px solid #1a1a1f", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", boxShadow: "0 24px 48px rgba(0,0,0,0.4)" }}>
-        <motion.span animate={active ? { opacity: [1, 0.4, 1] } : { opacity: 0.4 }} transition={{ duration: 1.5, repeat: Infinity }} style={{ color: C.accentOrange, fontSize: 13, marginBottom: 8, fontWeight: 500 }}>Incoming Call</motion.span>
-        <h3 style={{ fontSize: 20, color: "#fff", marginBottom: 4, fontWeight: 600 }}>Mike Johnson</h3>
-        <span style={{ color: "#60A5FA", fontSize: 13, marginBottom: 32, fontWeight: 500 }}>HVAC Repair</span>
-        <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#222", marginBottom: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(255,255,255,0.1)" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: `1px solid ${active ? "rgba(249,122,53,0.35)" : "rgba(255,255,255,0.08)"}`, padding: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 20px 40px rgba(0,0,0,0.45)", position: "relative" }}>
+
+        {/* Status Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "rgba(249,122,53,0.1)", border: "1px solid rgba(249,122,53,0.25)", padding: "4px 10px", borderRadius: 999, marginBottom: 2 }}>
+          <motion.div animate={active ? { scale: [1, 1.4, 1], opacity: [1, 0.4, 1] } : {}} transition={{ duration: 1.2, repeat: Infinity }} style={{ width: 6, height: 6, borderRadius: "50%", background: C.accentOrange }} />
+          <span style={{ color: C.accentOrange, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5 }}>INCOMING CALL</span>
         </div>
 
-        {active && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 20, opacity: 1 }} style={{ marginBottom: 32, display: "flex", alignItems: "center", gap: 3 }}>
-            {[...Array(6)].map((_, i) => (
-              <motion.div key={i} animate={{ scaleY: [0.3, 1, 0.3] }} transition={{ duration: 0.8, delay: i * 0.1, repeat: Infinity }} style={{ width: 3, height: 20, background: C.accentOrange, borderRadius: 2 }} />
+        {/* Caller Avatar */}
+        <motion.div animate={active ? { scale: [1, 1.05, 1] } : {}} transition={{ duration: 2, repeat: Infinity }} style={{ width: 52, height: 52, borderRadius: "50%", border: "2px solid rgba(96,165,250,0.5)", boxShadow: active ? "0 0 20px rgba(96,165,250,0.3)" : "none", overflow: "hidden", background: "#1E293B", alignSelf: "center", margin: "12px auto" }}>
+          <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80" alt="Mike Johnson" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </motion.div>
+
+        {/* Caller Information */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+          <h3 style={{ fontSize: 16, color: "#fff", marginBottom: 2, fontWeight: 700, fontFamily: "var(--font-outfit), sans-serif" }}>Mike Johnson</h3>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginBottom: 8, fontFamily: "monospace" }}>+1 (512) 849-2041</p>
+          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", padding: "3.5px 12px", borderRadius: 999, marginTop: 4, marginBottom: 8 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
+            <span style={{ color: "#60A5FA", fontSize: 11, fontWeight: 600 }}>HVAC Repair</span>
+          </div>
+        </div>
+
+        {/* Live Audio Equalizer */}
+        {active ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3, height: 16, margin: "2px 0" }}>
+            {[0.4, 0.9, 0.6, 1, 0.5, 0.8, 0.3, 0.7].map((h, i) => (
+              <motion.div key={i} animate={{ scaleY: [0.3, h, 0.3] }} transition={{ duration: 0.6, delay: i * 0.08, repeat: Infinity }} style={{ width: 2.5, height: 16, background: C.accentOrange, borderRadius: 2 }} />
             ))}
-          </motion.div>
+          </div>
+        ) : (
+          <div style={{ height: 16 }} />
         )}
 
-        <div style={{ display: "flex", gap: 32, opacity: active ? 1 : 0.5, transition: "opacity 0.3s" }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 16px rgba(239,68,68,0.3)" }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+        {/* Action Buttons */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 20, opacity: active ? 1 : 0.5, transition: "opacity 0.3s", marginTop: 8 }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 14px rgba(239,68,68,0.4)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M10.68 13.31a16 16 0 0 0 3.41 3.41l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" /><line x1="23" y1="1" x2="1" y2="23" /></svg>
           </div>
-          <motion.div animate={active ? { y: [-2, 2] } : {}} transition={{ duration: 1, repeat: Infinity, repeatType: "reverse" }} style={{ width: 56, height: 56, borderRadius: "50%", background: C.accentGreenText, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 16px rgba(31,170,89,0.3)` }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+          <motion.div animate={active ? { scale: [1, 1.08, 1] } : {}} transition={{ duration: 1.2, repeat: Infinity }} style={{ width: 40, height: 40, borderRadius: "50%", background: C.accentGreenText, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 14px rgba(31,170,89,0.45)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
           </motion.div>
         </div>
+
       </TiltCard>
     </div>
   );
@@ -3665,48 +4695,50 @@ function StepPhone({ active }: { active: boolean }) {
 
 function StepAI({ active, listens }: { active: boolean, listens: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24, marginTop: 40 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#A78BFA" }}>
         {listens ? "3 AI LISTENS" : "2 AI ANSWERS"}
       </motion.div>
-      <div style={{ position: "relative", width: 240, height: 240, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 240, height: 320, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "relative", width: 176, height: 176, display: "flex", alignItems: "center", justifyContent: "center" }}>
 
-        {/* Core Glow */}
-        <motion.div
-          animate={active ? { scale: listens ? [1, 1.4, 1] : [1, 1.2, 1], opacity: [0.3, 0.7, 0.3] } : { scale: 0.8, opacity: 0 }}
-          transition={{ duration: listens ? 1.5 : 3, repeat: Infinity, ease: "easeInOut" }}
-          style={{ position: "absolute", width: "100%", height: "100%", borderRadius: "50%", background: "radial-gradient(circle, rgba(167,139,250,0.6) 0%, rgba(167,139,250,0) 70%)", filter: "blur(20px)" }}
-        />
-
-        {/* Orbiting particles when listening */}
-        {listens && [...Array(3)].map((_, i) => (
+          {/* Core Glow */}
           <motion.div
-            key={i}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2 + i, repeat: Infinity, ease: "linear" }}
-            style={{ position: "absolute", width: "100%", height: "100%" }}
+            animate={active ? { scale: listens ? [1, 1.25, 1] : [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] } : { scale: 0.8, opacity: 0 }}
+            transition={{ duration: listens ? 1.5 : 3, repeat: Infinity, ease: "easeInOut" }}
+            style={{ position: "absolute", width: "100%", height: "100%", borderRadius: "50%", background: "radial-gradient(circle, rgba(167,139,250,0.5) 0%, rgba(167,139,250,0) 70%)", filter: "blur(16px)" }}
+          />
+
+          {/* Orbiting particles when listening */}
+          {listens && [...Array(3)].map((_, i) => (
+            <motion.div
+              key={i}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2 + i, repeat: Infinity, ease: "linear" }}
+              style={{ position: "absolute", width: "100%", height: "100%" }}
+            >
+              <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#fff", position: "absolute", top: 12, left: "50%", boxShadow: "0 0 6px #fff" }} />
+            </motion.div>
+          ))}
+
+          {/* 8px Grid Sized Central Orb (80px = 10 * 8) */}
+          <motion.div
+            animate={active ? { scale: [1, 1.05, 1] } : { scale: 0.9, opacity: 0.5 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg, #3B2A6B, #1A1235)", border: "1.5px solid rgba(167,139,250,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, boxShadow: "inset 0 0 16px rgba(167,139,250,0.3)" }}
           >
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", position: "absolute", top: 20, left: "50%", boxShadow: "0 0 10px #fff" }} />
+            {listens ? (
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                {[...Array(5)].map((_, i) => (
+                  <motion.div key={i} animate={{ scaleY: [0.4, 1.4, 0.4] }} transition={{ duration: 0.5, delay: i * 0.1, repeat: Infinity }} style={{ width: 3, height: 16, background: "#fff", borderRadius: 2 }} />
+                ))}
+              </div>
+            ) : (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="1.5"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /></svg>
+            )}
           </motion.div>
-        ))}
 
-        {/* Central Orb */}
-        <motion.div
-          animate={active ? { scale: [1, 1.05, 1] } : { scale: 0.9, opacity: 0.5 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          style={{ width: 120, height: 120, borderRadius: "50%", background: "linear-gradient(135deg, #3B2A6B, #1A1235)", border: "2px solid rgba(167,139,250,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, boxShadow: "inset 0 0 20px rgba(167,139,250,0.3)" }}
-        >
-          {listens ? (
-            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              {[...Array(5)].map((_, i) => (
-                <motion.div key={i} animate={{ scaleY: [0.4, 1.5, 0.4] }} transition={{ duration: 0.5, delay: i * 0.1, repeat: Infinity }} style={{ width: 4, height: 24, background: "#fff", borderRadius: 2 }} />
-              ))}
-            </div>
-          ) : (
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="1.5"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /></svg>
-          )}
-        </motion.div>
-
+        </div>
       </div>
     </div>
   );
@@ -3722,23 +4754,29 @@ function StepQualification({ active }: { active: boolean }) {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#60A5FA" }}>4 QUALIFICATION</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ fontSize: 18, color: "#fff", fontWeight: 600, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 16, marginBottom: 8 }}>Qualification</div>
-        {fields.map((f, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: active ? 1 : 0.2, transition: `opacity 0.4s ${i * 0.2}s` }}>
-            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>{f.label}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{f.value}</span>
-              {active && <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2 + i * 0.2 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accentGreenText} strokeWidth="3"><polyline points="20 6 9 17 4 12" /></motion.svg>}
-            </div>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
+        <div>
+          <div style={{ fontSize: 16, color: "#fff", fontWeight: 600, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 8, marginBottom: 12, fontFamily: "var(--font-outfit), sans-serif" }}>Qualification</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {fields.map((f, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: active ? 1 : 0.2, transition: `opacity 0.4s ${i * 0.2}s` }}>
+                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>{f.label}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: "#fff", fontSize: 12, fontWeight: 500 }}>{f.value}</span>
+                  {active && <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2 + i * 0.2 }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.accentGreenText} strokeWidth="3"><polyline points="20 6 9 17 4 12" /></motion.svg>}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-        {active && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }} style={{ marginTop: "auto", background: "rgba(31,170,89,0.1)", border: "1px solid rgba(31,170,89,0.2)", borderRadius: 8, padding: "10px", textAlign: "center", color: C.accentGreenText, fontWeight: 600, fontSize: 13 }}>
+        </div>
+        {active ? (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }} style={{ marginTop: 16, background: "rgba(31,170,89,0.1)", border: "1px solid rgba(31,170,89,0.25)", borderRadius: 10, padding: 10, textAlign: "center", color: C.accentGreenText, fontWeight: 600, fontSize: 12, boxShadow: "0 4px 12px rgba(31,170,89,0.15)" }}>
             Ready to Book
           </motion.div>
+        ) : (
+          <div style={{ marginTop: 16, height: 38 }} />
         )}
       </TiltCard>
     </div>
@@ -3747,20 +4785,21 @@ function StepQualification({ active }: { active: boolean }) {
 
 function StepAppointment({ active }: { active: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#FBBF24" }}>5 SUGGESTION</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 }}>
-        <motion.div animate={active ? { scale: [0.9, 1], opacity: [0, 1] } : { opacity: 0.2 }} transition={{ duration: 0.5 }} style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(251,191,36,0.1)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(251,191,36,0.2)" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
+        {/* 48px Badge (6 * 8) */}
+        <motion.div animate={active ? { scale: [0.9, 1], opacity: [0, 1] } : { opacity: 0.2 }} transition={{ duration: 0.5 }} style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(251,191,36,0.1)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(251,191,36,0.2)", alignSelf: "center", margin: "8px auto 4px auto" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>
         </motion.div>
-        <div style={{ textAlign: "center" }}>
-          <h3 style={{ color: "#fff", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Suggesting Time</h3>
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>Cross-referencing availability for Austin, TX.</p>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "0 8px" }}>
+          <h3 style={{ color: "#fff", fontSize: 16, fontWeight: 600, marginBottom: 6, fontFamily: "var(--font-outfit), sans-serif", textAlign: "center" }}>Suggesting Time</h3>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.4, margin: 0, textAlign: "center" }}>Cross-referencing availability for Austin, TX.</p>
         </div>
         {active && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ width: "100%", background: "#1a1a1f", padding: 16, borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)" }}>
-            <div style={{ color: "#FBBF24", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>FOUND SLOT</div>
-            <div style={{ color: "#fff", fontSize: 16, fontWeight: 500 }}>Today, 2:00 PM</div>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ width: "100%", background: "#151928", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", marginTop: 12, marginBottom: 4, textAlign: "center" }}>
+            <div style={{ color: "#FBBF24", fontSize: 11, fontWeight: 600, marginBottom: 4, textAlign: "center" }}>FOUND SLOT</div>
+            <div style={{ color: "#fff", fontSize: 14, fontWeight: 500, textAlign: "center" }}>Today, 2:00 PM</div>
           </motion.div>
         )}
       </TiltCard>
@@ -3770,23 +4809,26 @@ function StepAppointment({ active }: { active: boolean }) {
 
 function StepCalendar({ active }: { active: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#8AB4F8" }}>6 CALENDAR</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "rgba(32,33,36,0.9)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid #3C4043", padding: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.5)" }}>
-        <motion.div animate={active ? { rotateY: 360 } : {}} transition={{ duration: 0.8 }} style={{ width: 64, height: 64, borderRadius: 16, background: "#ffffff", border: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32, boxShadow: "0 8px 16px rgba(0,0,0,0.3)" }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
+        {/* 48px Badge (6 * 8) */}
+        <motion.div animate={active ? { rotateY: 360 } : {}} transition={{ duration: 0.8 }} style={{ width: 48, height: 48, borderRadius: 12, background: "#ffffff", border: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, boxShadow: "0 6px 12px rgba(0,0,0,0.3)", alignSelf: "center", margin: "0 auto 12px auto" }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
             <rect x="2" y="4" width="20" height="18" rx="4" fill="#ffffff" />
             <path d="M2 8a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v3H2V8z" fill="#4285F4" />
             <text x="12" y="19" fill="#4285F4" fontSize="10" fontWeight="900" textAnchor="middle" fontFamily="sans-serif">31</text>
           </svg>
         </motion.div>
-        <h3 style={{ fontSize: 16, color: "#9AA0A6", marginBottom: 12, fontWeight: 500 }}>Thursday</h3>
-        <motion.div animate={active ? { scale: [0.9, 1.1, 1], color: ["#E8EAED", "#8AB4F8", "#E8EAED"] } : {}} transition={{ duration: 0.5, delay: 0.3 }} style={{ fontSize: 36, color: "#E8EAED", fontWeight: 700, marginBottom: 8, letterSpacing: -1 }}>2:00 PM</motion.div>
-        <span style={{ color: "#9AA0A6", fontSize: 13, marginBottom: 40 }}>May 16, 2024</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+          <h3 style={{ fontSize: 14, color: "#9AA0A6", marginBottom: 4, fontWeight: 500, textAlign: "center" }}>Thursday</h3>
+          <motion.div animate={active ? { scale: [0.9, 1.1, 1], color: ["#E8EAED", "#8AB4F8", "#E8EAED"] } : {}} transition={{ duration: 0.5, delay: 0.3 }} style={{ fontSize: 28, color: "#E8EAED", fontWeight: 700, marginBottom: 4, letterSpacing: -1, textAlign: "center" }}>2:00 PM</motion.div>
+          <span style={{ color: "#9AA0A6", fontSize: 12, marginBottom: 16, textAlign: "center" }}>May 16, 2024</span>
+        </div>
 
-        <motion.div animate={{ opacity: active ? 1 : 0.2 }} style={{ background: "rgba(138,180,248,0.15)", border: "1px solid rgba(138,180,248,0.4)", padding: "10px 24px", borderRadius: 999, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: "#8AB4F8", fontSize: 14, fontWeight: 700 }}>Booked</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8AB4F8" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+        <motion.div animate={{ opacity: active ? 1 : 0.2 }} style={{ background: "rgba(138,180,248,0.15)", border: "1px solid rgba(138,180,248,0.4)", padding: "8px 20px", borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4, alignSelf: "center" }}>
+          <span style={{ color: "#8AB4F8", fontSize: 12, fontWeight: 700 }}>Booked</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8AB4F8" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
         </motion.div>
       </TiltCard>
     </div>
@@ -3795,34 +4837,35 @@ function StepCalendar({ active }: { active: boolean }) {
 
 function StepDispatch({ active }: { active: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#38BDF8" }}>7 DISPATCH</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 16, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
         {/* Map Background Simulation */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "#0f172a", opacity: 0.5, zIndex: 0 }} />
         <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0 }}>
-          <path d="M 40 380 Q 100 250 180 200 T 240 60" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" strokeLinecap="round" />
+          <path d="M 30 300 Q 80 200 150 150 T 200 40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="5" strokeLinecap="round" />
           {active && (
             <motion.path
               initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, ease: "easeInOut" }}
-              d="M 40 380 Q 100 250 180 200 T 240 60" fill="none" stroke="#38BDF8" strokeWidth="6" strokeLinecap="round"
+              d="M 30 300 Q 80 200 150 150 T 200 40" fill="none" stroke="#38BDF8" strokeWidth="5" strokeLinecap="round"
             />
           )}
         </svg>
 
         <div style={{ zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(15,23,42,0.8)", padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#38BDF8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>M</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(15,23,42,0.85)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* 24px Avatar Badge */}
+              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#38BDF8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11 }}>M</div>
               <div>
-                <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>Mike (Tech)</div>
-                <div style={{ color: "#38BDF8", fontSize: 11, fontWeight: 500 }}>Assigned</div>
+                <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Mike (Tech)</div>
+                <div style={{ color: "#38BDF8", fontSize: 10, fontWeight: 500 }}>Assigned</div>
               </div>
             </div>
           </div>
 
           {active && (
-            <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.5 }} style={{ position: "absolute", top: 40, right: 30, background: "#fff", padding: "6px 12px", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.5)", color: "#000", fontSize: 12, fontWeight: 700 }}>
+            <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.5 }} style={{ position: "absolute", top: 24, right: 16, background: "#fff", padding: "4px 8px", borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.5)", color: "#000", fontSize: 11, fontWeight: 700 }}>
               ETA 14m
             </motion.div>
           )}
@@ -3834,23 +4877,34 @@ function StepDispatch({ active }: { active: boolean }) {
 
 function StepSMS({ active }: { active: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#34D399" }}>8 SMS SENT</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 24 }}>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 16, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
         {active && (
-          <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#1a1a1f", padding: 20, borderRadius: 20, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.05)", boxShadow: "0 12px 24px rgba(0,0,0,0.3)" }}>
-            <p style={{ color: "#fff", fontSize: 14, lineHeight: 1.5, margin: 0 }}>
-              &quot;Hi Mike! Your HVAC repair is confirmed for today between 2-4 PM. Your tech is Mike. Reply YES to confirm.&quot;
+          <motion.div initial={{ opacity: 0, y: 12, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#151928", padding: 10, borderRadius: 14, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 6px 16px rgba(0,0,0,0.3)" }}>
+            <p style={{ color: "#fff", fontSize: 11, lineHeight: 1.35, margin: 0 }}>
+              &quot;Hi Mike! Your HVAC repair is confirmed for today between 2-4 PM. Your tech is Mike.&quot;
             </p>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 12 }}>
-              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Delivered</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 4 }}>
+              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 9.5 }}>Delivered</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
             </div>
           </motion.div>
         )}
         {active && (
-          <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.8, type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#34D399", padding: "12px 20px", borderRadius: 20, borderBottomRightRadius: 4, alignSelf: "flex-end", boxShadow: "0 8px 16px rgba(52,211,153,0.3)" }}>
-            <p style={{ color: "#000", fontSize: 14, fontWeight: 500, margin: 0 }}>YES</p>
+          <motion.div initial={{ opacity: 0, y: 12, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.6, type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#34D399", padding: "6px 14px", borderRadius: 14, borderBottomRightRadius: 4, alignSelf: "flex-end", boxShadow: "0 6px 12px rgba(52,211,153,0.3)", marginTop: 8, marginBottom: 8 }}>
+            <p style={{ color: "#000", fontSize: 11, fontWeight: 600, margin: 0 }}>YES</p>
+          </motion.div>
+        )}
+        {active && (
+          <motion.div initial={{ opacity: 0, y: 12, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 1.1, type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#151928", padding: 10, borderRadius: 14, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 6px 16px rgba(0,0,0,0.3)", marginTop: 8 }}>
+            <p style={{ color: "#fff", fontSize: 11, lineHeight: 1.35, margin: 0 }}>
+              &quot;Great! Tech Mike will send live tracking when en route.&quot;
+            </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 4 }}>
+              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 9.5 }}>Delivered</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+            </div>
           </motion.div>
         )}
       </TiltCard>
@@ -3861,25 +4915,27 @@ function StepSMS({ active }: { active: boolean }) {
 function StepCRM({ active }: { active: boolean }) {
   const steps = ["Customer Saved", "Estimate Generated", "Job Created"];
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#C084FC" }}>9 CRM UPDATED</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 16 }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-          <span style={{ color: "#fff", fontSize: 16, fontWeight: 600 }}>Housecall Pro</span>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 16, display: "flex", flexDirection: "column", justifyContent: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 10 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          <span style={{ color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "var(--font-outfit), sans-serif" }}>Housecall Pro</span>
         </div>
-        {steps.map((s, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, opacity: active ? 1 : 0.2, transition: `opacity 0.4s ${i * 0.3}s` }}>
-            {active ? (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.3, type: "spring" }} style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(192,132,252,0.2)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(192,132,252,0.4)" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
-              </motion.div>
-            ) : (
-              <div style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)" }} />
-            )}
-            <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>{s}</span>
-          </div>
-        ))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: active ? 1 : 0.2, transition: `opacity 0.4s ${i * 0.3}s` }}>
+              {active ? (
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.3, type: "spring" }} style={{ width: 18, height: 18, borderRadius: "50%", background: "rgba(192,132,252,0.2)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(192,132,252,0.4)" }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                </motion.div>
+              ) : (
+                <div style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)" }} />
+              )}
+              <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: 500 }}>{s}</span>
+            </div>
+          ))}
+        </div>
       </TiltCard>
     </div>
   );
@@ -3887,27 +4943,28 @@ function StepCRM({ active }: { active: boolean }) {
 
 function StepRevenue({ active }: { active: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#F97A35" }}>10 COMPLETED</motion.div>
-      <TiltCard style={{ width: 280, height: 420, background: "rgba(16,18,27,0.8)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(249,122,53,0.2)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(249,122,53,0.25)", padding: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
 
         {/* Glow */}
         {active && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} style={{ position: "absolute", top: "50%", left: "50%", width: 200, height: 200, background: "radial-gradient(circle, rgba(249,122,53,0.15) 0%, transparent 70%)", transform: "translate(-50%, -50%)", zIndex: 0 }} />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} style={{ position: "absolute", top: "50%", left: "50%", width: 140, height: 140, background: "radial-gradient(circle, rgba(249,122,53,0.15) 0%, transparent 70%)", transform: "translate(-50%, -50%)", zIndex: 0 }} />
         )}
 
-        <motion.div animate={active ? { scale: [0.9, 1.1, 1] } : {}} transition={{ duration: 0.6 }} style={{ width: 64, height: 64, borderRadius: 16, background: "linear-gradient(135deg, rgba(249,122,53,0.3), rgba(249,122,53,0.05))", border: "1px solid rgba(249,122,53,0.5)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32, zIndex: 1 }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F97A35" strokeWidth="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>
+        {/* 48px Currency Badge (6 * 8) */}
+        <motion.div animate={active ? { scale: [0.9, 1.1, 1] } : {}} transition={{ duration: 0.6 }} style={{ width: 48, height: 48, borderRadius: 12, background: "linear-gradient(135deg, rgba(249,122,53,0.3), rgba(249,122,53,0.05))", border: "1px solid rgba(249,122,53,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1, alignSelf: "center", margin: "0 auto 16px auto" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97A35" strokeWidth="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>
         </motion.div>
 
-        <h3 style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", marginBottom: 12, fontWeight: 500, zIndex: 1, textTransform: "uppercase", letterSpacing: 1 }}>Job Completed</h3>
+        <h3 style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 8, fontWeight: 500, zIndex: 1, textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Job Completed</h3>
 
         {active ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, type: "spring" }} style={{ fontSize: 48, color: "#fff", fontWeight: 700, marginBottom: 8, letterSpacing: -2, zIndex: 1 }}>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, type: "spring" }} style={{ fontSize: 32, color: "#fff", fontWeight: 700, marginBottom: 4, letterSpacing: -1.5, zIndex: 1, textAlign: "center" }}>
             +$650
           </motion.div>
         ) : (
-          <div style={{ fontSize: 48, color: "rgba(255,255,255,0.1)", fontWeight: 700, marginBottom: 8, letterSpacing: -2, zIndex: 1 }}>$0</div>
+          <div style={{ fontSize: 32, color: "rgba(255,255,255,0.1)", fontWeight: 700, marginBottom: 4, letterSpacing: -1.5, zIndex: 1, textAlign: "center" }}>$0</div>
         )}
       </TiltCard>
     </div>

@@ -1359,3 +1359,25 @@
   .tcard, .tcard-star, .tcard-quotemark, .tcard-avatar-ring { transition: none !important; }
   .tcard-ring { animation: none !important; }
 }
+
+/* Nuwebu Wavy Text Keyframes */
+@keyframes nuwebuTextWave {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.fm-wavy-letter {
+  display: inline-block;
+  will-change: transform;
+  animation: nuwebuTextWave 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fm-wavy-letter {
+    animation: none !important;
+  }
+}
