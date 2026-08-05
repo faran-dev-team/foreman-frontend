@@ -142,9 +142,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
       {/* Fixed viewport sidebar — never scrolls with page content */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-dvh w-64 max-w-[85vw] flex-col border-r border-white/10 bg-foreman-navy text-white transition-transform duration-200 ease-out lg:max-w-none lg:translate-x-0 ${
-          mobileNavOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 flex h-dvh w-64 max-w-[85vw] flex-col border-r border-white/10 bg-foreman-navy text-white transition-transform duration-200 ease-out lg:max-w-none lg:translate-x-0 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="shrink-0 border-b border-white/10 px-5 py-4 sm:px-6 sm:py-5">
           <Link
