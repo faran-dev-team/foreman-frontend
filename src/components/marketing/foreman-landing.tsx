@@ -1585,11 +1585,11 @@ export function TradeSelector() {
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <Reveal className="fm-sechead" style={{ marginBottom: 36, maxWidth: "100%", textAlign: "center" }}>
           <h2 style={{
-            fontFamily: "var(--font-outfit), sans-serif",
-            fontSize: "clamp(32px, 5vw, 56px)",
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 4.8vw, 56px)",
             lineHeight: 1.15,
-            fontWeight: 700,
-            letterSpacing: "-0.03em",
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
             color: C.textHeading
           }}>
             <WavyText
@@ -1610,7 +1610,13 @@ export function TradeSelector() {
             borderRadius: 20,
             boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
           }}>
-            <h3 className="fm-cta-banner-text" style={{ fontWeight: 400, color: C.textHeading, margin: 0, lineHeight: 1.3 }}>
+            <h3 className="fm-cta-banner-text" style={{
+              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontWeight: 400,
+              color: C.textHeading,
+              margin: 0,
+              lineHeight: 1.3
+            }}>
               Book a free call with our AI Consultant today.
             </h3>
             <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary fm-cta-banner-btn">
