@@ -992,7 +992,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
         aria-hidden
         style={{
           position: "absolute", top: -240, right: -200, width: 720, height: 720, y: yGlow, zIndex: 0,
-          background: `radial-gradient(circle, ${C.accentOrange}20 0%, ${C.accentOrange}08 40%, transparent 70%)`,
+          background: `radial-gradient(circle, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 40%, transparent 70%)`,
         }}
         animate={reducedMotion ? {} : { scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
@@ -1345,6 +1345,18 @@ const TRADES = [
   { id: "law-firm", label: "Law Firms", example: "Accident inquiry, booked intake consultation Wed 10am" },
 ];
 
+const TRADE_THEME_COLORS = [
+  { id: "hvac", color: "#F97A35", rgb: "249, 122, 53" },        // HVAC - Orange
+  { id: "plumbing", color: "#38BDF8", rgb: "56, 189, 248" },    // Plumbing - Sky Blue
+  { id: "electrical", color: "#FACC15", rgb: "250, 204, 21" },  // Electrical - Gold Yellow
+  { id: "roofing", color: "#A855F7", rgb: "168, 85, 247" },     // Roofing - Purple
+  { id: "pest", color: "#34D399", rgb: "52, 211, 153" },        // Pest - Emerald Green
+  { id: "garage", color: "#EC4899", rgb: "236, 72, 153" },      // Garage - Pink/Magenta
+  { id: "restoration", color: "#EF4444", rgb: "239, 68, 68" },  // Restoration - Red
+  { id: "property-management", color: "#6366F1", rgb: "99, 102, 241" }, // Property Mgmt - Indigo
+  { id: "law-firm", color: "#0EA5E9", rgb: "14, 165, 233" },    // Law Firm - Cyan/Sky
+];
+
 const NICHE_DETAILS: Record<string, { problemHeadline: string, problemBody: string, features: string[], ctaText: string }> = {
   hvac: {
     problemHeadline: "You can't answer with your hands in a furnace.",
@@ -1460,19 +1472,8 @@ function TradeInteractiveCard({
     setIsHovered(false);
   };
 
-  // Subtle ambient bottom glow palette for high-end minimalist deck
-  const glowColors = [
-    "rgba(249, 122, 53, 0.22)",  // HVAC - Orange
-    "rgba(56, 189, 248, 0.22)",  // Plumbing - Blue
-    "rgba(250, 204, 21, 0.22)",  // Electrical - Yellow
-    "rgba(168, 85, 247, 0.22)",  // Roofing - Purple
-    "rgba(52, 211, 153, 0.22)",  // Pest - Green
-    "rgba(236, 72, 153, 0.22)",  // Garage - Magenta
-    "rgba(239, 68, 68, 0.22)",   // Restoration - Red
-    "rgba(99, 102, 241, 0.22)",  // Property Mgmt - Indigo
-    "rgba(14, 165, 233, 0.22)",  // Law Firm - Sky
-  ];
-  const cardGlowColor = glowColors[tradeIndex % glowColors.length];
+  const theme = TRADE_THEME_COLORS[tradeIndex % TRADE_THEME_COLORS.length];
+  const cardGlowColor = `rgba(${theme.rgb}, 0.22)`;
 
   // Symmetrical Left & Right 3D Fanned Deck Math
   const xOffset = offset * 170; // Sleek overlapping spacing
@@ -1491,18 +1492,18 @@ function TradeInteractiveCard({
       style={{
         position: "absolute",
         width: "100%",
-        maxWidth: 440,
+        maxWidth: 410,
         top: 0,
         left: "50%",
-        marginLeft: -220,
+        marginLeft: -205,
         background: `linear-gradient(180deg, rgba(14,21,38,0.95) 0%, rgba(10,15,28,0.98) 65%, ${cardGlowColor} 100%)`,
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        border: `1px solid ${isFront ? "rgba(249, 122, 53, 0.35)" : "rgba(255, 255, 255, 0.06)"}`,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: `1px solid ${isFront ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.06)"}`,
         borderRadius: 20,
         boxShadow: isFront
-          ? "0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(249, 122, 53, 0.15)"
-          : "0 12px 32px rgba(0, 0, 0, 0.5)",
+          ? `0 10px 24px rgba(0, 0, 0, 0.35), 0 0 12px rgba(${theme.rgb}, 0.12)`
+          : "0 6px 16px rgba(0, 0, 0, 0.25)",
         transformOrigin: "center center",
         zIndex: zIndex,
         pointerEvents: isFront ? "auto" : "none",
@@ -1535,7 +1536,7 @@ function TradeInteractiveCard({
             inset: -1,
             opacity: isHovered ? 1 : 0,
             transition: "opacity 300ms ease",
-            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(249, 122, 53, 0.18), transparent 80%)`,
+            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(${theme.rgb}, 0.22), transparent 80%)`,
             zIndex: 1,
           }}
         />
@@ -1562,6 +1563,7 @@ export function TradeSelector() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const activeTrade = TRADES[activeIndex];
+  const activeTradeTheme = TRADE_THEME_COLORS[activeIndex % TRADE_THEME_COLORS.length];
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -1577,13 +1579,13 @@ export function TradeSelector() {
       className="fm-island"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      style={{ background: C.bgCard, padding: "36px 0 64px", zIndex: 3, position: "relative", overflow: "hidden" }}
+      style={{ background: C.bgCard, padding: "48px 0 55px", zIndex: 3, position: "relative", overflow: "hidden" }}
     >
       {/* Subtle Ambient Radial Glow */}
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 700, height: 400, background: "radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.06) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
-        <Reveal className="fm-sechead" style={{ marginBottom: 36, maxWidth: "100%", textAlign: "center" }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 24, maxWidth: "100%", textAlign: "center" }}>
           <h2 style={{
             fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 4.8vw, 56px)",
@@ -1601,7 +1603,7 @@ export function TradeSelector() {
           </h2>
         </Reveal>
 
-        <Reveal delay={0.05} style={{ maxWidth: 860, margin: "0 auto 40px" }}>
+        <Reveal delay={0.05} style={{ maxWidth: 860, margin: "0 auto 28px" }}>
           <div className="fm-cta-banner" style={{
             background: "rgba(14, 21, 38, 0.75)",
             backdropFilter: "blur(20px)",
@@ -1633,22 +1635,32 @@ export function TradeSelector() {
                 <Link key={t.id} href={`/${t.id}`} passHref legacyBehavior>
                   <motion.a
                     onMouseEnter={() => { setActiveIndex(index); setIsPaused(true); }}
-                    whileHover={reducedMotion ? {} : { scale: 1.05, y: -2 }}
+                    whileHover={reducedMotion ? {} : { scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                    animate={{
+                      y: isActive ? 6 : 0,
+                      scale: isActive ? 1.04 : 1,
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 320,
+                      damping: 18,
+                      mass: 1.1,
+                    }}
                     style={{
-                      background: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.03)",
-                      color: isActive ? "#FFFFFF" : C.textBody,
-                      border: `1px solid ${isActive ? C.accentOrange : "rgba(255, 255, 255, 0.08)"}`,
+                      position: "relative",
+                      background: isActive ? "rgba(249, 122, 53, 0.1)" : "transparent",
+                      color: isActive ? C.accentOrange : C.textBody,
+                      border: `1.5px solid ${isActive ? C.accentOrange : "transparent"}`,
                       borderRadius: 999,
-                      padding: "9px 20px",
+                      padding: "5px 14px",
                       fontFamily: "var(--font-outfit), sans-serif",
                       fontWeight: isActive ? 600 : 500,
-                      fontSize: 14.5,
+                      fontSize: 13.5,
+                      lineHeight: 1.2,
                       cursor: "pointer",
                       textDecoration: "none",
-                      boxShadow: isActive ? `0 6px 20px ${C.accentOrange}40` : "none",
-                      transition: "background 250ms cubic-bezier(0.16,1,0.3,1), color 250ms cubic-bezier(0.16,1,0.3,1), border-color 250ms cubic-bezier(0.16,1,0.3,1), box-shadow 250ms cubic-bezier(0.16,1,0.3,1)",
+                      boxShadow: isActive ? `0 4px 16px ${C.accentOrange}35` : "none",
                     }}
                   >
                     {t.label}
@@ -1659,7 +1671,7 @@ export function TradeSelector() {
           </div>
         </Reveal>
 
-        <Reveal delay={0.2} className="fm-trade-card-container" style={{ maxWidth: 800, margin: "0 auto", minHeight: 180, position: "relative", perspective: 1200 }}>
+        <Reveal delay={0.2} className="fm-trade-card-container" style={{ maxWidth: 800, margin: "36px auto 48px", minHeight: 180, position: "relative", perspective: 1200 }}>
           {TRADES.map((trade, i) => {
             let offset = i - activeIndex;
             const total = TRADES.length;
@@ -2915,7 +2927,7 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
           width: 500,
           height: 500,
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${C.accentOrange}18 0%, transparent 70%)`,
+          background: `radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)`,
           pointerEvents: "none",
           zIndex: 1,
           opacity: isSectionHovered ? 1 : 0,
@@ -3078,17 +3090,319 @@ const CTA_COPY: Record<LandingMode, { headline: string; sub: string; button: str
   }
 };
 
+function WaterWavesBackground() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { amount: 0.25, once: false });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const reducedMotion = useReducedMotion();
+  const mousePos = useRef({ x: -1000, y: -1000 });
+  const aiSparkle = useRef({
+    x: -200,
+    y: -200,
+    vx: 0,
+    vy: 0,
+    rotation: 0,
+    trail: [] as { x: number; y: number; alpha: number; size: number }[],
+  });
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let width = (canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth);
+    let height = (canvas.height = canvas.parentElement?.offsetHeight || 600);
+
+    const handleResize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      width = canvas.width = canvas.parentElement.offsetWidth;
+      height = canvas.height = canvas.parentElement.offsetHeight;
+    };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      mousePos.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("mousemove", handleMouseMove);
+
+    let time = 0;
+
+    // 3D Liquid Water Mesh Grid across FULL Section
+    const stepX = 22;
+    const stepY = 18;
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+      time += 0.002; // Ultra-slow, gentle, silky liquid wave speed
+
+      const cols = Math.ceil(width / stepX) + 1;
+      const rows = Math.ceil(height / stepY) + 1;
+
+      const mx = mousePos.current.x;
+      const my = mousePos.current.y;
+
+      // Draw full-canvas high-motion 3D liquid wave mesh
+      for (let r = 0; r < rows; r++) {
+        ctx.beginPath();
+        for (let c = 0; c < cols; c++) {
+          const x = c * stepX;
+          const y = r * stepY;
+
+          // High-amplitude harmonic 3D wave equations
+          const wave1 = Math.sin(x * 0.01 + time * 2.2) * Math.cos(y * 0.008 + time * 1.8);
+          const wave2 = Math.sin((x + y) * 0.007 - time * 1.9) * 0.7;
+          const wave3 = Math.cos(x * 0.015 - y * 0.01 + time * 2.8) * 0.4;
+
+          // Interactive Mouse Cursor Water Ripple Distortion
+          const dx = x - mx;
+          const dy = y - my;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          let mouseRipple = 0;
+          if (dist < 180) {
+            mouseRipple = Math.sin(dist * 0.08 - time * 6) * ((180 - dist) / 180) * 28;
+          }
+
+          const elevation = (wave1 + wave2 + wave3) * 38 + mouseRipple;
+
+          // 3D Perspective projection shift
+          const depthRatio = y / height;
+          const projX = x + Math.sin(time * 1.5 + y * 0.012) * (1 - depthRatio) * 10;
+          const projY = y + elevation;
+
+          if (c === 0) {
+            ctx.moveTo(projX, projY);
+          } else {
+            ctx.lineTo(projX, projY);
+          }
+        }
+
+        // High-contrast translucent liquid gradient
+        const normY = r / rows;
+        const alpha = Math.min(0.45, Math.max(0.08, (1 - normY * 0.7) * 0.4 + 0.08));
+
+        const strokeGrad = ctx.createLinearGradient(0, r * stepY, width, r * stepY);
+        strokeGrad.addColorStop(0, `rgba(56, 189, 248, ${alpha})`);
+        strokeGrad.addColorStop(0.5, `rgba(14, 165, 233, ${alpha * 1.3})`);
+        strokeGrad.addColorStop(1, `rgba(168, 85, 247, ${alpha * 1.1})`);
+
+        ctx.strokeStyle = strokeGrad;
+        ctx.lineWidth = normY > 0.4 ? 1.8 : 1.2;
+        ctx.stroke();
+      }
+
+      // Glistening 3D Water Surface Light Reflections
+      const sparkCount = 36;
+      for (let i = 0; i < sparkCount; i++) {
+        const sx = (Math.sin(i * 77 + time * 1.2) * 0.5 + 0.5) * width;
+        const sy = (Math.cos(i * 44 + time * 1.4) * 0.5 + 0.5) * height;
+        const sparkAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.6;
+
+        ctx.save();
+        ctx.globalAlpha = sparkAlpha;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#38BDF8";
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Render ✨ Modern AI Sparkle / Intelligence Star Following Cursor Pointer
+      const isHovering = mx > 0 && mx < width && my > 0 && my < height;
+
+      if (isHovering) {
+        const star = aiSparkle.current;
+        if (star.x < 0 || star.y < 0) {
+          star.x = mx + 30;
+          star.y = my + 30;
+        }
+
+        const fdx = mx - star.x;
+        const fdy = my - star.y;
+        const fdist = Math.sqrt(fdx * fdx + fdy * fdy);
+
+        if (fdist > 8) {
+          const targetSpeed = Math.min(7, fdist * 0.1);
+          const angle = Math.atan2(fdy, fdx);
+          star.vx += (Math.cos(angle) * targetSpeed - star.vx) * 0.14;
+          star.vy += (Math.sin(angle) * targetSpeed - star.vy) * 0.14;
+        } else {
+          star.vx *= 0.82;
+          star.vy *= 0.82;
+        }
+
+        star.x += star.vx;
+        star.y += star.vy;
+        star.rotation += 0.06;
+
+        // Add Stardust Particle Trail
+        if (Math.hypot(star.vx, star.vy) > 0.5) {
+          star.trail.push({
+            x: star.x + (Math.random() - 0.5) * 10,
+            y: star.y + (Math.random() - 0.5) * 10,
+            alpha: 0.9,
+            size: Math.random() * 3 + 1.5,
+          });
+        }
+        if (star.trail.length > 14) star.trail.shift();
+
+        // Render Stardust Particle Trail
+        star.trail.forEach((p) => {
+          p.alpha -= 0.05;
+          if (p.alpha > 0) {
+            ctx.save();
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = "#38BDF8";
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "#38BDF8";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        });
+
+        // Render 4-Point AI Sparkle Star Core
+        ctx.save();
+        ctx.translate(star.x, star.y);
+        ctx.rotate(star.rotation);
+
+        ctx.shadowBlur = 24;
+        ctx.shadowColor = "#38BDF8";
+        ctx.globalAlpha = 0.98;
+
+        const outerR = 18;
+        const innerR = 4.5;
+
+        // 4-Point Star Geometry
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const r = i % 2 === 0 ? outerR : innerR;
+          const a = (i * Math.PI) / 4;
+          const px = Math.cos(a) * r;
+          const py = Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+
+        const starGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, outerR);
+        starGrad.addColorStop(0, "#FFFFFF");
+        starGrad.addColorStop(0.4, "#38BDF8");
+        starGrad.addColorStop(1, "#A855F7");
+
+        ctx.fillStyle = starGrad;
+        ctx.fill();
+
+        // Glowing Center Core Dot
+        ctx.fillStyle = "#FFFFFF";
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      } else {
+        aiSparkle.current.x = -200;
+        aiSparkle.current.y = -200;
+        aiSparkle.current.trail = [];
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [reducedMotion]);
+
+  return (
+    <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+      {/* Deep Ocean Liquid Radial Gradient (Full Height) */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 1 }}
+        style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.28) 0%, rgba(15, 23, 42, 0.98) 65%, rgba(5, 8, 18, 1) 100%)"
+        }}
+      />
+
+      {/* Floating 3D Caustics Glow Orbs */}
+      <motion.div
+        animate={{
+          scale: [1, 1.4, 1],
+          opacity: [0.3, 0.65, 0.3],
+          x: [0, 60, 0],
+          y: [0, -40, 0]
+        }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: "absolute",
+          top: "10%",
+          left: "20%",
+          width: 550,
+          height: 550,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(56, 189, 248, 0.3) 0%, rgba(14, 165, 233, 0.1) 55%, transparent 75%)",
+          filter: "blur(65px)"
+        }}
+      />
+
+      <motion.div
+        animate={{
+          scale: [1.25, 0.95, 1.3],
+          opacity: [0.25, 0.6, 0.25],
+          x: [0, -60, 0],
+          y: [0, 50, 0]
+        }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: "absolute",
+          bottom: "10%",
+          right: "15%",
+          width: 600,
+          height: 600,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, rgba(124, 58, 237, 0.08) 55%, transparent 75%)",
+          filter: "blur(75px)"
+        }}
+      />
+
+      {/* 3D Water Waves Liquid Tide Flowing Up on Scroll Down & Receding Down on Scroll Up */}
+      <motion.div
+        initial={{ clipPath: "inset(98% 0% 0% 0%)", opacity: 0 }}
+        animate={isInView ? { clipPath: "inset(0% 0% 0% 0%)", opacity: 1 } : { clipPath: "inset(98% 0% 0% 0%)", opacity: 0 }}
+        transition={{ duration: 4.5, ease: [0.16, 1, 0.3, 1] }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      >
+        <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+      </motion.div>
+    </div>
+  );
+}
+
 function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
   const content = CTA_COPY[mode] || CTA_COPY.main;
 
   return (
-    <section id="pilot" style={{ background: C.bgPrimary, padding: "48px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
-      <div style={{
-        position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        width: "100%", maxWidth: 1000, height: 600,
-        background: `radial-gradient(circle, ${C.accentOrange}25, transparent 70%)`,
-        pointerEvents: "none", zIndex: 0
-      }} />
+    <section id="pilot" style={{ background: "#050812", padding: "80px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <WaterWavesBackground />
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
         <Reveal>
           <h2 style={{
@@ -3326,12 +3640,14 @@ function Testimonials3DFanDeck() {
     return () => clearInterval(timer);
   }, [isPaused]);
 
-  const handleNext = () => {
-    setActiveIndex((prev) => (prev + 1) % TESTIMONIALS.length);
+  const handleDotClick = (index: number) => {
+    setActiveIndex(index);
+    setIsPaused(false);
   };
 
-  const handlePrev = () => {
-    setActiveIndex((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
+  const handleCardClick = (index: number) => {
+    setActiveIndex(index);
+    setIsPaused(false);
   };
 
   return (
@@ -3370,6 +3686,7 @@ function Testimonials3DFanDeck() {
           const rotateZ = isCenter ? 0 : offset > 0 ? 5 : -5;
           const opacity = isCenter ? 1 : Math.max(0.3, 0.65 - (Math.abs(offset) - 1) * 0.35);
           const zIndex = 30 - Math.abs(offset) * 10;
+          const yOffset = isCenter ? [-35, 0] : 20;
 
           // Ambient bottom mesh gradient colors
           const glowColors = [
@@ -3385,10 +3702,11 @@ function Testimonials3DFanDeck() {
           return (
             <motion.div
               key={i}
-              onClick={() => setActiveIndex(i)}
+              onClick={() => handleCardClick(i)}
               initial={false}
               animate={{
                 x: xOffset,
+                y: yOffset,
                 scale: scale,
                 rotateY: rotateY,
                 rotateZ: rotateZ,
@@ -3397,8 +3715,9 @@ function Testimonials3DFanDeck() {
               }}
               transition={{
                 type: "spring",
-                stiffness: 260,
-                damping: 24,
+                stiffness: 240,
+                damping: 22,
+                mass: 0.8,
               }}
               whileHover={isCenter ? { scale: 1.03, y: -8 } : { scale: scale * 1.05 }}
               style={{
@@ -3440,105 +3759,72 @@ function Testimonials3DFanDeck() {
                 </p>
               </div>
 
-              {/* Author & Role Footer matching reference layout */}
-              <div style={{ marginTop: "auto" }}>
-                <h4
+              {/* Author & Role Footer with Profile Image */}
+              <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 16 }}>
+                <img
+                  src={item.avatarUrl}
+                  alt={item.author}
                   style={{
-                    fontFamily: "var(--font-outfit), sans-serif",
-                    fontWeight: 800,
-                    color: "#FFFFFF",
-                    fontSize: 24,
-                    lineHeight: 1.2,
-                    margin: "0 0 4px",
-                    letterSpacing: "-0.02em",
+                    width: 48,
+                    height: 48,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    border: "2px solid rgba(255, 255, 255, 0.25)",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+                    flexShrink: 0,
                   }}
-                >
-                  {item.author}
-                </h4>
-                <p
-                  style={{
-                    fontFamily: "var(--font-outfit), sans-serif",
-                    fontWeight: 500,
-                    color: "#94A3B8",
-                    fontSize: 14,
-                    margin: 0,
-                  }}
-                >
-                  {item.title} &bull; {item.location}
-                </p>
+                />
+                <div>
+                  <h4
+                    style={{
+                      fontFamily: "var(--font-outfit), sans-serif",
+                      fontWeight: 800,
+                      color: "#FFFFFF",
+                      fontSize: 20,
+                      lineHeight: 1.2,
+                      margin: "0 0 4px",
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    {item.author}
+                  </h4>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-outfit), sans-serif",
+                      fontWeight: 500,
+                      color: "#94A3B8",
+                      fontSize: 13,
+                      margin: 0,
+                    }}
+                  >
+                    {item.title} &bull; {item.location}
+                  </p>
+                </div>
               </div>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Navigation Controls & Pagination Dots */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 10 }}>
-        <button
-          onClick={handlePrev}
-          aria-label="Previous Testimonial"
-          style={{
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            color: "#FFFFFF",
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = C.accentOrange)}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          {TESTIMONIALS.map((_, dotIdx) => (
-            <button
-              key={dotIdx}
-              onClick={() => setActiveIndex(dotIdx)}
-              style={{
-                width: activeIndex === dotIdx ? 24 : 8,
-                height: 8,
-                borderRadius: 999,
-                background: activeIndex === dotIdx ? C.accentOrange : "rgba(255,255,255,0.2)",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
-            />
-          ))}
-        </div>
-
-        <button
-          onClick={handleNext}
-          aria-label="Next Testimonial"
-          style={{
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            color: "#FFFFFF",
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = C.accentOrange)}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
+      {/* Pagination Dots */}
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginTop: 20 }}>
+        {TESTIMONIALS.map((_, dotIdx) => (
+          <button
+            key={dotIdx}
+            onClick={() => handleDotClick(dotIdx)}
+            aria-label={`Go to testimonial ${dotIdx + 1}`}
+            style={{
+              width: activeIndex === dotIdx ? 28 : 10,
+              height: 10,
+              borderRadius: 999,
+              background: activeIndex === dotIdx ? C.accentOrange : "rgba(255,255,255,0.2)",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+              boxShadow: activeIndex === dotIdx ? `0 0 12px ${C.accentOrange}80` : "none",
+            }}
+          />
+        ))}
       </div>
     </div>
   );
@@ -3551,7 +3837,7 @@ export function TestimonialsSection() {
   return (
     <section id="testimonials" className="fm-island" style={{ background: C.bgCard, padding: "72px 0 88px", zIndex: 7, overflow: "hidden", position: "relative" }}>
       {/* Background glow ambiance */}
-      <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 800, height: 400, background: `radial-gradient(ellipse, ${C.accentOrange}12 0%, transparent 70%)`, filter: "blur(60px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 800, height: 400, background: `radial-gradient(ellipse, rgba(255,255,255,0.02) 0%, transparent 70%)`, filter: "blur(60px)", pointerEvents: "none" }} />
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <Reveal className="fm-sechead" style={{ marginBottom: 48, maxWidth: "100%", textAlign: "center" }}>
@@ -3576,11 +3862,10 @@ export function TestimonialsSection() {
         <Testimonials3DFanDeck />
       </div>
 
-      {/* Marquee Track 1 (Infinite Draggable Loop) */}
+      {/* 
       <InfiniteDraggableMarquee items={row1} baseSpeed={-0.6} style={{ marginBottom: 20 }} />
-
-      {/* Marquee Track 2 (Reverse Infinite Draggable Loop) */}
       <InfiniteDraggableMarquee items={row2} baseSpeed={0.6} />
+      */}
     </section>
   );
 }
@@ -3994,7 +4279,7 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
     >
 
       {/* Background glow effects */}
-      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, ${C.accentOrange}15, transparent 70%)`, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 70%)`, pointerEvents: "none" }} />
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 60, marginBottom: 80, justifyContent: "space-between" }}>
@@ -4304,7 +4589,7 @@ export function Pricing() {
   return (
     <section id="pricing" className="py-16 relative" style={{ background: C.bgPrimary }}>
       {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: `radial-gradient(ellipse at 50% -50%, ${C.accentOrange}, transparent 70%)` }} />
+      <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: `radial-gradient(ellipse at 50% -50%, rgba(255,255,255,0.05), transparent 70%)` }} />
 
       <div className="max-w-[1000px] mx-auto px-6" ref={ref}>
         <motion.div
@@ -4315,7 +4600,7 @@ export function Pricing() {
           style={{ background: C.bgCard, borderColor: C.borderPrimary }}
         >
           {/* Subtle noise texture or inner glow */}
-          <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(circle at 50% 50%, ${C.accentOrange}, transparent 60%)` }} />
+          <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04), transparent 60%)` }} />
 
           <div className="relative z-10">
             <h2 style={{
