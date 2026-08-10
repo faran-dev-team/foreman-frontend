@@ -14,28 +14,33 @@ export const brand = {
 } as const;
 
 export function ForemanLogo({
-  size = 40,
-  bg = brand.orange,
-  fg = brand.carbon,
+  size = 10,
+  width,
   className,
+  style,
 }: {
   size?: number;
+  width?: number | string;
   bg?: string;
   fg?: string;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   return (
-    <svg
-      width={size}
+    <img
+      src="/images/foreman_ai.png"
+      alt="Foreman AI"
       height={size}
-      viewBox="0 0 100 100"
-      aria-hidden
       className={className}
-    >
-      <rect width="100" height="100" rx="24" fill={bg} />
-      <rect x="30" y="26" width="16" height="52" rx="2.5" fill={fg} />
-      <rect x="30" y="26" width="44" height="16" rx="2.5" fill={fg} />
-      <rect x="30" y="49" width="32" height="14" rx="2.5" fill={fg} />
-    </svg>
+      style={{
+        height: size,
+        width: width ?? "auto",
+        aspectRatio: "1536 / 1024",
+        objectFit: "contain",
+        display: "inline-block",
+        borderRadius: size > 24 ? 6 : 3,
+        ...style,
+      }}
+    />
   );
 }

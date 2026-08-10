@@ -80,15 +80,17 @@ export const C = {
 /*  Reusable: F-monogram logo                                          */
 /* ------------------------------------------------------------------ */
 export function Logo({
-  size = 40,
+  size = 10,
+  width,
   bg = C.accentOrange,
   fg = C.bgPrimary,
 }: {
   size?: number;
+  width?: number | string;
   bg?: string;
   fg?: string;
 }) {
-  return <ForemanLogo size={size} bg={bg} fg={fg} />;
+  return <ForemanLogo size={size} width={width} bg={bg} fg={fg} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -467,10 +469,10 @@ export function Nav() {
           transition: "background .4s cubic-bezier(0.16,1,0.3,1), border-color .4s cubic-bezier(0.16,1,0.3,1)",
         }}
       >
-        <div className="fm-wrap fm-nav-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: scrolled ? 64 : 88, transition: "height 0.45s cubic-bezier(0.16,1,0.3,1)", gap: 16 }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1)", transform: `scale(${scrolled ? 0.85 : 1})`, transformOrigin: "left center" }}><Logo size={38} /></div>
-            <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 22, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
+        <div className="fm-wrap fm-nav-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: scrolled ? 54 : 64, transition: "height 0.45s cubic-bezier(0.16,1,0.3,1)", gap: 16 }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <div style={{ transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1)", transform: `scale(${scrolled ? 0.9 : 1})`, transformOrigin: "left center" }}><Logo size={24} /></div>
+            <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 18, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
           </Link>
           <div className="fm-nav-desktop" onMouseLeave={() => setHoveredId(null)}>
             {NAV_SECTIONS.map((item) => (
@@ -932,9 +934,158 @@ const HERO_COPY: Record<LandingMode, { eyebrow: string; headline: string[]; head
   }
 };
 
+function HeroWaterWavesBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const reducedMotion = useReducedMotion();
+  const mousePos = useRef({ x: -1000, y: -1000 });
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    let width = (canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth);
+    let height = (canvas.height = canvas.parentElement?.offsetHeight || 500);
+
+    const handleResize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      width = canvas.width = canvas.parentElement.offsetWidth;
+      height = canvas.height = canvas.parentElement.offsetHeight;
+    };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      mousePos.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("mousemove", handleMouseMove);
+
+    let time = 0;
+    const stepX = 22;
+    const stepY = 18;
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+      time += 0.0025; // Smooth silky liquid wave speed
+
+      const cols = Math.ceil(width / stepX) + 1;
+      const rows = Math.ceil(height / stepY) + 1;
+
+      const mx = mousePos.current.x;
+      const my = mousePos.current.y;
+
+      // Draw 3D liquid wave mesh
+      for (let r = 0; r < rows; r++) {
+        ctx.beginPath();
+        for (let c = 0; c < cols; c++) {
+          const x = c * stepX;
+          const y = r * stepY;
+
+          // Harmonic 3D wave equations (exact same as FinalCTA)
+          const wave1 = Math.sin(x * 0.01 + time * 2.2) * Math.cos(y * 0.008 + time * 1.8);
+          const wave2 = Math.sin((x + y) * 0.007 - time * 1.9) * 0.7;
+          const wave3 = Math.cos(x * 0.015 - y * 0.01 + time * 2.8) * 0.4;
+
+          // Interactive Mouse Cursor Water Ripple Distortion
+          const dx = x - mx;
+          const dy = y - my;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          let mouseRipple = 0;
+          if (dist < 180) {
+            mouseRipple = Math.sin(dist * 0.08 - time * 6) * ((180 - dist) / 180) * 28;
+          }
+
+          const elevation = (wave1 + wave2 + wave3) * 32 + mouseRipple;
+          const depthRatio = y / height;
+          const projX = x + Math.sin(time * 1.5 + y * 0.012) * (1 - depthRatio) * 10;
+          const projY = y + elevation;
+
+          if (c === 0) {
+            ctx.moveTo(projX, projY);
+          } else {
+            ctx.lineTo(projX, projY);
+          }
+        }
+
+        const normY = r / rows;
+        const alpha = Math.min(0.4, Math.max(0.06, (1 - normY * 0.65) * 0.35 + 0.06));
+
+        const strokeGrad = ctx.createLinearGradient(0, r * stepY, width, r * stepY);
+        strokeGrad.addColorStop(0, `rgba(56, 189, 248, ${alpha})`);
+        strokeGrad.addColorStop(0.5, `rgba(14, 165, 233, ${alpha * 1.3})`);
+        strokeGrad.addColorStop(1, `rgba(168, 85, 247, ${alpha * 1.1})`);
+
+        ctx.strokeStyle = strokeGrad;
+        ctx.lineWidth = normY > 0.4 ? 1.6 : 1.1;
+        ctx.stroke();
+      }
+
+      // Glistening 3D Water Surface Light Reflections
+      const sparkCount = 28;
+      for (let i = 0; i < sparkCount; i++) {
+        const sx = (Math.sin(i * 77 + time * 1.2) * 0.5 + 0.5) * width;
+        const sy = (Math.cos(i * 44 + time * 1.4) * 0.5 + 0.5) * height;
+        const sparkAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.55;
+
+        ctx.save();
+        ctx.globalAlpha = sparkAlpha;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#38BDF8";
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [reducedMotion]);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: "58%",
+        overflow: "hidden",
+        pointerEvents: "none",
+        zIndex: 0,
+        maskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+        WebkitMaskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "block",
+        }}
+      />
+    </div>
+  );
+}
+
 function Hero({ mode = "main" }: { mode?: LandingMode }) {
   const ref = useRef(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const yGlow = useTransform(scrollYProgress, [0, 1], [0, 160]);
   const reducedMotion = useReducedMotion();
@@ -942,12 +1093,6 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
 
   const [isHovered, setIsHovered] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => { });
-    }
-  }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -959,34 +1104,8 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
 
   return (
     <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "60px 0 60px", position: "relative", overflow: "hidden" }}>
-      {/* Background Video Layer */}
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        onCanPlay={(e) => {
-          e.currentTarget.play().catch(() => { });
-        }}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          zIndex: 0,
-          opacity: 0.38,
-          pointerEvents: "none"
-        }}
-      >
-        <source src="/videos/bg-wave.webm" type="video/webm" />
-        <source src="https://framerusercontent.com/assets/U83OMjeKVajyjISNUuuTiUXc.webm" type="video/webm" />
-        <source src="/videos/bg-trades.mp4" type="video/mp4" />
-      </video>
-
+      {/* 3D Water Waves Background (Only above the video player) */}
+      <HeroWaterWavesBackground />
       {/* Primary radial glow — top right */}
       <motion.div
         aria-hidden
@@ -1020,7 +1139,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
       />
 
       <div className="fm-wrap fm-hero-grid" style={{ position: "relative", zIndex: 3 }}>
-        <div>
+        <div style={{ maxWidth: 860, margin: "0 auto", width: "100%" }}>
           <motion.div className="fm-eyebrow" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             {content.eyebrow}
           </motion.div>
@@ -1116,6 +1235,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            style={{ marginBottom: 36 }}
           >
             {["No monthly fee during pilot", "Pay only per booking", "Live in 24 hours"].map((t, i) => (
               <motion.span
@@ -1128,9 +1248,136 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
               </motion.span>
             ))}
           </motion.div>
+
+          {/* Interactive Hero Video Bot Player with Play / Pause Controls */}
+          <HeroVideoBotPlayer />
         </div>
       </div>
     </header>
+  );
+}
+
+function HeroVideoBotPlayer() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [progress, setProgress] = useState(0);
+
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    const p = (videoRef.current.currentTime / (videoRef.current.duration || 1)) * 100;
+    setProgress(isNaN(p) ? 0 : p);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.92, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.7, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      style={{
+        position: "relative",
+        borderRadius: 18,
+        overflow: "hidden",
+        background: "rgba(10, 15, 28, 0.9)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255, 255, 255, 0.12)",
+        boxShadow: "0 24px 60px rgba(0, 0, 0, 0.65), 0 0 30px rgba(249, 122, 53, 0.12)",
+        maxWidth: 540,
+        width: "100%",
+        margin: "0 auto",
+      }}
+    >
+      {/* Video Viewport */}
+      <div
+        onClick={togglePlay}
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "16 / 9",
+          cursor: "pointer",
+          background: "#000000",
+        }}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onTimeUpdate={handleTimeUpdate}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        >
+          <source src="/videos/foreman.mp4" type="video/mp4" />
+          <source src="/videos/bg-trades.mp4" type="video/mp4" />
+        </video>
+
+        {/* Single Center Play Button Overlay */}
+        <AnimatePresence>
+          {!isPlaying && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.75 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.75 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0, 0, 0, 0.42)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #F97A35 0%, #EA580C 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 10px 28px rgba(249, 122, 53, 0.65), 0 0 20px rgba(249, 122, 53, 0.4)",
+                  paddingLeft: 4,
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFFFFF">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Laser-thin progress bar */}
+      <div style={{ width: "100%", height: 2.5, background: "rgba(255, 255, 255, 0.08)" }}>
+        <div
+          style={{
+            height: "100%",
+            width: `${progress}%`,
+            background: "linear-gradient(90deg, #F97A35, #FFB020)",
+            transition: "width 0.15s linear",
+          }}
+        />
+      </div>
+    </motion.div>
   );
 }
 
@@ -1146,7 +1393,7 @@ function DashboardPreview() {
 
   const { scrollYProgress } = useScroll({
     target: trackRef,
-    offset: ["start -240px", "end end"],
+    offset: ["start 40px", "end end"],
   });
 
   useEffect(() => {
@@ -1170,12 +1417,12 @@ function DashboardPreview() {
         height: "250vh",
       }}
     >
-      {/* Sticky container — section scrolls further down into view so dashboard card is centered before sticking */}
+      {/* Sticky container — sticks comfortably with breathing room below the top */}
       <div
         style={{
           position: "sticky",
-          top: "-240px",
-          padding: "40px 0 60px",
+          top: "40px",
+          padding: "20px 0 60px",
           overflow: "hidden",
         }}
       >
@@ -1188,8 +1435,8 @@ function DashboardPreview() {
         }} />
 
         <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
-          {/* Eyebrow + headline */}
-          <Reveal className="fm-sechead" style={{ marginBottom: 48, textAlign: "center", maxWidth: "100%" }}>
+          {/* Eyebrow + headline without scroll fade */}
+          <div className="fm-sechead" style={{ marginBottom: 36, textAlign: "center", maxWidth: "100%" }}>
             <div className="fm-eyebrow">OWNER DASHBOARD</div>
             <h2 style={{
               fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
@@ -1201,12 +1448,12 @@ function DashboardPreview() {
               maxWidth: 750,
               margin: "0 auto 16px",
             }}>
-              <ScrollTextReveal text="Your shop's performance, live in one place." as="span" />
+              Your shop&apos;s performance, live in one place.
             </h2>
-            <div className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
-              <ScrollTextReveal text="Every call, booking, and dollar Foreman captures shows up here in real time." as="p" />
-            </div>
-          </Reveal>
+            <p className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
+              Every call, booking, and dollar Foreman captures shows up here in real time.
+            </p>
+          </div>
 
           {/* Browser chrome frame */}
           <div
@@ -1472,8 +1719,7 @@ function TradeInteractiveCard({
     setIsHovered(false);
   };
 
-  const theme = TRADE_THEME_COLORS[tradeIndex % TRADE_THEME_COLORS.length];
-  const cardGlowColor = `rgba(${theme.rgb}, 0.22)`;
+  const cardGlowColor = `rgba(249, 122, 53, 0.22)`;
 
   // Symmetrical Left & Right 3D Fanned Deck Math
   const xOffset = offset * 170; // Sleek overlapping spacing
@@ -1499,10 +1745,10 @@ function TradeInteractiveCard({
         background: `linear-gradient(180deg, rgba(14,21,38,0.95) 0%, rgba(10,15,28,0.98) 65%, ${cardGlowColor} 100%)`,
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        border: `1px solid ${isFront ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.06)"}`,
+        border: `1px solid ${isFront ? (isHovered ? "rgba(255, 255, 255, 0.28)" : "rgba(249, 122, 53, 0.35)") : "rgba(255, 255, 255, 0.06)"}`,
         borderRadius: 20,
         boxShadow: isFront
-          ? `0 10px 24px rgba(0, 0, 0, 0.35), 0 0 12px rgba(${theme.rgb}, 0.12)`
+          ? `0 10px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(249, 122, 53, 0.18)`
           : "0 6px 16px rgba(0, 0, 0, 0.25)",
         transformOrigin: "center center",
         zIndex: zIndex,
@@ -1536,7 +1782,7 @@ function TradeInteractiveCard({
             inset: -1,
             opacity: isHovered ? 1 : 0,
             transition: "opacity 300ms ease",
-            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(${theme.rgb}, 0.22), transparent 80%)`,
+            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255, 255, 255, 0.18), transparent 80%)`,
             zIndex: 1,
           }}
         />
@@ -1544,10 +1790,15 @@ function TradeInteractiveCard({
 
       <div style={{ position: "relative", zIndex: 2 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span className="fm-mono" style={{ fontSize: 11, letterSpacing: 2, color: C.textBody, opacity: 0.8 }}>INCOMING CALLS</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.accentOrange, display: "inline-block" }} />
+            <span className="fm-mono" style={{ fontSize: 11, letterSpacing: 2, color: C.accentOrange, fontWeight: 700 }}>INCOMING CALLS</span>
+          </div>
         </div>
         <div className="fm-callrow">
-          <div className="fm-callic"><PhoneIcon /></div>
+          <div className="fm-callic" style={{ background: "rgba(249, 122, 53, 0.15)", border: "1px solid rgba(249, 122, 53, 0.3)" }}>
+            <PhoneIcon o />
+          </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>New {trade.label} Lead</div>
             <div style={{ fontSize: 13, color: C.textBody }}>{trade.example}</div>
@@ -1594,12 +1845,7 @@ export function TradeSelector() {
             letterSpacing: "-0.02em",
             color: C.textHeading
           }}>
-            <WavyText
-              text="Knows your trade. Asks the right questions. Books the job."
-              waveHeight={10}
-              duration={1.8}
-              stagger={0.04}
-            />
+            Knows your trade. Asks the right questions. Books the job.
           </h2>
         </Reveal>
 
@@ -2202,7 +2448,7 @@ function FeatureGraphicWidget({ title }: { title: string }) {
         padding: "16px 18px",
         borderRadius: 16,
         background: "rgba(15, 23, 42, 0.85)",
-        border: `1px solid ${C.accentOrange}60`,
+        border: "1px solid rgba(255, 255, 255, 0.08)",
         display: "flex",
         flexDirection: "column",
         gap: 12,
@@ -2251,19 +2497,40 @@ function FeatureGraphicWidget({ title }: { title: string }) {
     );
   }
 
-  // 2. Emergency Detection Siren & Triage Animation
+  // 2. Emergency Detection Siren & Triage Animation (Realistic Mission-Critical Terminal)
   if (t.includes("emergenc") || t.includes("triage") || t.includes("first")) {
     const [alertIndex, setAlertIndex] = useState(0);
     const alerts = [
-      { label: "NO HEAT IN WINTER", status: "Priority #1 Dispatch", icon: "🔥", code: "CRIT-01", tag: "FREEZE RISK" },
-      { label: "GAS SMELL IN BASEMENT", status: "Priority #1 Dispatch", icon: "⚠️", code: "HAZ-99", tag: "HAZMAT LEAK" },
-      { label: "BURST PIPE / FLOODING", status: "Priority #1 Dispatch", icon: "🌊", code: "EMRG-04", tag: "WATER DAMAGE" }
+      {
+        code: "EMRG-04",
+        category: "WATER DAMAGE",
+        label: "Burst Pipe / Active Flooding",
+        severity: "CRITICAL",
+        dispatch: "Priority #1 Dispatch",
+        type: "water"
+      },
+      {
+        code: "CRIT-01",
+        category: "FREEZE RISK",
+        label: "No Heat / Sub-Zero Threat",
+        severity: "CRITICAL",
+        dispatch: "Priority #1 Dispatch",
+        type: "freeze"
+      },
+      {
+        code: "HAZ-99",
+        category: "HAZMAT RISK",
+        label: "Gas Smell / Furnace Leak",
+        severity: "HIGH HAZARD",
+        dispatch: "Priority #1 Dispatch",
+        type: "gas"
+      }
     ];
 
     useEffect(() => {
       const interval = setInterval(() => {
         setAlertIndex((prev) => (prev + 1) % alerts.length);
-      }, 2800);
+      }, 3000);
       return () => clearInterval(interval);
     }, [alerts.length]);
 
@@ -2272,43 +2539,42 @@ function FeatureGraphicWidget({ title }: { title: string }) {
     return (
       <div style={{
         marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 18,
-        background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(153, 27, 27, 0.12) 100%)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(239, 68, 68, 0.65)",
-        boxShadow: "0 12px 32px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+        padding: "14px 16px",
+        borderRadius: 14,
+        background: "rgba(10, 15, 28, 0.95)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        boxShadow: "0 12px 30px rgba(0, 0, 0, 0.5)",
         display: "flex",
         flexDirection: "column",
-        gap: 12,
+        gap: 10,
         minHeight: 140,
         justifyContent: "center",
         position: "relative",
         overflow: "hidden"
       }}>
-        {/* Subtle animated laser sweep across top */}
+        {/* Subtle top laser scan line */}
         <motion.div
           animate={{ x: ["-100%", "200%"] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
           style={{
             position: "absolute",
             top: 0,
             left: 0,
-            width: "50%",
-            height: 2,
+            width: "40%",
+            height: 1.5,
             background: "linear-gradient(90deg, transparent, #EF4444, transparent)",
-            opacity: 0.8
+            opacity: 0.9
           }}
         />
 
-        {/* Header Bar with Pulsing Beacon & High-Tech Pill */}
+        {/* Telemetry Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Multi-ring Siren Radar Pulse */}
-            <div style={{ position: "relative", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <div style={{ position: "relative", width: 8, height: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <motion.span
-                animate={reducedMotion ? {} : { scale: [1, 2.4], opacity: [0.8, 0] }}
+                animate={reducedMotion ? {} : { scale: [1, 2.2], opacity: [0.8, 0] }}
                 transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
                 style={{
                   position: "absolute",
@@ -2318,103 +2584,98 @@ function FeatureGraphicWidget({ title }: { title: string }) {
                   pointerEvents: "none"
                 }}
               />
-              <motion.span
-                animate={reducedMotion ? {} : { scale: [1, 1.3, 1] }}
-                transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: "radial-gradient(circle, #FF6B6B 0%, #EF4444 100%)",
-                  boxShadow: "0 0 12px #EF4444, 0 0 4px #FCA5A5"
-                }}
-              />
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#EF4444", boxShadow: "0 0 8px #EF4444" }} />
             </div>
-
-            <span className="fm-mono" style={{ fontSize: 11, fontWeight: 900, color: "#FCA5A5", letterSpacing: 1.2, textTransform: "uppercase" }}>
-              EMERGENCY TRIAGE SIREN
+            <span className="fm-mono" style={{ fontSize: 10, fontWeight: 800, color: "#FCA5A5", letterSpacing: 1.2, textTransform: "uppercase" }}>
+              EMERGENCY TRIAGE
             </span>
           </div>
 
-          <motion.div
-            animate={reducedMotion ? {} : { scale: [1, 1.05, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            style={{
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: 0.5,
-              color: "#FFFFFF",
-              background: "linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)",
-              padding: "4px 10px",
-              borderRadius: 20,
-              border: "1px solid rgba(254, 202, 202, 0.4)",
-              boxShadow: "0 4px 14px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
-              display: "flex",
-              alignItems: "center",
-              gap: 4
-            }}
-          >
-            <span style={{ fontSize: 10 }}>⚡</span> 0.1s INSTANT
-          </motion.div>
+          <div style={{
+            fontSize: 9.5,
+            fontWeight: 700,
+            fontFamily: "monospace",
+            color: "#EF4444",
+            background: "rgba(239, 68, 68, 0.12)",
+            padding: "2.5px 8px",
+            borderRadius: 6,
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            gap: 4
+          }}>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+            0.1s INSTANT
+          </div>
         </div>
 
-        {/* Dynamic Alert Banner with 3D Glass Badge */}
+        {/* Dynamic Alert Banner */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeAlert.code}
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.25 }}
             style={{
-              background: "rgba(15, 23, 42, 0.75)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(239, 68, 68, 0.45)",
-              boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+              background: "rgba(18, 24, 38, 0.85)",
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid rgba(239, 68, 68, 0.25)",
               display: "flex",
               flexDirection: "column",
-              gap: 8
+              gap: 7
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {/* Glowing Alarm Icon Box */}
-                <motion.div
-                  animate={reducedMotion ? {} : { rotate: [-4, 4, -4], scale: [1, 1.08, 1] }}
-                  transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    background: "linear-gradient(135deg, rgba(239,68,68,0.4) 0%, rgba(185,28,28,0.2) 100%)",
-                    border: "1px solid rgba(239,68,68,0.7)",
-                    boxShadow: "0 0 14px rgba(239,68,68,0.5)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 16
-                  }}
-                >
-                  🚨
-                </motion.div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 7,
+                  background: "rgba(239, 68, 68, 0.12)",
+                  border: "1px solid rgba(239, 68, 68, 0.35)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}>
+                  {activeAlert.type === "water" ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg>
+                  ) : activeAlert.type === "freeze" ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" strokeWidth="2.2"><line x1="12" y1="2" x2="12" y2="22" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M20 16l-4-4 4-4" /><path d="M4 8l4 4-4 4" /><path d="M16 4l-4 4-4-4" /><path d="M8 20l4-4 4 4" /></svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2.2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
+                  )}
+                </div>
 
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="fm-mono" style={{ fontSize: 9, fontWeight: 900, color: "#EF4444", background: "rgba(239,68,68,0.2)", padding: "1px 5px", borderRadius: 4, border: "1px solid rgba(239,68,68,0.4)" }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 9.5, fontWeight: 700, color: "#EF4444" }}>
                       {activeAlert.code}
                     </span>
-                    <span style={{ fontSize: 9, fontWeight: 800, color: "#FCA5A5", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {activeAlert.tag}
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.5 }}>
+                      {activeAlert.category}
                     </span>
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#FFFFFF", marginTop: 2, letterSpacing: "-0.01em" }}>
-                    {activeAlert.icon} {activeAlert.label}
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#FFFFFF", marginTop: 1 }}>
+                    {activeAlert.label}
                   </div>
                 </div>
               </div>
+
+              <span style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: "#EF4444",
+                background: "rgba(239, 68, 68, 0.15)",
+                border: "1px solid rgba(239, 68, 68, 0.35)",
+                padding: "2px 6px",
+                borderRadius: 4,
+                fontFamily: "monospace"
+              }}>
+                {activeAlert.severity}
+              </span>
             </div>
 
             {/* Action dispatch status footer */}
@@ -2422,24 +2683,18 @@ function FeatureGraphicWidget({ title }: { title: string }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              fontSize: 11,
-              background: "rgba(0, 0, 0, 0.4)",
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "1px solid rgba(255, 255, 255, 0.08)"
+              fontSize: 10.5,
+              background: "rgba(0, 0, 0, 0.3)",
+              padding: "5px 8px",
+              borderRadius: 6,
+              border: "1px solid rgba(255, 255, 255, 0.05)"
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: "#F8FAFC" }}>
-                <span style={{ color: "#FCA5A5", fontWeight: 800 }}>Action:</span>
-                <span style={{ color: "#EF4444", fontWeight: 900 }}>{activeAlert.status}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#E2E8F0" }}>
+                <span style={{ color: "rgba(255, 255, 255, 0.45)" }}>Action:</span>
+                <span style={{ color: "#F8FAFC", fontWeight: 600 }}>{activeAlert.dispatch}</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#4ADE80", fontWeight: 800, fontSize: 10 }}>
-                <motion.span
-                  animate={{ opacity: [0.3, 1, 0.3], x: [0, 2, 0] }}
-                  transition={{ duration: 0.8, repeat: Infinity }}
-                  style={{ display: "inline-block" }}
-                >
-                  📲 ➔
-                </motion.span>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#34D399", fontWeight: 700, fontSize: 10 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
                 Owner Alerted
               </div>
             </div>
@@ -2465,8 +2720,8 @@ function FeatureGraphicWidget({ title }: { title: string }) {
         marginTop: 12,
         padding: "16px 18px",
         borderRadius: 16,
-        background: "rgba(59, 130, 246, 0.15)",
-        border: "1px solid rgba(59, 130, 246, 0.4)",
+        background: "rgba(15, 23, 42, 0.85)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
         display: "flex",
         flexDirection: "column",
         gap: 10,
@@ -2507,8 +2762,8 @@ function FeatureGraphicWidget({ title }: { title: string }) {
         marginTop: 12,
         padding: "16px 18px",
         borderRadius: 16,
-        background: "rgba(16, 185, 129, 0.15)",
-        border: "1px solid rgba(16, 185, 129, 0.4)",
+        background: "rgba(15, 23, 42, 0.85)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
         display: "flex",
         flexDirection: "column",
         gap: 10,
@@ -2573,9 +2828,9 @@ function FeatureGraphicWidget({ title }: { title: string }) {
         marginTop: 12,
         padding: "16px 18px",
         borderRadius: 16,
-        background: "rgba(249, 122, 53, 0.15)",
-        border: `1px solid ${C.accentOrange}60`,
-        boxShadow: `0 0 25px ${C.accentOrange}30`,
+        background: "rgba(15, 23, 42, 0.85)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
         display: "flex",
         flexDirection: "column",
         gap: 12,
@@ -2660,9 +2915,9 @@ function FeatureGraphicWidget({ title }: { title: string }) {
       marginTop: 12,
       padding: "16px 18px",
       borderRadius: 16,
-      background: "rgba(250, 204, 21, 0.12)",
-      border: "1px solid rgba(250, 204, 21, 0.5)",
-      boxShadow: "0 8px 24px rgba(250, 204, 21, 0.15)",
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
       display: "flex",
       flexDirection: "column",
       gap: 10,
@@ -2784,7 +3039,7 @@ function FlipFeatureCard({
           borderRadius: 24,
           border: `1px solid rgba(249, 122, 53, 0.35)`,
           boxShadow: isFlipped
-            ? "0 24px 60px rgba(0,0,0,0.6), 0 0 30px rgba(249,122,53,0.3)"
+            ? "0 24px 60px rgba(0,0,0,0.6), 0 0 30px rgba(255,255,255,0.08)"
             : "0 16px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)",
           display: "flex",
           flexDirection: "column",
@@ -2792,17 +3047,10 @@ function FlipFeatureCard({
           overflow: "hidden",
           transition: "border-color 300ms ease, box-shadow 300ms ease"
         }}>
-          {/* Top Neon Accent Line */}
+          {/* Top Subtle Accent Line */}
           <div style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 3,
-            background: `linear-gradient(90deg, transparent, ${C.accentOrange}, transparent)`
-          }} />
-
-          {/* Glowing Ambient Light Sphere */}
-          <div style={{
-            position: "absolute", top: "-25%", right: "-25%", width: "200px", height: "200px",
-            background: `radial-gradient(circle, ${C.accentOrange}25 0%, transparent 70%)`,
-            pointerEvents: "none", borderRadius: "50%", filter: "blur(10px)"
+            position: "absolute", top: 0, left: 0, right: 0, height: 2,
+            background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)`
           }} />
 
           <div>
@@ -2812,19 +3060,19 @@ function FlipFeatureCard({
                 transition={{ duration: 3.2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: index * 0.15 }}
                 style={{
                   width: 64, height: 64, borderRadius: 20,
-                  background: `linear-gradient(135deg, ${C.accentOrange}35 0%, ${C.accentOrange}10 100%)`,
-                  border: `1px solid ${C.accentOrange}70`,
-                  boxShadow: `0 10px 24px -4px ${C.accentOrange}50, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  boxShadow: "0 10px 24px -4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)",
                   color: C.accentOrange, display: "flex", alignItems: "center", justifyContent: "center"
                 }}
               >
-                <div style={{ filter: `drop-shadow(0 4px 12px ${C.accentOrange}80)` }}>{feat.icon}</div>
+                <div style={{ filter: `drop-shadow(0 4px 12px ${C.accentOrange}60)` }}>{feat.icon}</div>
               </motion.div>
 
               <span className="fm-mono" style={{
-                fontSize: 12, fontWeight: 900, letterSpacing: 1.5, color: C.accentOrange,
-                background: "rgba(249,122,53,0.15)", border: `1px solid ${C.accentOrange}40`,
-                padding: "5px 12px", borderRadius: 999, boxShadow: `0 4px 12px ${C.accentOrange}20`
+                fontSize: 12, fontWeight: 900, letterSpacing: 1.5, color: "#E2E8F0",
+                background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.12)",
+                padding: "5px 12px", borderRadius: 999, boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
               }}>
                 0{index + 1}
               </span>
@@ -2840,7 +3088,7 @@ function FlipFeatureCard({
           </div>
         </div>
 
-        {/* BACK FACE OF CARD (HIGH-CONTRAST NEON DEMO) */}
+        {/* BACK FACE OF CARD */}
         <div style={{
           position: "absolute",
           inset: 0,
@@ -2852,17 +3100,17 @@ function FlipFeatureCard({
           WebkitBackdropFilter: "blur(20px)",
           padding: "24px",
           borderRadius: 24,
-          border: `1px solid ${C.accentOrange}`,
-          boxShadow: `0 24px 60px rgba(0,0,0,0.7), 0 0 35px ${C.accentOrange}45`,
+          border: `1px solid rgba(249, 122, 53, 0.4)`,
+          boxShadow: "0 24px 60px rgba(0,0,0,0.7), 0 0 25px rgba(255,255,255,0.06)",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           overflow: "hidden"
         }}>
-          {/* Top Neon Accent Line */}
+          {/* Top Subtle Accent Line */}
           <div style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 3,
-            background: C.accentOrange, boxShadow: `0 0 10px ${C.accentOrange}`
+            position: "absolute", top: 0, left: 0, right: 0, height: 2,
+            background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)"
           }} />
 
           {/* Minimalist Live Functional Animation Component */}
@@ -3023,7 +3271,7 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
             color: C.textHeading,
             marginTop: 16
           }}>
-            <ScrollTextReveal text={fCopy.headline} as="span" />
+            {fCopy.headline}
           </h2>
         </Reveal>
 
@@ -3413,11 +3661,11 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
             letterSpacing: "-0.02em",
             color: C.textHeading
           }}>
-            <ScrollTextReveal text={content.headline} as="span" />
+            {content.headline}
           </h2>
-          <div className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto", marginTop: 16 }}>
-            <ScrollTextReveal text={content.sub} as="p" />
-          </div>
+          <p className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto", marginTop: 16 }}>
+            {content.sub}
+          </p>
           <div className="fm-hero-cta" style={{ justifyContent: "center", marginTop: 40 }}>
             <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary">
               {content.button}
@@ -3628,6 +3876,199 @@ function InfiniteDraggableMarquee({ items, baseSpeed = -0.5, style }: { items: t
 /* ================================================================== */
 /*  3D TESTIMONIAL FAN CAROUSEL (Fanned 3D Deck with Ambient Glow)    */
 /* ================================================================== */
+function Testimonial3DCard({
+  item,
+  isCenter,
+  xOffset,
+  yOffset,
+  scale,
+  rotateY,
+  rotateZ,
+  opacity,
+  zIndex,
+  isPaused,
+  onClick,
+}: {
+  item: typeof TESTIMONIALS[0];
+  isCenter: boolean;
+  xOffset: number;
+  yOffset: number | number[];
+  scale: number;
+  rotateY: number;
+  rotateZ: number;
+  opacity: number;
+  zIndex: number;
+  isPaused: boolean;
+  onClick: () => void;
+}) {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isCenter) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  const cardGlowColor = `rgba(249, 122, 53, 0.22)`;
+
+  return (
+    <motion.div
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      initial={false}
+      animate={{
+        x: xOffset,
+        y: yOffset,
+        scale: scale,
+        rotateY: rotateY,
+        rotateZ: rotateZ,
+        opacity: opacity,
+        zIndex: zIndex,
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 240,
+        damping: 22,
+        mass: 0.8,
+      }}
+      whileHover={isCenter ? { scale: 1.03, y: -8 } : { scale: scale * 1.05 }}
+      style={{
+        position: "absolute",
+        width: "100%",
+        maxWidth: 410,
+        minHeight: 310,
+        padding: "32px 28px 24px",
+        borderRadius: 24,
+        background: `linear-gradient(180deg, rgba(14,21,38,0.95) 0%, rgba(10,15,28,0.98) 65%, ${cardGlowColor} 100%)`,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: `1px solid ${isCenter ? (isHovered ? "rgba(255, 255, 255, 0.28)" : "rgba(249, 122, 53, 0.35)") : "rgba(255, 255, 255, 0.08)"}`,
+        boxShadow: isCenter
+          ? "0 25px 60px rgba(0,0,0,0.8), 0 0 20px rgba(249, 122, 53, 0.18)"
+          : "0 15px 35px rgba(0,0,0,0.6)",
+        cursor: "pointer",
+        transformStyle: "preserve-3d",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: 20,
+        filter: isCenter ? "none" : "blur(0.5px)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Sleek Top Progress Bar Pill - Slim & Compact */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 15,
+          width: 140,
+          height: 1.5,
+          background: "rgba(255, 255, 255, 0.12)",
+          borderRadius: 999,
+          overflow: "hidden",
+          margin: "0 auto",
+        }}
+      >
+        {isCenter && (
+          <motion.div
+            key={item.author}
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{
+              duration: 3.5,
+              ease: "linear",
+            }}
+            style={{
+              height: "100%",
+              borderRadius: 999,
+              background: `linear-gradient(90deg, ${C.accentOrange}, #FFA466)`,
+              boxShadow: `0 0 6px ${C.accentOrange}`,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Dynamic Cursor Spotlight Glow Effect */}
+      {isCenter && (
+        <div
+          style={{
+            pointerEvents: "none",
+            position: "absolute",
+            inset: -1,
+            opacity: isHovered ? 1 : 0,
+            transition: "opacity 300ms ease",
+            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255, 255, 255, 0.18), transparent 80%)`,
+            zIndex: 1,
+          }}
+        />
+      )}
+
+      {/* Quote Body centered with clean line height */}
+      <div style={{ position: "relative", zIndex: 2 }}>
+        <p
+          style={{
+            color: "#E2E8F0",
+            fontSize: 15.5,
+            lineHeight: 1.6,
+            fontWeight: 400,
+            margin: 0,
+            fontFamily: "var(--font-outfit), sans-serif",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          &ldquo;{item.quote} {item.highlight}&rdquo;
+        </p>
+      </div>
+
+      {/* Author & Role Footer with Profile Image */}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 14 }}>
+        <img
+          src={item.avatarUrl}
+          alt={item.author}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            objectFit: "cover",
+            border: "2px solid rgba(249, 122, 53, 0.4)",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+            flexShrink: 0,
+          }}
+        />
+        <div>
+          <h4
+            style={{
+              fontFamily: "var(--font-outfit), sans-serif",
+              fontWeight: 800,
+              color: "#FFFFFF",
+              fontSize: 18,
+              lineHeight: 1.2,
+              margin: "0 0 3px",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {item.author}
+          </h4>
+          <p
+            style={{
+              fontFamily: "var(--font-outfit), sans-serif",
+              fontWeight: 500,
+              color: "#94A3B8",
+              fontSize: 12.5,
+              margin: 0,
+            }}
+          >
+            {item.title} &bull; {item.location}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function Testimonials3DFanDeck() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -3660,7 +4101,7 @@ function Testimonials3DFanDeck() {
       <div
         style={{
           position: "relative",
-          height: 480,
+          height: 400,
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
@@ -3688,120 +4129,21 @@ function Testimonials3DFanDeck() {
           const zIndex = 30 - Math.abs(offset) * 10;
           const yOffset = isCenter ? [-35, 0] : 20;
 
-          // Ambient bottom mesh gradient colors
-          const glowColors = [
-            "rgba(56, 189, 248, 0.35)",  // Sky blue
-            "rgba(52, 211, 153, 0.35)",  // Emerald
-            "rgba(249, 122, 53, 0.35)",  // Orange
-            "rgba(168, 85, 247, 0.35)",  // Purple
-            "rgba(236, 72, 153, 0.35)",  // Pink
-            "rgba(34, 211, 238, 0.35)",  // Cyan
-          ];
-          const bottomGlowColor = glowColors[i % glowColors.length];
-
           return (
-            <motion.div
+            <Testimonial3DCard
               key={i}
+              item={item}
+              isCenter={isCenter}
+              xOffset={xOffset}
+              yOffset={yOffset}
+              scale={scale}
+              rotateY={rotateY}
+              rotateZ={rotateZ}
+              opacity={opacity}
+              zIndex={zIndex}
+              isPaused={isPaused}
               onClick={() => handleCardClick(i)}
-              initial={false}
-              animate={{
-                x: xOffset,
-                y: yOffset,
-                scale: scale,
-                rotateY: rotateY,
-                rotateZ: rotateZ,
-                opacity: opacity,
-                zIndex: zIndex,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 240,
-                damping: 22,
-                mass: 0.8,
-              }}
-              whileHover={isCenter ? { scale: 1.03, y: -8 } : { scale: scale * 1.05 }}
-              style={{
-                position: "absolute",
-                width: "100%",
-                maxWidth: 410,
-                minHeight: 400,
-                padding: "36px 32px",
-                borderRadius: 24,
-                background: `linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(30,41,59,0.98) 60%, ${bottomGlowColor} 100%)`,
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                border: `1px solid ${isCenter ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"}`,
-                boxShadow: isCenter
-                  ? "0 30px 70px rgba(0,0,0,0.85), 0 0 40px rgba(255,255,255,0.08)"
-                  : "0 15px 35px rgba(0,0,0,0.6)",
-                cursor: "pointer",
-                transformStyle: "preserve-3d",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                filter: isCenter ? "none" : "blur(0.5px)",
-              }}
-            >
-              {/* Quote Body matching reference text typography */}
-              <div>
-                <p
-                  style={{
-                    color: "#E2E8F0",
-                    fontSize: 16,
-                    lineHeight: 1.65,
-                    fontWeight: 400,
-                    margin: "0 0 24px",
-                    fontFamily: "var(--font-outfit), sans-serif",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  &ldquo;{item.quote} {item.highlight}&rdquo;
-                </p>
-              </div>
-
-              {/* Author & Role Footer with Profile Image */}
-              <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 16 }}>
-                <img
-                  src={item.avatarUrl}
-                  alt={item.author}
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    border: "2px solid rgba(255, 255, 255, 0.25)",
-                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
-                    flexShrink: 0,
-                  }}
-                />
-                <div>
-                  <h4
-                    style={{
-                      fontFamily: "var(--font-outfit), sans-serif",
-                      fontWeight: 800,
-                      color: "#FFFFFF",
-                      fontSize: 20,
-                      lineHeight: 1.2,
-                      margin: "0 0 4px",
-                      letterSpacing: "-0.02em",
-                    }}
-                  >
-                    {item.author}
-                  </h4>
-                  <p
-                    style={{
-                      fontFamily: "var(--font-outfit), sans-serif",
-                      fontWeight: 500,
-                      color: "#94A3B8",
-                      fontSize: 13,
-                      margin: 0,
-                    }}
-                  >
-                    {item.title} &bull; {item.location}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+            />
           );
         })}
       </div>
@@ -3851,11 +4193,11 @@ export function TestimonialsSection() {
             color: C.textHeading,
             marginBottom: 16
           }}>
-            <ScrollTextReveal text="Trusted by trade owners who build America." as="span" />
+            Trusted by trade owners who build America.
           </h2>
-          <div style={{ color: C.textBody, fontSize: 18, maxWidth: 640, margin: "0 auto", lineHeight: 1.6 }}>
-            <ScrollTextReveal text="See how HVAC, plumbing, electrical, and restoration contractors turn missed calls into booked revenue every single day." as="p" />
-          </div>
+          <p style={{ color: C.textBody, fontSize: 18, maxWidth: 640, margin: "0 auto", lineHeight: 1.6 }}>
+            See how HVAC, plumbing, electrical, and restoration contractors turn missed calls into booked revenue every single day.
+          </p>
         </Reveal>
 
         {/* 3D Fanned Testimonial Card Stack */}
@@ -4286,9 +4628,9 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
 
           {/* Brand Column */}
           <div style={{ flex: "2 1 300px", paddingRight: 40 }}>
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, textDecoration: "none" }}>
-              <Logo size={36} />
-              <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 26, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
+            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 20, textDecoration: "none" }}>
+              <Logo size={24} />
+              <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 20, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
             </Link>
             <p style={{ fontSize: 15, lineHeight: 1.6, color: C.textBody, marginBottom: 32, maxWidth: 360 }}>
               The AI front office built exclusively for the trades. We answer the phone, qualify the lead, and book the job directly into your calendar so you can focus on the work.
@@ -4437,7 +4779,7 @@ export function Check({ o }: { o?: boolean }) {
 function PhoneIcon({ o }: { o?: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3-8.6A2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.4-1.2a2 2 0 012.1-.5c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z" stroke={C.accentGreenText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3-8.6A2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.4-1.2a2 2 0 012.1-.5c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z" stroke={o ? C.accentOrange : C.accentGreenText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -4612,10 +4954,10 @@ export function Pricing() {
               color: "#FFFFFF",
               marginBottom: "1.5rem"
             }}>
-              <ScrollTextReveal text="Pricing that only wins when you do." as="span" />
+              Pricing that only wins when you do.
             </h2>
             <div className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto mb-12">
-              <ScrollTextReveal text="Foreman is priced to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit. You only pay when Foreman books you real work." as="p" />
+              Foreman is priced to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit. You only pay when Foreman books you real work.
             </div>
 
             <div className="flex flex-col items-center justify-center">

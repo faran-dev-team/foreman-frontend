@@ -20,7 +20,11 @@ export const metadata: Metadata = {
   description:
     "Foreman — AI front office for HVAC and trades. Never miss another job.",
   icons: {
-    icon: "/foreman-app-icon-512.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png" }
+    ],
+    shortcut: "/favicon.png",
     apple: "/foreman-app-icon-512.png",
   },
 };
