@@ -80,7 +80,7 @@ export const C = {
 /*  Reusable: F-monogram logo                                          */
 /* ------------------------------------------------------------------ */
 export function Logo({
-  size = 10,
+  size = 32,
   width,
   bg = C.accentOrange,
   fg = C.bgPrimary,
@@ -471,7 +471,7 @@ export function Nav() {
       >
         <div className="fm-wrap fm-nav-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: scrolled ? 54 : 64, transition: "height 0.45s cubic-bezier(0.16,1,0.3,1)", gap: 16 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <div style={{ transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1)", transform: `scale(${scrolled ? 0.9 : 1})`, transformOrigin: "left center" }}><Logo size={24} /></div>
+            <div style={{ transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1)", transform: `scale(${scrolled ? 0.9 : 1})`, transformOrigin: "left center" }}><Logo size={32} /></div>
             <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 18, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
           </Link>
           <div className="fm-nav-desktop" onMouseLeave={() => setHoveredId(null)}>
@@ -4628,8 +4628,8 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
 
           {/* Brand Column */}
           <div style={{ flex: "2 1 300px", paddingRight: 40 }}>
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 20, textDecoration: "none" }}>
-              <Logo size={24} />
+            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, textDecoration: "none" }}>
+              <Logo size={32} />
               <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 20, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
             </Link>
             <p style={{ fontSize: 15, lineHeight: 1.6, color: C.textBody, marginBottom: 32, maxWidth: 360 }}>
@@ -5036,7 +5036,7 @@ export function FAQ({ mode = "main" }: { mode?: LandingMode }) {
             color: C.textHeading,
             marginBottom: "18px"
           }}>
-            <ScrollTextReveal text="Questions, answered" as="span" />
+            <ScrollTextReveal text="Questions, Answered" as="span" />
           </h2>
         </Reveal>
         <div className="fm-faqlist">
@@ -5633,16 +5633,16 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
         <Nav />
         <Hero mode={mode} />
         <DashboardPreview />
-        <div id={mode === "main" ? "how" : undefined}>
-          <CinematicWorkflow />
-        </div>
-        {mode === "main" && <TradeSelector />}
-        <StatComparison mode={mode} />
-        <div id={mode !== "main" ? "how" : undefined}>
+        <div id="how">
           <AnnotatedProof mode={mode} />
         </div>
         <div id="integrations">
           <IntegrationsRow />
+        </div>
+        {mode === "main" && <TradeSelector />}
+        <StatComparison mode={mode} />
+        <div>
+          <CinematicWorkflow />
         </div>
         <div id="features">
           <AdvancedFeatures mode={mode} />
