@@ -65,7 +65,7 @@ export default function ContactPage() {
           </div>
           
           <div style={{ marginTop: 16, padding: "0 8px", fontSize: "0.9rem", color: "rgba(255,255,255,0.5)" }}>
-            <p style={{ marginBottom: 8 }}><strong>Social:</strong> Instagram <a href="https://www.instagram.com/foreman.ai_?igsh=c2J0M2pxcWNlbjM2" target="_blank" rel="noreferrer" style={{ color: "rgba(255,255,255,0.8)", textDecoration: "underline" }}>@foreman.ai_</a></p>
+            <p style={{ marginBottom: 8 }}><strong>Social:</strong> Instagram <a href="https://www.instagram.com/foreman.ai_?igsh=MTVyampxZHo1OTJqNQ==" target="_blank" rel="noreferrer" style={{ color: "rgba(255,255,255,0.8)", textDecoration: "underline" }}>@foreman.ai_</a></p>
             <p><strong>Company:</strong> Foreman is a project of MeeTech LLC.<br/>MeeTech LLC<br/>30 N Gould St # 43982, Sheridan, WY 82801</p>
           </div>
         </div>
