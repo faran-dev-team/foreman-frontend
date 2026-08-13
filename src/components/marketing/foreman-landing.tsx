@@ -5,7 +5,8 @@ export type LandingMode = "main" | "hvac" | "plumbing" | "restoration" | "proper
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   motion,
@@ -25,24 +26,9 @@ import { ReactLenis } from "@studio-freight/react-lenis";
 
 import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 import {
-  DoodleTechnicianOnCall,
-  DoodleHardHat,
   DoodleRingingPhone,
-  DoodleWrenchGear,
   DoodleHouseCheck,
-  DoodleServiceVan,
   DoodleClipboard,
-  DoodleThumbsUp,
-  DoodleSignalBars,
-  DoodleQuestion,
-  NicheHVAC,
-  NichePlumbing,
-  NicheElectrical,
-  NicheRoofing,
-  NichePest,
-  NicheGarage,
-  NicheLocksmith,
-  NicheAppliance,
   DoodleIntegrations,
   DoodleSunburst,
 } from "./foreman-illustrations";
@@ -128,15 +114,6 @@ export function Reveal({
 /* ------------------------------------------------------------------ */
 /*  Reusable: scroll-driven word-by-word text reveal                  */
 /* ------------------------------------------------------------------ */
-function ScrollWord({ word, range, progress }: { word: string; range: [number, number]; progress: any }) {
-  const opacity = useTransform(progress, range, [0.15, 1.0]);
-  return (
-    <span style={{ position: "relative", display: "inline-block", marginRight: "0.28em" }}>
-      <motion.span style={{ opacity }}>{word}</motion.span>
-    </span>
-  );
-}
-
 export function ScrollTextReveal({
   text,
   className,
@@ -148,21 +125,9 @@ export function ScrollTextReveal({
   style?: React.CSSProperties;
   as?: any;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start 0.85", "end 0.40"],
-  });
-
-  const words = text.split(" ");
-
   return (
-    <Component ref={containerRef} className={className} style={{ ...style, display: "inline-block" }}>
-      {words.map((word, i) => {
-        const start = i / words.length;
-        const end = start + 1 / words.length;
-        return <ScrollWord key={i} word={word} range={[start, end]} progress={scrollYProgress} />;
-      })}
+    <Component className={className} style={{ ...style, display: "inline-block" }}>
+      {text}
     </Component>
   );
 }
@@ -534,7 +499,7 @@ const HERO_CALLS: HeroCallEntry[] = [
   { initials: "JK", name: "James K.", trade: "Electrical", issue: "Breaker panel upgrade", time: "8:47 PM", priority: "standard", revenue: 2400 },
 ];
 
-function CallCardWaveform() {
+const CallCardWaveform = memo(function CallCardWaveform() {
   const bars = [0.45, 0.9, 0.6, 1, 0.5, 0.75, 0.4];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 2.5, height: 16 }} aria-hidden>
@@ -549,9 +514,9 @@ function CallCardWaveform() {
       ))}
     </div>
   );
-}
+});
 
-function CallCardAvatar({ initials, priority }: { initials: string; priority: "standard" | "emergency" }) {
+const CallCardAvatar = memo(function CallCardAvatar({ initials, priority }: { initials: string; priority: "standard" | "emergency" }) {
   const accent = priority === "emergency" ? C.accentOrange : "rgba(255,255,255,0.18)";
   return (
     <div style={{
@@ -566,7 +531,7 @@ function CallCardAvatar({ initials, priority }: { initials: string; priority: "s
       {initials}
     </div>
   );
-}
+});
 
 export function MagneticButton({ children, href, className, target, rel, style }: { children: React.ReactNode, href: string, className?: string, target?: string, rel?: string, style?: React.CSSProperties }) {
   const ref = useRef<HTMLAnchorElement>(null);
@@ -935,12 +900,14 @@ const HERO_COPY: Record<LandingMode, { eyebrow: string; headline: string[]; head
 };
 
 function HeroWaterWavesBackground() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { amount: 0.05, once: false });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reducedMotion = useReducedMotion();
   const mousePos = useRef({ x: -1000, y: -1000 });
 
   useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion || !isInView) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -950,10 +917,20 @@ function HeroWaterWavesBackground() {
     let width = (canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth);
     let height = (canvas.height = canvas.parentElement?.offsetHeight || 500);
 
+    let resizeTicking = false;
     const handleResize = () => {
       if (!canvas || !canvas.parentElement) return;
       width = canvas.width = canvas.parentElement.offsetWidth;
       height = canvas.height = canvas.parentElement.offsetHeight;
+    };
+    const onResize = () => {
+      if (!resizeTicking) {
+        resizeTicking = true;
+        window.requestAnimationFrame(() => {
+          handleResize();
+          resizeTicking = false;
+        });
+      }
     };
     const handleMouseMove = (e: MouseEvent) => {
       if (!canvas) return;
@@ -964,22 +941,31 @@ function HeroWaterWavesBackground() {
       };
     };
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
     let time = 0;
-    const stepX = 22;
-    const stepY = 18;
 
     const render = () => {
       ctx.clearRect(0, 0, width, height);
       time += 0.0025; // Smooth silky liquid wave speed
+
+      const isMobile = width < 768;
+      const stepX = isMobile ? 36 : 22;
+      const stepY = isMobile ? 28 : 18;
 
       const cols = Math.ceil(width / stepX) + 1;
       const rows = Math.ceil(height / stepY) + 1;
 
       const mx = mousePos.current.x;
       const my = mousePos.current.y;
+
+      // Hoist linear gradient outside row loop to avoid per-frame GC churn
+      const strokeGrad = ctx.createLinearGradient(0, 0, width, 0);
+      strokeGrad.addColorStop(0, "rgb(56, 189, 248)");
+      strokeGrad.addColorStop(0.5, "rgb(14, 165, 233)");
+      strokeGrad.addColorStop(1, "rgb(168, 85, 247)");
+      ctx.strokeStyle = strokeGrad;
 
       // Draw 3D liquid wave mesh
       for (let r = 0; r < rows; r++) {
@@ -1017,15 +1003,12 @@ function HeroWaterWavesBackground() {
         const normY = r / rows;
         const alpha = Math.min(0.4, Math.max(0.06, (1 - normY * 0.65) * 0.35 + 0.06));
 
-        const strokeGrad = ctx.createLinearGradient(0, r * stepY, width, r * stepY);
-        strokeGrad.addColorStop(0, `rgba(56, 189, 248, ${alpha})`);
-        strokeGrad.addColorStop(0.5, `rgba(14, 165, 233, ${alpha * 1.3})`);
-        strokeGrad.addColorStop(1, `rgba(168, 85, 247, ${alpha * 1.1})`);
-
-        ctx.strokeStyle = strokeGrad;
+        ctx.globalAlpha = alpha;
         ctx.lineWidth = normY > 0.4 ? 1.6 : 1.1;
         ctx.stroke();
       }
+
+      ctx.globalAlpha = 1;
 
       // Glistening 3D Water Surface Light Reflections
       const sparkCount = 28;
@@ -1051,14 +1034,15 @@ function HeroWaterWavesBackground() {
     render();
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("mousemove", handleMouseMove);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [reducedMotion]);
+  }, [reducedMotion, isInView]);
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: "absolute",
         top: 0,
@@ -1103,9 +1087,9 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
   };
 
   return (
-    <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "60px 0 60px", position: "relative", overflow: "hidden" }}>
-      {/* 3D Water Waves Background (Only above the video player) */}
-      <HeroWaterWavesBackground />
+    <header id="top" ref={ref} style={{ background: "#050812", color: C.textHeading, padding: "60px 0 60px", position: "relative", overflow: "hidden" }}>
+      {/* 3D Water Waves Background */}
+      <WaterWavesBackground />
       {/* Primary radial glow — top right */}
       <motion.div
         aria-hidden
@@ -1162,7 +1146,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
                       <motion.span
                         key={wIdx}
                         style={{ display: "inline-block", marginRight: "0.28em", transformStyle: "preserve-3d" }}
-                        initial={{ opacity: 0, y: "100%", rotateX: reducedMotion ? 0 : -25, scale: 0.95 }}
+                        initial={{ opacity: 1, y: "0%", rotateX: 0, scale: 1 }}
                         animate={{ opacity: 1, y: "0%", rotateX: 0, scale: 1 }}
                         transition={{
                           duration: 0.95,
@@ -1175,7 +1159,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
                     ))}
                     {i === content.headline.length - 1 && (
                       <motion.span
-                        initial={{ opacity: 0, y: "100%", scale: 0.85, filter: "blur(8px)" }}
+                        initial={{ opacity: 1, y: "0%", scale: 1, filter: "blur(0px)" }}
                         animate={{ opacity: 1, y: "0%", scale: 1, filter: "blur(0px)" }}
                         transition={{ duration: 1.1, delay: 0.12 + (i * 0.15) + (words.length * 0.08), ease: [0.16, 1, 0.3, 1] }}
                         className="fm-serif-italic"
@@ -1250,7 +1234,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
           </motion.div>
 
           {/* Interactive Hero Video Bot Player with Play / Pause Controls */}
-          <HeroVideoBotPlayer />
+          {/* <HeroVideoBotPlayer /> */}
         </div>
       </div>
     </header>
@@ -1385,27 +1369,60 @@ function HeroVideoBotPlayer() {
 /*  DASHBOARD PREVIEW (landing only — renders real DashboardOverview)  */
 /* ================================================================== */
 
-import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+const DashboardOverview = dynamic(
+  () => import("@/components/dashboard/dashboard-overview").then((mod) => mod.DashboardOverview),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{ height: 600, display: "flex", flexDirection: "column", gap: 16, padding: "28px 32px", background: "rgba(255,255,255,0.02)", borderRadius: 12 }}>
+        <div style={{ height: 28, width: "25%", background: "rgba(255,255,255,0.08)", borderRadius: 6 }} />
+        <div style={{ height: 110, width: "100%", background: "rgba(255,255,255,0.05)", borderRadius: 8 }} />
+        <div style={{ height: 320, width: "100%", background: "rgba(255,255,255,0.04)", borderRadius: 8 }} />
+      </div>
+    ),
+  }
+);
 
 function DashboardPreview() {
   const trackRef = useRef<HTMLDivElement>(null);
+  const stickyFrameRef = useRef<HTMLDivElement>(null);
   const scrollableRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
-    target: trackRef,
-    offset: ["start 40px", "end end"],
+    target: stickyFrameRef,
+    offset: ["start 60px", "end end"],
   });
 
   useEffect(() => {
     const updateInnerScroll = (progress: number) => {
       if (scrollableRef.current) {
         const maxScroll = scrollableRef.current.scrollHeight - scrollableRef.current.clientHeight;
-        scrollableRef.current.scrollTop = progress * Math.max(0, maxScroll);
+        if (maxScroll > 0) {
+          // Internal dashboard scrolling starts the moment app.foreman.ai / dashboard touches the navbar
+          const normalized = Math.min(1, Math.max(0, progress / 0.88));
+          scrollableRef.current.scrollTop = normalized * maxScroll;
+        }
       }
     };
 
     updateInnerScroll(scrollYProgress.get());
-    return scrollYProgress.on("change", updateInnerScroll);
+    const unsub = scrollYProgress.on("change", updateInnerScroll);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && scrollableRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        updateInnerScroll(scrollYProgress.get());
+      });
+      resizeObserver.observe(scrollableRef.current);
+      if (scrollableRef.current.firstElementChild) {
+        resizeObserver.observe(scrollableRef.current.firstElementChild as HTMLElement);
+      }
+    }
+
+    return () => {
+      unsub();
+      resizeObserver?.disconnect();
+    };
   }, [scrollYProgress]);
 
   return (
@@ -1414,47 +1431,49 @@ function DashboardPreview() {
       style={{
         background: brand.carbon,
         position: "relative",
-        height: "250vh",
+        minHeight: "260vh",
+        padding: "60px 0 0",
       }}
     >
-      {/* Sticky container — sticks comfortably with breathing room below the top */}
-      <div
-        style={{
-          position: "sticky",
-          top: "40px",
-          padding: "20px 0 60px",
-          overflow: "hidden",
-        }}
-      >
-        {/* Ambient glow */}
-        <div aria-hidden style={{
-          position: "absolute", top: -120, left: "50%", transform: "translateX(-50%)",
-          width: 900, height: 450, borderRadius: "50%",
-          background: `radial-gradient(ellipse, ${brand.orange}18 0%, transparent 70%)`,
-          pointerEvents: "none",
-        }} />
+      {/* Ambient glow */}
+      <div aria-hidden style={{
+        position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)",
+        width: 900, height: 450, borderRadius: "50%",
+        background: `radial-gradient(ellipse, ${brand.orange}18 0%, transparent 70%)`,
+        pointerEvents: "none",
+      }} />
 
-        <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
-          {/* Eyebrow + headline without scroll fade */}
-          <div className="fm-sechead" style={{ marginBottom: 36, textAlign: "center", maxWidth: "100%" }}>
-            <div className="fm-eyebrow">OWNER DASHBOARD</div>
-            <h2 style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
-              fontSize: "clamp(32px, 5vw, 56px)",
-              lineHeight: 1.15,
-              fontWeight: 400,
-              letterSpacing: "-0.02em",
-              color: C.textHeading,
-              maxWidth: 750,
-              margin: "0 auto 16px",
-            }}>
-              Your shop&apos;s performance, live in one place.
-            </h2>
-            <p className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
-              Every call, booking, and dollar Foreman captures shows up here in real time.
-            </p>
-          </div>
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
+        {/* Eyebrow + headline scrolls naturally above the browser frame */}
+        <div className="fm-sechead" style={{ marginBottom: 44, textAlign: "center", maxWidth: "100%" }}>
+          <div className="fm-eyebrow">OWNER DASHBOARD</div>
+          <h2 style={{
+            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 5vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            maxWidth: 750,
+            margin: "0 auto 16px",
+          }}>
+            Your shop&apos;s performance, live in one place.
+          </h2>
+          <p className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
+            Every call, booking, and dollar Foreman captures shows up here in real time.
+          </p>
+        </div>
 
+        {/* Sticky browser frame — locks under the navbar when app.foreman.ai / dashboard touches top: 60px */}
+        <div
+          ref={stickyFrameRef}
+          style={{
+            position: "sticky",
+            top: "60px",
+            zIndex: 10,
+            paddingBottom: "40px",
+          }}
+        >
           {/* Browser chrome frame */}
           <div
             style={{
@@ -1588,7 +1607,7 @@ const TRADES = [
   { id: "pest", label: "Pest Control", example: "Termite evidence found, booked treatment Mon 8am" },
   { id: "garage", label: "Garage Door", example: "Spring broke, car stuck, booked emergency visit 4pm" },
   { id: "restoration", label: "Restoration", example: "Water damage, booked emergency dispatch" },
-  { id: "property-management", label: "Property Mgmt", example: "Tenant locked out, dispatched maintenance" },
+  { id: "property-management", label: "Property Management", example: "Tenant locked out, dispatched maintenance" },
   { id: "law-firm", label: "Law Firms", example: "Accident inquiry, booked intake consultation Wed 10am" },
 ];
 
@@ -1600,7 +1619,7 @@ const TRADE_THEME_COLORS = [
   { id: "pest", color: "#34D399", rgb: "52, 211, 153" },        // Pest - Emerald Green
   { id: "garage", color: "#EC4899", rgb: "236, 72, 153" },      // Garage - Pink/Magenta
   { id: "restoration", color: "#EF4444", rgb: "239, 68, 68" },  // Restoration - Red
-  { id: "property-management", color: "#6366F1", rgb: "99, 102, 241" }, // Property Mgmt - Indigo
+  { id: "property-management", color: "#6366F1", rgb: "99, 102, 241" }, // Property Management - Indigo
   { id: "law-firm", color: "#0EA5E9", rgb: "14, 165, 233" },    // Law Firm - Cyan/Sky
 ];
 
@@ -1662,15 +1681,15 @@ const NICHE_DETAILS: Record<string, { problemHeadline: string, problemBody: stri
 };
 
 const tradeIconMap: Record<string, React.ReactNode> = {
-  hvac: <img src="/images/hvac.png" alt="HVAC" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  plumbing: <img src="/images/plumber.png" alt="Plumbing" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  electrical: <img src="/images/electrician.png" alt="Electrical" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  roofing: <img src="/images/roofing (2).png" alt="Roofing" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  pest: <img src="/images/pest.png" alt="Pest Control" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  garage: <img src="/images/garage.png" alt="Garage Door" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  restoration: <img src="/images/restoration.png" alt="Restoration" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  "property-management": <img src="/images/property.png" alt="Property Management" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  "law-firm": <img src="/images/property.png" alt="Law Firms" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+  hvac: <img src="/images/hvac.png" alt="HVAC" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  plumbing: <img src="/images/plumber.png" alt="Plumbing" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  electrical: <img src="/images/electrician.png" alt="Electrical" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  roofing: <img src="/images/roofing (2).png" alt="Roofing" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  pest: <img src="/images/pest.png" alt="Pest Control" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  garage: <img src="/images/garage.png" alt="Garage Door" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  restoration: <img src="/images/restoration.png" alt="Restoration" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  "property-management": <img src="/images/property.png" alt="Property Management" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  "law-firm": <img src="/images/property.png" alt="Law Firms" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />
 };
 
 /* ================================================================== */
@@ -1682,7 +1701,7 @@ const tradeIconMap: Record<string, React.ReactNode> = {
 /* ================================================================== */
 /*  INTERACTIVE CALL CARD (Awwwards/Framer Motion Minimalist 3D Deck) */
 /* ================================================================== */
-function TradeInteractiveCard({
+const TradeInteractiveCard = memo(function TradeInteractiveCard({
   trade,
   offset,
   isFront,
@@ -1699,7 +1718,9 @@ function TradeInteractiveCard({
   const rotateX = useTransform(y, [-100, 100], [6, -6]);
   const rotateY = useTransform(x, [-100, 100], [-6, 6]);
 
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const spotlightX = useMotionValue(0);
+  const spotlightY = useMotionValue(0);
+  const spotlightBg = useMotionTemplate`radial-gradient(350px circle at ${spotlightX}px ${spotlightY}px, rgba(255, 255, 255, 0.18), transparent 80%)`;
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1710,7 +1731,8 @@ function TradeInteractiveCard({
 
     x.set(offsetX - rect.width / 2);
     y.set(offsetY - rect.height / 2);
-    setMousePos({ x: offsetX, y: offsetY });
+    spotlightX.set(offsetX);
+    spotlightY.set(offsetY);
   };
 
   const handleMouseLeave = () => {
@@ -1775,14 +1797,14 @@ function TradeInteractiveCard({
     >
       {/* Dynamic Cursor Spotlight Glow Effect */}
       {isFront && (
-        <div
+        <motion.div
           style={{
             pointerEvents: "none",
             position: "absolute",
             inset: -1,
             opacity: isHovered ? 1 : 0,
             transition: "opacity 300ms ease",
-            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255, 255, 255, 0.18), transparent 80%)`,
+            background: spotlightBg,
             zIndex: 1,
           }}
         />
@@ -1808,7 +1830,7 @@ function TradeInteractiveCard({
       </div>
     </motion.div>
   );
-}
+});
 
 export function TradeSelector() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -3340,7 +3362,7 @@ const CTA_COPY: Record<LandingMode, { headline: string; sub: string; button: str
 
 function WaterWavesBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(containerRef, { amount: 0.25, once: false });
+  const isInView = useInView(containerRef, { amount: 0.1, once: false });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reducedMotion = useReducedMotion();
   const mousePos = useRef({ x: -1000, y: -1000 });
@@ -3354,21 +3376,39 @@ function WaterWavesBackground() {
   });
 
   useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion || !isInView) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
     let animationFrameId: number;
-    let width = (canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.offsetHeight || 600);
+    let dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2);
+    let width = 0;
+    let height = 0;
 
+    let resizeTicking = false;
     const handleResize = () => {
       if (!canvas || !canvas.parentElement) return;
-      width = canvas.width = canvas.parentElement.offsetWidth;
-      height = canvas.height = canvas.parentElement.offsetHeight;
+      width = canvas.parentElement.offsetWidth;
+      height = canvas.parentElement.offsetHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
     };
+    const onResize = () => {
+      if (!resizeTicking) {
+        resizeTicking = true;
+        window.requestAnimationFrame(() => {
+          handleResize();
+          resizeTicking = false;
+        });
+      }
+    };
+
+    handleResize();
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -3378,18 +3418,25 @@ function WaterWavesBackground() {
       };
     };
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("mousemove", handleMouseMove);
+    const handleMouseLeave = () => {
+      mousePos.current = { x: -1000, y: -1000 };
+    };
+
+    window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mouseleave", handleMouseLeave, { passive: true });
 
     let time = 0;
 
-    // 3D Liquid Water Mesh Grid across FULL Section
-    const stepX = 22;
-    const stepY = 18;
-
     const render = () => {
+      ctx.save();
+      ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, height);
-      time += 0.002; // Ultra-slow, gentle, silky liquid wave speed
+      time += 0.0025;
+
+      const isMobile = width < 768;
+      const stepX = isMobile ? 38 : 24;
+      const stepY = isMobile ? 30 : 20;
 
       const cols = Math.ceil(width / stepX) + 1;
       const rows = Math.ceil(height / stepY) + 1;
@@ -3397,30 +3444,31 @@ function WaterWavesBackground() {
       const mx = mousePos.current.x;
       const my = mousePos.current.y;
 
-      // Draw full-canvas high-motion 3D liquid wave mesh
+      const strokeGrad = ctx.createLinearGradient(0, 0, width, 0);
+      strokeGrad.addColorStop(0, "rgba(56, 189, 248, 0.35)");
+      strokeGrad.addColorStop(0.5, "rgba(14, 165, 233, 0.55)");
+      strokeGrad.addColorStop(1, "rgba(168, 85, 247, 0.45)");
+      ctx.strokeStyle = strokeGrad;
+
       for (let r = 0; r < rows; r++) {
         ctx.beginPath();
         for (let c = 0; c < cols; c++) {
           const x = c * stepX;
           const y = r * stepY;
 
-          // High-amplitude harmonic 3D wave equations
           const wave1 = Math.sin(x * 0.01 + time * 2.2) * Math.cos(y * 0.008 + time * 1.8);
           const wave2 = Math.sin((x + y) * 0.007 - time * 1.9) * 0.7;
           const wave3 = Math.cos(x * 0.015 - y * 0.01 + time * 2.8) * 0.4;
 
-          // Interactive Mouse Cursor Water Ripple Distortion
           const dx = x - mx;
           const dy = y - my;
           const dist = Math.sqrt(dx * dx + dy * dy);
           let mouseRipple = 0;
           if (dist < 180) {
-            mouseRipple = Math.sin(dist * 0.08 - time * 6) * ((180 - dist) / 180) * 28;
+            mouseRipple = Math.sin(dist * 0.08 - time * 6) * ((180 - dist) / 180) * 26;
           }
 
-          const elevation = (wave1 + wave2 + wave3) * 38 + mouseRipple;
-
-          // 3D Perspective projection shift
+          const elevation = (wave1 + wave2 + wave3) * 36 + mouseRipple;
           const depthRatio = y / height;
           const projX = x + Math.sin(time * 1.5 + y * 0.012) * (1 - depthRatio) * 10;
           const projY = y + elevation;
@@ -3432,39 +3480,31 @@ function WaterWavesBackground() {
           }
         }
 
-        // High-contrast translucent liquid gradient
         const normY = r / rows;
-        const alpha = Math.min(0.45, Math.max(0.08, (1 - normY * 0.7) * 0.4 + 0.08));
-
-        const strokeGrad = ctx.createLinearGradient(0, r * stepY, width, r * stepY);
-        strokeGrad.addColorStop(0, `rgba(56, 189, 248, ${alpha})`);
-        strokeGrad.addColorStop(0.5, `rgba(14, 165, 233, ${alpha * 1.3})`);
-        strokeGrad.addColorStop(1, `rgba(168, 85, 247, ${alpha * 1.1})`);
-
-        ctx.strokeStyle = strokeGrad;
+        ctx.globalAlpha = Math.min(0.45, Math.max(0.08, (1 - normY * 0.7) * 0.4 + 0.08));
         ctx.lineWidth = normY > 0.4 ? 1.8 : 1.2;
         ctx.stroke();
       }
 
-      // Glistening 3D Water Surface Light Reflections
-      const sparkCount = 36;
+      ctx.globalAlpha = 1;
+
+      const sparkCount = 24;
+      ctx.save();
+      ctx.fillStyle = "#FFFFFF";
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "#38BDF8";
       for (let i = 0; i < sparkCount; i++) {
         const sx = (Math.sin(i * 77 + time * 1.2) * 0.5 + 0.5) * width;
         const sy = (Math.cos(i * 44 + time * 1.4) * 0.5 + 0.5) * height;
         const sparkAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.6;
 
-        ctx.save();
         ctx.globalAlpha = sparkAlpha;
-        ctx.fillStyle = "#FFFFFF";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#38BDF8";
         ctx.beginPath();
         ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
       }
+      ctx.restore();
 
-      // Render ✨ Modern AI Sparkle / Intelligence Star Following Cursor Pointer
       const isHovering = mx > 0 && mx < width && my > 0 && my < height;
 
       if (isHovering) {
@@ -3492,7 +3532,6 @@ function WaterWavesBackground() {
         star.y += star.vy;
         star.rotation += 0.06;
 
-        // Add Stardust Particle Trail
         if (Math.hypot(star.vx, star.vy) > 0.5) {
           star.trail.push({
             x: star.x + (Math.random() - 0.5) * 10,
@@ -3501,9 +3540,8 @@ function WaterWavesBackground() {
             size: Math.random() * 3 + 1.5,
           });
         }
-        if (star.trail.length > 14) star.trail.shift();
+        if (star.trail.length > 12) star.trail.shift();
 
-        // Render Stardust Particle Trail
         star.trail.forEach((p) => {
           p.alpha -= 0.05;
           if (p.alpha > 0) {
@@ -3519,19 +3557,16 @@ function WaterWavesBackground() {
           }
         });
 
-        // Render 4-Point AI Sparkle Star Core
         ctx.save();
         ctx.translate(star.x, star.y);
         ctx.rotate(star.rotation);
-
-        ctx.shadowBlur = 24;
+        ctx.shadowBlur = 20;
         ctx.shadowColor = "#38BDF8";
         ctx.globalAlpha = 0.98;
 
         const outerR = 18;
         const innerR = 4.5;
 
-        // 4-Point Star Geometry
         ctx.beginPath();
         for (let i = 0; i < 8; i++) {
           const r = i % 2 === 0 ? outerR : innerR;
@@ -3551,9 +3586,8 @@ function WaterWavesBackground() {
         ctx.fillStyle = starGrad;
         ctx.fill();
 
-        // Glowing Center Core Dot
         ctx.fillStyle = "#FFFFFF";
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = "#FFFFFF";
         ctx.beginPath();
         ctx.arc(0, 0, 3, 0, Math.PI * 2);
@@ -3566,6 +3600,7 @@ function WaterWavesBackground() {
         aiSparkle.current.trail = [];
       }
 
+      ctx.restore();
       animationFrameId = requestAnimationFrame(render);
     };
 
@@ -3574,9 +3609,10 @@ function WaterWavesBackground() {
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseleave", handleMouseLeave);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [reducedMotion]);
+  }, [reducedMotion, isInView]);
 
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
@@ -3694,7 +3730,7 @@ const TESTIMONIALS = [
     metric: "+$18,400",
     metricLabel: "1st Weekend Revenue",
     initials: "DM",
-    avatarUrl: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/32.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3709,7 +3745,7 @@ const TESTIMONIALS = [
     metric: "0 Missed",
     metricLabel: "Emergency Dispatches",
     initials: "MV",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/45.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3724,7 +3760,7 @@ const TESTIMONIALS = [
     metric: "100%",
     metricLabel: "Call Answer Rate",
     initials: "CR",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/76.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3739,7 +3775,7 @@ const TESTIMONIALS = [
     metric: "+$24,000",
     metricLabel: "First 48 Hours",
     initials: "SJ",
-    avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/women/44.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3754,7 +3790,7 @@ const TESTIMONIALS = [
     metric: "< 10 sec",
     metricLabel: "Emergency Dispatch",
     initials: "JR",
-    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/86.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3769,7 +3805,7 @@ const TESTIMONIALS = [
     metric: "34 Jobs",
     metricLabel: "Inspections Scheduled",
     initials: "BC",
-    avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/52.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3876,7 +3912,7 @@ function InfiniteDraggableMarquee({ items, baseSpeed = -0.5, style }: { items: t
 /* ================================================================== */
 /*  3D TESTIMONIAL FAN CAROUSEL (Fanned 3D Deck with Ambient Glow)    */
 /* ================================================================== */
-function Testimonial3DCard({
+const Testimonial3DCard = memo(function Testimonial3DCard({
   item,
   isCenter,
   xOffset,
@@ -3901,16 +3937,17 @@ function Testimonial3DCard({
   isPaused: boolean;
   onClick: () => void;
 }) {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const spotlightX = useMotionValue(0);
+  const spotlightY = useMotionValue(0);
+  const spotlightBg = useMotionTemplate`radial-gradient(350px circle at ${spotlightX}px ${spotlightY}px, rgba(255, 255, 255, 0.08), transparent 80%)`;
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isCenter) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    spotlightX.set(e.clientX - rect.left);
+    spotlightY.set(e.clientY - rect.top);
   };
-
-  const cardGlowColor = `rgba(249, 122, 53, 0.22)`;
 
   return (
     <motion.div
@@ -3934,39 +3971,36 @@ function Testimonial3DCard({
         damping: 22,
         mass: 0.8,
       }}
-      whileHover={isCenter ? { scale: 1.03, y: -8 } : { scale: scale * 1.05 }}
+      whileHover={isCenter ? { scale: 1.02, y: -6 } : { scale: scale * 1.03 }}
       style={{
         position: "absolute",
         width: "100%",
-        maxWidth: 410,
-        minHeight: 310,
-        padding: "32px 28px 24px",
-        borderRadius: 24,
-        background: `linear-gradient(180deg, rgba(14,21,38,0.95) 0%, rgba(10,15,28,0.98) 65%, ${cardGlowColor} 100%)`,
+        maxWidth: 350,
+        minHeight: 270,
+        padding: "24px 22px 20px",
+        borderRadius: 18,
+        background: `linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 15, 28, 0.98) 100%)`,
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        border: `1px solid ${isCenter ? (isHovered ? "rgba(255, 255, 255, 0.28)" : "rgba(249, 122, 53, 0.35)") : "rgba(255, 255, 255, 0.08)"}`,
-        boxShadow: isCenter
-          ? "0 25px 60px rgba(0,0,0,0.8), 0 0 20px rgba(249, 122, 53, 0.18)"
-          : "0 15px 35px rgba(0,0,0,0.6)",
+        border: `1px solid ${isCenter ? "rgba(249, 122, 53, 0.45)" : "rgba(249, 122, 53, 0.16)"}`,
+        boxShadow: "none",
         cursor: "pointer",
-        transformStyle: "preserve-3d",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
-        gap: 20,
+        justifyContent: "space-between",
+        gap: 16,
         filter: isCenter ? "none" : "blur(0.5px)",
         overflow: "hidden",
       }}
     >
-      {/* Sleek Top Progress Bar Pill - Slim & Compact */}
+      {/* Sleek Top Progress Bar Pill */}
       <div
         style={{
           position: "relative",
           zIndex: 15,
-          width: 140,
+          width: 120,
           height: 1.5,
-          background: "rgba(255, 255, 255, 0.12)",
+          background: "rgba(255, 255, 255, 0.1)",
           borderRadius: 999,
           overflow: "hidden",
           margin: "0 auto",
@@ -3985,7 +4019,7 @@ function Testimonial3DCard({
               height: "100%",
               borderRadius: 999,
               background: `linear-gradient(90deg, ${C.accentOrange}, #FFA466)`,
-              boxShadow: `0 0 6px ${C.accentOrange}`,
+              boxShadow: "none",
             }}
           />
         )}
@@ -3993,26 +4027,26 @@ function Testimonial3DCard({
 
       {/* Dynamic Cursor Spotlight Glow Effect */}
       {isCenter && (
-        <div
+        <motion.div
           style={{
             pointerEvents: "none",
             position: "absolute",
             inset: -1,
             opacity: isHovered ? 1 : 0,
             transition: "opacity 300ms ease",
-            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255, 255, 255, 0.18), transparent 80%)`,
+            background: spotlightBg,
             zIndex: 1,
           }}
         />
       )}
 
-      {/* Quote Body centered with clean line height */}
-      <div style={{ position: "relative", zIndex: 2 }}>
+      {/* Quote Body */}
+      <div style={{ position: "relative", zIndex: 2, flex: 1, display: "flex", alignItems: "center" }}>
         <p
           style={{
             color: "#E2E8F0",
-            fontSize: 15.5,
-            lineHeight: 1.6,
+            fontSize: 14.5,
+            lineHeight: 1.55,
             fontWeight: 400,
             margin: 0,
             fontFamily: "var(--font-outfit), sans-serif",
@@ -4023,18 +4057,23 @@ function Testimonial3DCard({
         </p>
       </div>
 
-      {/* Author & Role Footer with Profile Image */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 14 }}>
+      {/* Author & Role Footer */}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 12 }}>
         <img
           src={item.avatarUrl}
           alt={item.author}
+          width={44}
+          height={44}
+          loading="lazy"
+          decoding="async"
           style={{
             width: 44,
             height: 44,
+            aspectRatio: "1 / 1",
             borderRadius: "50%",
             objectFit: "cover",
-            border: "2px solid rgba(249, 122, 53, 0.4)",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+            border: "2px solid rgba(255, 255, 255, 0.2)",
+            boxShadow: "none",
             flexShrink: 0,
           }}
         />
@@ -4042,12 +4081,12 @@ function Testimonial3DCard({
           <h4
             style={{
               fontFamily: "var(--font-outfit), sans-serif",
-              fontWeight: 800,
+              fontWeight: 700,
               color: "#FFFFFF",
-              fontSize: 18,
+              fontSize: 15,
               lineHeight: 1.2,
-              margin: "0 0 3px",
-              letterSpacing: "-0.02em",
+              margin: 0,
+              letterSpacing: "-0.01em",
             }}
           >
             {item.author}
@@ -4055,10 +4094,10 @@ function Testimonial3DCard({
           <p
             style={{
               fontFamily: "var(--font-outfit), sans-serif",
-              fontWeight: 500,
+              fontWeight: 400,
               color: "#94A3B8",
-              fontSize: 12.5,
-              margin: 0,
+              fontSize: 11.5,
+              margin: "2px 0 0",
             }}
           >
             {item.title} &bull; {item.location}
@@ -4067,7 +4106,7 @@ function Testimonial3DCard({
       </div>
     </motion.div>
   );
-}
+});
 
 function Testimonials3DFanDeck() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -4101,7 +4140,7 @@ function Testimonials3DFanDeck() {
       <div
         style={{
           position: "relative",
-          height: 400,
+          height: 360,
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
@@ -4120,14 +4159,13 @@ function Testimonials3DFanDeck() {
 
           if (!isVisible) return null;
 
-          // Compute 3D Card Physics based on distance from center
-          const xOffset = offset * 290;
+          const xOffset = offset * 280;
           const scale = isCenter ? 1 : 0.85 - Math.abs(offset) * 0.05;
-          const rotateY = isCenter ? 0 : offset > 0 ? -26 : 26;
-          const rotateZ = isCenter ? 0 : offset > 0 ? 5 : -5;
+          const rotateY = 0;
+          const rotateZ = 0;
           const opacity = isCenter ? 1 : Math.max(0.3, 0.65 - (Math.abs(offset) - 1) * 0.35);
           const zIndex = 30 - Math.abs(offset) * 10;
-          const yOffset = isCenter ? [-35, 0] : 20;
+          const yOffset = isCenter ? [-25, 0] : 15;
 
           return (
             <Testimonial3DCard
@@ -4148,25 +4186,48 @@ function Testimonials3DFanDeck() {
         })}
       </div>
 
-      {/* Pagination Dots */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginTop: 20 }}>
-        {TESTIMONIALS.map((_, dotIdx) => (
-          <button
-            key={dotIdx}
-            onClick={() => handleDotClick(dotIdx)}
-            aria-label={`Go to testimonial ${dotIdx + 1}`}
-            style={{
-              width: activeIndex === dotIdx ? 28 : 10,
-              height: 10,
-              borderRadius: 999,
-              background: activeIndex === dotIdx ? C.accentOrange : "rgba(255,255,255,0.2)",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
-              boxShadow: activeIndex === dotIdx ? `0 0 12px ${C.accentOrange}80` : "none",
-            }}
-          />
-        ))}
+      {/* Sleek Thin Numbered Bar Controls: 01 ── 02 ─ 03 ─ 04 ─ 05 ─ 06 ─ */}
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, marginTop: 24 }}>
+        {TESTIMONIALS.map((_, idx) => {
+          const isActive = activeIndex === idx;
+          return (
+            <button
+              key={idx}
+              onClick={() => handleDotClick(idx)}
+              aria-label={`Go to testimonial ${idx + 1}`}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? C.textHeading : "rgba(255, 255, 255, 0.4)",
+                  fontFamily: "var(--font-outfit), sans-serif",
+                  transition: "color 0.3s ease",
+                }}
+              >
+                {String(idx + 1).padStart(2, "0")}
+              </span>
+              <div
+                style={{
+                  width: isActive ? 36 : 14,
+                  height: 2,
+                  borderRadius: 999,
+                  background: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.15)",
+                  transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
+              />
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -4212,7 +4273,7 @@ export function TestimonialsSection() {
   );
 }
 
-function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
+const TestimonialCard = memo(function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
   const [hovering, setHovering] = useState(false);
@@ -4320,7 +4381,7 @@ function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
           <div className="tcard-avatar" style={{ background: item.bgGradient, width: 34, height: 34, borderRadius: "50%", border: `1.5px solid rgba(${item.glow}, 0.5)` }}>
             <div className="tcard-avatar-ring" />
             {item.avatarUrl ? (
-              <img src={item.avatarUrl} alt={item.author} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={item.avatarUrl} alt={item.author} width={34} height={34} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
             ) : (
               item.initials
             )}
@@ -4340,7 +4401,7 @@ function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
       </div>
     </motion.div>
   );
-}
+});
 
 function InteractiveEyeballs({
   isHovered,
@@ -4490,10 +4551,17 @@ function ForemanWordmarkSection({ yText, opacityText, scaleText }: { yText: any;
   const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (containerRef.current) {
+      setContainerRect(containerRef.current.getBoundingClientRect());
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setContainerRect(rect);
+    const rect = containerRect || containerRef.current.getBoundingClientRect();
+    if (!containerRect) setContainerRect(rect);
     setMousePos({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
@@ -4503,7 +4571,7 @@ function ForemanWordmarkSection({ yText, opacityText, scaleText }: { yText: any;
   return (
     <div
       ref={containerRef}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setIsHovered(false)}
       style={{
@@ -4623,6 +4691,39 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
       {/* Background glow effects */}
       <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 70%)`, pointerEvents: "none" }} />
 
+      {/* Massive FOREMAN Background Text Watermark */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          textAlign: "center",
+          pointerEvents: "none",
+          userSelect: "none",
+          zIndex: 1,
+          overflow: "hidden",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-outfit), sans-serif",
+            fontWeight: 900,
+            fontSize: "clamp(80px, 20vw, 290px)",
+            lineHeight: 0.85,
+            letterSpacing: "-0.045em",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.01) 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            display: "block",
+            whiteSpace: "nowrap",
+          }}
+        >
+          FOREMAN
+        </span>
+      </div>
+
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 60, marginBottom: 80, justifyContent: "space-between" }}>
 
@@ -4719,22 +4820,12 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
         </div>
       </div>
 
-      {/* 100% FULL SCREEN WIDTH Edge-to-Edge Slit Reveal Container with Custom Eyes Cursor Tracker */}
-      <ForemanWordmarkSection yText={yText} opacityText={opacityText} scaleText={scaleText} />
-
       {/* Bottom Bar inside fm-wrap */}
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <div style={{ paddingTop: 12, paddingBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24 }}>
           <div style={{ fontSize: 14, color: C.textBody, fontWeight: 500 }}>
             &copy; {new Date().getFullYear()} Foreman Inc. All rights reserved.
           </div>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: C.accentGreenText, background: `${C.accentGreenBg}40`, padding: "6px 12px", borderRadius: 999, border: `1px solid ${C.accentGreenText}40`, cursor: "pointer" }}
-          >
-            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.accentGreenText, boxShadow: `0 0 8px ${C.accentGreenText}` }} />
-            All systems operational
-          </motion.div>
         </div>
       </div>
     </footer>
@@ -4745,25 +4836,7 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
 /*  PERSISTENT WIDGET                                                  */
 /* ================================================================== */
 function PersistentWidget() {
-  return (
-    <div style={{ position: "fixed", bottom: 24, left: 24, zIndex: 90 }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileHover={{ scale: 1.05, y: -2 }}
-        transition={{ delay: 1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 999, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 10px 25px rgba(0,0,0,0.3)", cursor: "pointer" }}
-      >
-        <motion.div
-          animate={{ y: [-2, 2] }}
-          transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-        >
-          <DoodleSignalBars style={{ width: 24, height: 18 }} />
-        </motion.div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: C.textHeading, letterSpacing: 0.5 }}>Foreman Live</span>
-      </motion.div>
-    </div>
-  );
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -4776,6 +4849,7 @@ export function Check({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function PhoneIcon({ o }: { o?: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4783,6 +4857,7 @@ function PhoneIcon({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function PhoneOff() {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4790,6 +4865,7 @@ function PhoneOff() {
     </svg>
   );
 }
+
 function Clock({ o }: { o?: boolean }) {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4798,6 +4874,7 @@ function Clock({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function Dollar({ o }: { o?: boolean }) {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4805,6 +4882,7 @@ function Dollar({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function Calendar({ o }: { o?: boolean }) {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4814,6 +4892,7 @@ function Calendar({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function Star() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4821,6 +4900,7 @@ function Star() {
     </svg>
   );
 }
+
 function Bolt() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4828,6 +4908,7 @@ function Bolt() {
     </svg>
   );
 }
+
 function Globe() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4837,6 +4918,7 @@ function Globe() {
     </svg>
   );
 }
+
 function MessageSquare() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4844,6 +4926,7 @@ function MessageSquare() {
     </svg>
   );
 }
+
 function Headphones() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4986,10 +5069,6 @@ const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
   main: [
     { q: "Is it a robot talking to my customers?", a: "It sounds like your best front-desk person, calm, clear, and to the point. It never wastes a caller's time, and it never sends anyone to voicemail. You can also give it your shop's name and tone so it sounds like your team." },
     { q: "Can I listen to calls or step in?", a: "Yes. Listen to any call live from your phone and take over instantly. You are always in control." },
-    { q: "Does it really speak Spanish?", a: "Fluently. It handles calls in English and Spanish automatically, so you never lose a caller to a language barrier." },
-    { q: "How much does it cost?", a: "Foreman is priced custom to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit." },
-    { q: "I already have voicemail or an answering service.", a: "Voicemail loses about 80% of callers. Answering services take a message and hand it back to you. Foreman qualifies the job and books it into your calendar. That is the difference between a note and a booked job." },
-    { q: "How long does setup take?", a: "You're live in about 24 hours. No new hardware, we connect to your existing number." },
     { q: "What happens after hours?", a: "That's when Foreman shines. Nights, weekends, and holidays are prime emergency hours, and it answers all of them." }
   ],
   hvac: [
@@ -5021,7 +5100,7 @@ const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
 
 export function FAQ({ mode = "main" }: { mode?: LandingMode }) {
   const qa = FAQ_COPY[mode] || FAQ_COPY.main;
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<number | null>(null);
   return (
     <section id="faq" className="fm-island" style={{ background: C.bgCard, padding: "32px 0", zIndex: 8 }}>
       <div className="fm-wrap">
@@ -5222,8 +5301,7 @@ function CinematicWorkflow() {
   return (
     <section ref={containerRef} className="fm-island" style={{ background: C.bgPrimary, padding: "48px 0", position: "relative", overflow: "hidden", display: "flex", justifyContent: "center" }}>
       {/* Background Ambience */}
-      <div style={{ position: "absolute", top: "20%", left: "30%", width: "40%", height: 600, background: "radial-gradient(ellipse, rgba(167,139,250,0.08) 0%, transparent 60%)", filter: "blur(80px)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: "20%", right: "20%", width: "40%", height: 600, background: `radial-gradient(circle, ${C.accentOrange}0A 0%, transparent 60%)`, filter: "blur(80px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: "20%", left: "30%", width: "40%", height: 600, background: "radial-gradient(ellipse, rgba(167,139,250,0.04) 0%, transparent 60%)", filter: "blur(80px)", pointerEvents: "none" }} />
 
       <div className="fm-cinematic-container">
 
@@ -5238,14 +5316,14 @@ function CinematicWorkflow() {
           <motion.path
             d="M 140 210 L 860 210 A 80 80 0 0 1 940 290 L 940 650 A 80 80 0 0 1 860 730 L 140 730 A 80 80 0 0 0 60 810 L 60 1170 A 80 80 0 0 0 140 1250 L 860 1250"
             fill="none" stroke={C.accentOrange} strokeWidth="4"
-            style={{ pathLength: activeProgress, filter: "drop-shadow(0 0 8px rgba(249,122,53,0.8))" }}
+            style={{ pathLength: activeProgress }}
           />
         </svg>
 
         {/* Mobile Vertical Pipeline */}
         <div className="fm-cinematic-line-mobile">
           <motion.div
-            style={{ width: "100%", height: "100%", background: C.accentOrange, transformOrigin: "top", scaleY: activeProgress, filter: "drop-shadow(0 0 8px rgba(249,122,53,0.8))" }}
+            style={{ width: "100%", height: "100%", background: C.accentOrange, transformOrigin: "top", scaleY: activeProgress }}
           />
         </div>
 
@@ -5277,7 +5355,7 @@ function StepPhone({ active }: { active: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: C.accentOrange }}>1 INCOMING CALL</motion.div>
-      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: `1px solid ${active ? "rgba(249,122,53,0.35)" : "rgba(255,255,255,0.08)"}`, padding: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 20px 40px rgba(0,0,0,0.45)", position: "relative" }}>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: `1px solid ${active ? "rgba(249,122,53,0.35)" : "rgba(255,255,255,0.08)"}`, padding: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "none", position: "relative" }}>
 
         {/* Status Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "rgba(249,122,53,0.1)", border: "1px solid rgba(249,122,53,0.25)", padding: "4px 10px", borderRadius: 999, marginBottom: 2 }}>
@@ -5286,8 +5364,8 @@ function StepPhone({ active }: { active: boolean }) {
         </div>
 
         {/* Caller Avatar */}
-        <motion.div animate={active ? { scale: [1, 1.05, 1] } : {}} transition={{ duration: 2, repeat: Infinity }} style={{ width: 52, height: 52, borderRadius: "50%", border: "2px solid rgba(96,165,250,0.5)", boxShadow: active ? "0 0 20px rgba(96,165,250,0.3)" : "none", overflow: "hidden", background: "#1E293B", alignSelf: "center", margin: "12px auto" }}>
-          <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80" alt="Mike Johnson" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <motion.div animate={active ? { scale: [1, 1.05, 1] } : {}} transition={{ duration: 2, repeat: Infinity }} style={{ width: 52, height: 52, borderRadius: "50%", border: "2px solid rgba(96,165,250,0.5)", overflow: "hidden", background: "#1E293B", alignSelf: "center", margin: "12px auto" }}>
+          <img src="https://randomuser.me/api/portraits/men/33.jpg" alt="Mike Johnson" width={52} height={52} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
         </motion.div>
 
         {/* Caller Information */}
@@ -5313,10 +5391,10 @@ function StepPhone({ active }: { active: boolean }) {
 
         {/* Action Buttons */}
         <div style={{ display: "flex", justifyContent: "center", gap: 20, opacity: active ? 1 : 0.5, transition: "opacity 0.3s", marginTop: 8 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 14px rgba(239,68,68,0.4)" }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M10.68 13.31a16 16 0 0 0 3.41 3.41l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" /><line x1="23" y1="1" x2="1" y2="23" /></svg>
           </div>
-          <motion.div animate={active ? { scale: [1, 1.08, 1] } : {}} transition={{ duration: 1.2, repeat: Infinity }} style={{ width: 40, height: 40, borderRadius: "50%", background: C.accentGreenText, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 14px rgba(31,170,89,0.45)" }}>
+          <motion.div animate={active ? { scale: [1, 1.08, 1] } : {}} transition={{ duration: 1.2, repeat: Infinity }} style={{ width: 40, height: 40, borderRadius: "50%", background: C.accentGreenText, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
           </motion.div>
         </div>
@@ -5641,16 +5719,16 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
         </div>
         {mode === "main" && <TradeSelector />}
         <StatComparison mode={mode} />
-        <div>
-          <CinematicWorkflow />
-        </div>
         <div id="features">
           <AdvancedFeatures mode={mode} />
         </div>
         <TestimonialsSection />
-        <FinalCTA mode={mode} />
-        <Pricing />
+        {/* <FinalCTA mode={mode} /> */}
+        {/* <Pricing /> */}
         <FAQ mode={mode} />
+        <div>
+          <CinematicWorkflow />
+        </div>
         <Footer />
         <PersistentWidget />
         <ScrollToTopButton />
