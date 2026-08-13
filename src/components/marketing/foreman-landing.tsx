@@ -1431,8 +1431,8 @@ function DashboardPreview() {
       style={{
         background: brand.carbon,
         position: "relative",
-        minHeight: "260vh",
-        padding: "60px 0 0",
+        minHeight: "150vh",
+        padding: "48px 0 0",
       }}
     >
       {/* Ambient glow */}
