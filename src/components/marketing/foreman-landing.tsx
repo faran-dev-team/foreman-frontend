@@ -935,26 +935,8 @@ function HeroWaterWavesBackground() {
   const isMobile = useIsMobile();
   const mousePos = useRef({ x: -1000, y: -1000 });
 
-  // On touch/mobile: skip canvas entirely — render a cheap static gradient.
-  // This animation was the single biggest jank source on load (starts
-  // rendering immediately at native DPR with a dense grid of sin/cos calls).
-  if (isMobile || reducedMotion) {
-    return (
-      <div
-        aria-hidden
-        style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: "58%",
-          zIndex: 0, pointerEvents: "none",
-          background: "radial-gradient(ellipse 70% 60% at 50% 20%, rgba(56,189,248,0.10), transparent 70%)",
-          maskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
-          WebkitMaskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
-        }}
-      />
-    );
-  }
-
   useEffect(() => {
-    if (!isInView) return;
+    if (isMobile || reducedMotion || !isInView) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -1085,7 +1067,22 @@ function HeroWaterWavesBackground() {
       window.removeEventListener("mousemove", handleMouseMove);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isInView]);
+  }, [isInView, isMobile, reducedMotion]);
+
+  if (isMobile || reducedMotion) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: "58%",
+          zIndex: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 70% 60% at 50% 20%, rgba(56,189,248,0.10), transparent 70%)",
+          maskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+        }}
+      />
+    );
+  }
 
   return (
     <div
@@ -2727,486 +2724,480 @@ const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; fe
   }
 };
 
-function FeatureGraphicWidget({ title }: { title: string }) {
-  const t = title.toLowerCase();
+function WidgetBilingual() {
   const reducedMotion = useReducedMotion();
+  const [langIndex, setLangIndex] = useState(0);
+  const phrases = [
+    { lang: "ES", text: "“Hola, mi aire acondicionado echa aire caliente. ¿Tienen servicio de emergencia hoy?”" },
+    { lang: "EN", text: "“Hello, my AC is blowing warm air. Do you have emergency repair technicians today?”" }
+  ];
 
-  // 1. Bilingual Support Animation
-  if (t.includes("english") || t.includes("spanish") || t.includes("bilingual")) {
-    const [langIndex, setLangIndex] = useState(0);
-    const phrases = [
-      { lang: "ES", text: "“Hola, mi aire acondicionado echa aire caliente. ¿Tienen servicio de emergencia hoy?”" },
-      { lang: "EN", text: "“Hello, my AC is blowing warm air. Do you have emergency repair technicians today?”" }
-    ];
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLangIndex((prev) => (prev + 1) % phrases.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [phrases.length]);
 
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setLangIndex((prev) => (prev + 1) % phrases.length);
-      }, 3000);
-      return () => clearInterval(interval);
-    }, [phrases.length]);
+  const current = phrases[langIndex];
 
-    const current = phrases[langIndex];
-
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 16,
-        background: "rgba(15, 23, 42, 0.85)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        minHeight: 124,
-        justifyContent: "center",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.4)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span style={{
-              fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
-              background: current.lang === "EN" ? C.accentOrange : "rgba(255,255,255,0.08)",
-              color: "#FFFFFF", transition: "all 300ms ease"
-            }}>EN</span>
-            <span style={{
-              fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
-              background: current.lang === "ES" ? C.accentOrange : "rgba(255,255,255,0.08)",
-              color: "#FFFFFF", transition: "all 300ms ease"
-            }}>ES</span>
-          </div>
-          {/* Animated voice soundwave */}
-          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-            {[10, 18, 12, 22, 14, 8].map((h, idx) => (
-              <motion.span
-                key={idx}
-                animate={reducedMotion ? {} : { height: [6, h, 6] }}
-                transition={{ duration: 0.6, repeat: Infinity, delay: idx * 0.1, repeatType: "reverse" }}
-                style={{ width: 3, borderRadius: 3, background: C.accentOrange }}
-              />
-            ))}
-          </div>
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      minHeight: 124,
+      justifyContent: "center",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.4)"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{
+            fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
+            background: current.lang === "EN" ? C.accentOrange : "rgba(255,255,255,0.08)",
+            color: "#FFFFFF", transition: "all 300ms ease"
+          }}>EN</span>
+          <span style={{
+            fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
+            background: current.lang === "ES" ? C.accentOrange : "rgba(255,255,255,0.08)",
+            color: "#FFFFFF", transition: "all 300ms ease"
+          }}>ES</span>
         </div>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={current.lang}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.3 }}
-            style={{ fontSize: 13, fontStyle: "italic", color: "#F8FAFC", background: "rgba(255,255,255,0.06)", padding: "12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}
-          >
-            {current.text}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    );
-  }
-
-  // 2. Emergency Detection Siren & Triage Animation (Realistic Mission-Critical Terminal)
-  if (t.includes("emergenc") || t.includes("triage") || t.includes("first")) {
-    const [alertIndex, setAlertIndex] = useState(0);
-    const alerts = [
-      {
-        code: "EMRG-04",
-        category: "WATER DAMAGE",
-        label: "Burst Pipe / Active Flooding",
-        severity: "CRITICAL",
-        dispatch: "Priority #1 Dispatch",
-        type: "water"
-      },
-      {
-        code: "CRIT-01",
-        category: "FREEZE RISK",
-        label: "No Heat / Sub-Zero Threat",
-        severity: "CRITICAL",
-        dispatch: "Priority #1 Dispatch",
-        type: "freeze"
-      },
-      {
-        code: "HAZ-99",
-        category: "HAZMAT RISK",
-        label: "Gas Smell / Furnace Leak",
-        severity: "HIGH HAZARD",
-        dispatch: "Priority #1 Dispatch",
-        type: "gas"
-      }
-    ];
-
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setAlertIndex((prev) => (prev + 1) % alerts.length);
-      }, 3000);
-      return () => clearInterval(interval);
-    }, [alerts.length]);
-
-    const activeAlert = alerts[alertIndex];
-
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "14px 16px",
-        borderRadius: 14,
-        background: "rgba(10, 15, 28, 0.95)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        boxShadow: "0 12px 30px rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        minHeight: 140,
-        justifyContent: "center",
-        position: "relative",
-        overflow: "hidden"
-      }}>
-        {/* Subtle top laser scan line */}
-        <motion.div
-          animate={{ x: ["-100%", "200%"] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "40%",
-            height: 1.5,
-            background: "linear-gradient(90deg, transparent, #EF4444, transparent)",
-            opacity: 0.9
-          }}
-        />
-
-        {/* Telemetry Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <div style={{ position: "relative", width: 8, height: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <motion.span
-                animate={reducedMotion ? {} : { scale: [1, 2.2], opacity: [0.8, 0] }}
-                transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "50%",
-                  border: "1px solid #EF4444",
-                  pointerEvents: "none"
-                }}
-              />
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#EF4444", boxShadow: "0 0 8px #EF4444" }} />
-            </div>
-            <span className="fm-mono" style={{ fontSize: 10, fontWeight: 800, color: "#FCA5A5", letterSpacing: 1.2, textTransform: "uppercase" }}>
-              EMERGENCY TRIAGE
-            </span>
-          </div>
-
-          <div style={{
-            fontSize: 9.5,
-            fontWeight: 700,
-            fontFamily: "monospace",
-            color: "#EF4444",
-            background: "rgba(239, 68, 68, 0.12)",
-            padding: "2.5px 8px",
-            borderRadius: 6,
-            border: "1px solid rgba(239, 68, 68, 0.3)",
-            display: "flex",
-            alignItems: "center",
-            gap: 4
-          }}>
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
-            0.1s INSTANT
-          </div>
-        </div>
-
-        {/* Dynamic Alert Banner */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeAlert.code}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.25 }}
-            style={{
-              background: "rgba(18, 24, 38, 0.85)",
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid rgba(239, 68, 68, 0.25)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 7
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 7,
-                  background: "rgba(239, 68, 68, 0.12)",
-                  border: "1px solid rgba(239, 68, 68, 0.35)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0
-                }}>
-                  {activeAlert.type === "water" ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg>
-                  ) : activeAlert.type === "freeze" ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" strokeWidth="2.2"><line x1="12" y1="2" x2="12" y2="22" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M20 16l-4-4 4-4" /><path d="M4 8l4 4-4 4" /><path d="M16 4l-4 4-4-4" /><path d="M8 20l4-4 4 4" /></svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2.2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
-                  )}
-                </div>
-
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontFamily: "monospace", fontSize: 9.5, fontWeight: 700, color: "#EF4444" }}>
-                      {activeAlert.code}
-                    </span>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.5 }}>
-                      {activeAlert.category}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#FFFFFF", marginTop: 1 }}>
-                    {activeAlert.label}
-                  </div>
-                </div>
-              </div>
-
-              <span style={{
-                fontSize: 9,
-                fontWeight: 700,
-                color: "#EF4444",
-                background: "rgba(239, 68, 68, 0.15)",
-                border: "1px solid rgba(239, 68, 68, 0.35)",
-                padding: "2px 6px",
-                borderRadius: 4,
-                fontFamily: "monospace"
-              }}>
-                {activeAlert.severity}
-              </span>
-            </div>
-
-            {/* Action dispatch status footer */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontSize: 10.5,
-              background: "rgba(0, 0, 0, 0.3)",
-              padding: "5px 8px",
-              borderRadius: 6,
-              border: "1px solid rgba(255, 255, 255, 0.05)"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#E2E8F0" }}>
-                <span style={{ color: "rgba(255, 255, 255, 0.45)" }}>Action:</span>
-                <span style={{ color: "#F8FAFC", fontWeight: 600 }}>{activeAlert.dispatch}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#34D399", fontWeight: 700, fontSize: 10 }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-                Owner Alerted
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    );
-  }
-
-  // 3. Texts back missed callers (Live SMS Typing & Delivery)
-  if (t.includes("text") || t.includes("missed") || t.includes("volume")) {
-    const [step, setStep] = useState<"CALL" | "TYPING" | "SENT">("CALL");
-
-    useEffect(() => {
-      const timer1 = setTimeout(() => setStep("TYPING"), 1000);
-      const timer2 = setTimeout(() => setStep("SENT"), 2500);
-      const timer3 = setTimeout(() => setStep("CALL"), 5500);
-      return () => { clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); };
-    }, [step]);
-
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 16,
-        background: "rgba(15, 23, 42, 0.85)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        minHeight: 124,
-        justifyContent: "center"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#93C5FD" }}>💬 AUTO-SMS RECOVERY</span>
-          {step === "SENT" && <span style={{ fontSize: 10, color: "#4ADE80", fontWeight: 800 }}>Delivered ✓✓</span>}
-        </div>
-        <AnimatePresence mode="wait">
-          {step === "CALL" && (
-            <motion.div key="call" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#F8FAFC", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
-              <motion.span animate={{ rotate: [0, -15, 15, 0] }} transition={{ repeat: Infinity, duration: 0.5 }}>📞</motion.span>
-              <span>Caller hung up before booking...</span>
-            </motion.div>
-          )}
-          {step === "TYPING" && (
-            <motion.div key="typing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#93C5FD", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
-              <span>Foreman SMS Bot typing</span>
-              <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.6 }}>• • •</motion.span>
-            </motion.div>
-          )}
-          {step === "SENT" && (
-            <motion.div key="sent" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#FFFFFF", background: "rgba(15, 23, 42, 0.85)", padding: "10px 12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}>
-              📲 “Hi! Sorry we missed your call. Tap here to book emergency repair: foreman.app/b/hvac”
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
-
-  // 4. Live Audio & Control (Dancing Equalizer & Call Waveform)
-  if (t.includes("listen") || t.includes("control") || t.includes("trained") || t.includes("details")) {
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 16,
-        background: "rgba(15, 23, 42, 0.85)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        minHeight: 124,
-        justifyContent: "center"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#6EE7B7", display: "flex", alignItems: "center", gap: 6 }}>
-            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
-            LIVE AUDIO STREAM
-          </span>
-          <span style={{ fontSize: 10, color: "#A7F3D0", fontWeight: 800 }}>01:42 LIVE</span>
-        </div>
-        {/* Dancing 10-bar equalizer */}
-        <div style={{ display: "flex", gap: 4, alignItems: "center", justifyContent: "center", height: 28, background: "rgba(0,0,0,0.3)", padding: "4px 12px", borderRadius: 8 }}>
-          {[14, 24, 10, 28, 18, 22, 12, 26, 16, 20].map((h, idx) => (
+        {/* Animated voice soundwave */}
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          {[10, 18, 12, 22, 14, 8].map((h, idx) => (
             <motion.span
               key={idx}
-              animate={reducedMotion ? {} : { height: [4, h, 4] }}
-              transition={{ duration: 0.5, repeat: Infinity, delay: idx * 0.08, repeatType: "reverse" }}
-              style={{ width: 4, borderRadius: 4, background: "#10B981" }}
+              animate={reducedMotion ? {} : { height: [6, h, 6] }}
+              transition={{ duration: 0.6, repeat: Infinity, delay: idx * 0.1, repeatType: "reverse" }}
+              style={{ width: 3, borderRadius: 3, background: C.accentOrange }}
             />
           ))}
         </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
-          <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: "rgba(16,185,129,0.3)", color: "#A7F3D0", padding: "6px", borderRadius: 8, textAlign: "center" }}>
-            🎧 Listening Live
+      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={current.lang}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.3 }}
+          style={{ fontSize: 13, fontStyle: "italic", color: "#F8FAFC", background: "rgba(255,255,255,0.06)", padding: "12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}
+        >
+          {current.text}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function WidgetEmergency() {
+  const reducedMotion = useReducedMotion();
+  const [alertIndex, setAlertIndex] = useState(0);
+  const alerts = [
+    {
+      code: "EMRG-04",
+      category: "WATER DAMAGE",
+      label: "Burst Pipe / Active Flooding",
+      severity: "CRITICAL",
+      dispatch: "Priority #1 Dispatch",
+      type: "water"
+    },
+    {
+      code: "CRIT-01",
+      category: "FREEZE RISK",
+      label: "No Heat / Sub-Zero Threat",
+      severity: "CRITICAL",
+      dispatch: "Priority #1 Dispatch",
+      type: "freeze"
+    },
+    {
+      code: "HAZ-99",
+      category: "HAZMAT RISK",
+      label: "Gas Smell / Furnace Leak",
+      severity: "HIGH HAZARD",
+      dispatch: "Priority #1 Dispatch",
+      type: "gas"
+    }
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAlertIndex((prev) => (prev + 1) % alerts.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [alerts.length]);
+
+  const activeAlert = alerts[alertIndex];
+
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "14px 16px",
+      borderRadius: 14,
+      background: "rgba(10, 15, 28, 0.95)",
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      boxShadow: "0 12px 30px rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      minHeight: 140,
+      justifyContent: "center",
+      position: "relative",
+      overflow: "hidden"
+    }}>
+      {/* Subtle top laser scan line */}
+      <motion.div
+        animate={{ x: ["-100%", "200%"] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "40%",
+          height: 1.5,
+          background: "linear-gradient(90deg, transparent, #EF4444, transparent)",
+          opacity: 0.9
+        }}
+      />
+
+      {/* Telemetry Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <div style={{ position: "relative", width: 8, height: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <motion.span
+              animate={reducedMotion ? {} : { scale: [1, 2.2], opacity: [0.8, 0] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
+                border: "1px solid #EF4444",
+                pointerEvents: "none"
+              }}
+            />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#EF4444", boxShadow: "0 0 8px #EF4444" }} />
           </div>
-          <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: C.accentOrange, color: "#FFFFFF", padding: "6px", borderRadius: 8, textAlign: "center", boxShadow: "0 4px 12px rgba(249,122,53,0.4)" }}>
-            ⚡ Take Over
-          </div>
+          <span className="fm-mono" style={{ fontSize: 10, fontWeight: 800, color: "#FCA5A5", letterSpacing: 1.2, textTransform: "uppercase" }}>
+            EMERGENCY TRIAGE
+          </span>
+        </div>
+
+        <div style={{
+          fontSize: 9.5,
+          fontWeight: 700,
+          fontFamily: "monospace",
+          color: "#EF4444",
+          background: "rgba(239, 68, 68, 0.12)",
+          padding: "2.5px 8px",
+          borderRadius: 6,
+          border: "1px solid rgba(239, 68, 68, 0.3)",
+          display: "flex",
+          alignItems: "center",
+          gap: 4
+        }}>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+          0.1s INSTANT
         </div>
       </div>
-    );
-  }
 
-  // 5. Dynamic Money Counter & Gradual Growth Bar Animation
-  if (t.includes("money") || t.includes("dashboard") || t.includes("price")) {
-    const [val, setVal] = useState(1400);
-    const [activeBarCount, setActiveBarCount] = useState(1);
+      {/* Dynamic Alert Banner */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeAlert.code}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25 }}
+          style={{
+            background: "rgba(18, 24, 38, 0.85)",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid rgba(239, 68, 68, 0.25)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 7
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 28,
+                height: 28,
+                borderRadius: 7,
+                background: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid rgba(239, 68, 68, 0.35)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}>
+                {activeAlert.type === "water" ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg>
+                ) : activeAlert.type === "freeze" ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" strokeWidth="2.2"><line x1="12" y1="2" x2="12" y2="22" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M20 16l-4-4 4-4" /><path d="M4 8l4 4-4 4" /><path d="M16 4l-4 4-4-4" /><path d="M8 20l4-4 4 4" /></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2.2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
+                )}
+              </div>
 
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setVal((prev) => {
-          if (prev >= 28400) {
-            setActiveBarCount(1);
-            return 1400;
-          }
-          const nextVal = prev + Math.floor(Math.random() * 2000 + 1500);
-          const nextBars = Math.min(7, Math.ceil((nextVal / 28400) * 7));
-          setActiveBarCount(nextBars);
-          return nextVal;
-        });
-      }, 1200); // Smooth gradual 1.2s growth pace
-      return () => clearInterval(interval);
-    }, []);
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontFamily: "monospace", fontSize: 9.5, fontWeight: 700, color: "#EF4444" }}>
+                    {activeAlert.code}
+                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.5 }}>
+                    {activeAlert.category}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#FFFFFF", marginTop: 1 }}>
+                  {activeAlert.label}
+                </div>
+              </div>
+            </div>
 
-    const basePcts = [30, 42, 55, 68, 78, 90, 100];
-
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 16,
-        background: "rgba(15, 23, 42, 0.85)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        minHeight: 124,
-        justifyContent: "center"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 1, fontWeight: 800 }}>REVENUE CAPTURED</div>
-            <motion.div
-              key={val}
-              initial={{ opacity: 0.6, y: 3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em" }}
-            >
-              +${val.toLocaleString()}
-            </motion.div>
+            <span style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: "#EF4444",
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.35)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              fontFamily: "monospace"
+            }}>
+              {activeAlert.severity}
+            </span>
           </div>
+
+          {/* Action dispatch status footer */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: 10.5,
+            background: "rgba(0, 0, 0, 0.3)",
+            padding: "5px 8px",
+            borderRadius: 6,
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#E2E8F0" }}>
+              <span style={{ color: "rgba(255, 255, 255, 0.45)" }}>Action:</span>
+              <span style={{ color: "#F8FAFC", fontWeight: 600 }}>{activeAlert.dispatch}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#34D399", fontWeight: 700, fontSize: 10 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+              Owner Alerted
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function WidgetSMS() {
+  const [step, setStep] = useState<"CALL" | "TYPING" | "SENT">("CALL");
+
+  useEffect(() => {
+    const timer1 = setTimeout(() => setStep("TYPING"), 1000);
+    const timer2 = setTimeout(() => setStep("SENT"), 2500);
+    const timer3 = setTimeout(() => setStep("CALL"), 5500);
+    return () => { clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); };
+  }, [step]);
+
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      minHeight: 124,
+      justifyContent: "center"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: "#93C5FD" }}>💬 AUTO-SMS RECOVERY</span>
+        {step === "SENT" && <span style={{ fontSize: 10, color: "#4ADE80", fontWeight: 800 }}>Delivered ✓✓</span>}
+      </div>
+      <AnimatePresence mode="wait">
+        {step === "CALL" && (
+          <motion.div key="call" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#F8FAFC", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <motion.span animate={{ rotate: [0, -15, 15, 0] }} transition={{ repeat: Infinity, duration: 0.5 }}>📞</motion.span>
+            <span>Caller hung up before booking...</span>
+          </motion.div>
+        )}
+        {step === "TYPING" && (
+          <motion.div key="typing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#93C5FD", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <span>Foreman SMS Bot typing</span>
+            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.6 }}>• • •</motion.span>
+          </motion.div>
+        )}
+        {step === "SENT" && (
+          <motion.div key="sent" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#FFFFFF", background: "rgba(15, 23, 42, 0.85)", padding: "10px 12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}>
+            📲 “Hi! Sorry we missed your call. Tap here to book emergency repair: foreman.app/b/hvac”
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function WidgetLiveAudio() {
+  const reducedMotion = useReducedMotion();
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      minHeight: 124,
+      justifyContent: "center"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: "#6EE7B7", display: "flex", alignItems: "center", gap: 6 }}>
+          <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
+          LIVE AUDIO STREAM
+        </span>
+        <span style={{ fontSize: 10, color: "#A7F3D0", fontWeight: 800 }}>01:42 LIVE</span>
+      </div>
+      {/* Dancing 10-bar equalizer */}
+      <div style={{ display: "flex", gap: 4, alignItems: "center", justifyContent: "center", height: 28, background: "rgba(0,0,0,0.3)", padding: "4px 12px", borderRadius: 8 }}>
+        {[14, 24, 10, 28, 18, 22, 12, 26, 16, 20].map((h, idx) => (
+          <motion.span
+            key={idx}
+            animate={reducedMotion ? {} : { height: [4, h, 4] }}
+            transition={{ duration: 0.5, repeat: Infinity, delay: idx * 0.08, repeatType: "reverse" }}
+            style={{ width: 4, borderRadius: 4, background: "#10B981" }}
+          />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+        <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: "rgba(16,185,129,0.3)", color: "#A7F3D0", padding: "6px", borderRadius: 8, textAlign: "center" }}>
+          🎧 Listening Live
+        </div>
+        <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: C.accentOrange, color: "#FFFFFF", padding: "6px", borderRadius: 8, textAlign: "center", boxShadow: "0 4px 12px rgba(249,122,53,0.4)" }}>
+          ⚡ Take Over
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WidgetRevenue() {
+  const [val, setVal] = useState(1400);
+  const [activeBarCount, setActiveBarCount] = useState(1);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVal((prev) => {
+        if (prev >= 28400) {
+          setActiveBarCount(1);
+          return 1400;
+        }
+        const nextVal = prev + Math.floor(Math.random() * 2000 + 1500);
+        const nextBars = Math.min(7, Math.ceil((nextVal / 28400) * 7));
+        setActiveBarCount(nextBars);
+        return nextVal;
+      });
+    }, 1200);
+    return () => clearInterval(interval);
+  }, []);
+
+  const basePcts = [30, 42, 55, 68, 78, 90, 100];
+
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      minHeight: 124,
+      justifyContent: "center"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 1, fontWeight: 800 }}>REVENUE CAPTURED</div>
           <motion.div
-            key={`pill-${val}`}
-            animate={{ scale: [1, 1.08, 1] }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            style={{ fontSize: 11, fontWeight: 800, color: C.accentOrange, background: "rgba(249,122,53,0.25)", padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.accentOrange}60`, boxShadow: `0 0 12px ${C.accentOrange}30` }}
+            key={val}
+            initial={{ opacity: 0.6, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em" }}
           >
-            ▲ +{activeBarCount * 6}% Jobs
+            +${val.toLocaleString()}
           </motion.div>
         </div>
-
-        {/* Gradual Smooth Bar Growth */}
-        <div style={{ position: "relative", height: 36, display: "flex", alignItems: "flex-end", gap: 5, padding: "0 4px" }}>
-          {basePcts.map((pct, idx) => {
-            const isLit = idx < activeBarCount;
-            const isLeadingBar = idx === activeBarCount - 1;
-
-            return (
-              <div key={idx} style={{ flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}>
-                <motion.div
-                  animate={{
-                    height: isLit ? `${pct}%` : "12%",
-                    opacity: isLit ? 1 : 0.18
-                  }}
-                  transition={{
-                    height: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
-                    opacity: { duration: 0.6, ease: "easeInOut" }
-                  }}
-                  style={{
-                    width: "100%",
-                    borderRadius: 4,
-                    background: isLeadingBar
-                      ? `linear-gradient(180deg, #FF9D54 0%, ${C.accentOrange} 100%)`
-                      : isLit
-                        ? `linear-gradient(180deg, ${C.accentOrange} 0%, rgba(249,122,53,0.4) 100%)`
-                        : "rgba(255,255,255,0.08)",
-                    boxShadow: isLeadingBar
-                      ? `0 0 12px ${C.accentOrange}A0`
-                      : isLit
-                        ? `0 0 6px ${C.accentOrange}40`
-                        : "none"
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
+        <motion.div
+          key={`pill-${val}`}
+          animate={{ scale: [1, 1.08, 1] }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          style={{ fontSize: 11, fontWeight: 800, color: C.accentOrange, background: "rgba(249,122,53,0.25)", padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.accentOrange}60`, boxShadow: `0 0 12px ${C.accentOrange}30` }}
+        >
+          ▲ +{activeBarCount * 6}% Jobs
+        </motion.div>
       </div>
-    );
-  }
 
-  // 6. Grows your reviews (Interactive 5-Star Engine & Review Pop-in)
+      {/* Gradual Smooth Bar Growth */}
+      <div style={{ position: "relative", height: 36, display: "flex", alignItems: "flex-end", gap: 5, padding: "0 4px" }}>
+        {basePcts.map((pct, idx) => {
+          const isLit = idx < activeBarCount;
+          const isLeadingBar = idx === activeBarCount - 1;
+
+          return (
+            <div key={idx} style={{ flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}>
+              <motion.div
+                animate={{
+                  height: isLit ? `${pct}%` : "12%",
+                  opacity: isLit ? 1 : 0.18
+                }}
+                transition={{
+                  height: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.6, ease: "easeInOut" }
+                }}
+                style={{
+                  width: "100%",
+                  borderRadius: 4,
+                  background: isLeadingBar
+                    ? `linear-gradient(180deg, #FF9D54 0%, ${C.accentOrange} 100%)`
+                    : isLit
+                      ? `linear-gradient(180deg, ${C.accentOrange} 0%, rgba(249,122,53,0.4) 100%)`
+                      : "rgba(255,255,255,0.08)",
+                  boxShadow: isLeadingBar
+                    ? `0 0 12px ${C.accentOrange}A0`
+                    : isLit
+                      ? `0 0 6px ${C.accentOrange}40`
+                      : "none"
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WidgetReviews() {
   const [starsCount, setStarsCount] = useState(1);
 
   useEffect(() => {
@@ -3264,11 +3255,12 @@ function FeatureGraphicWidget({ title }: { title: string }) {
       <AnimatePresence mode="wait">
         {starsCount === 5 ? (
           <motion.div
-            key="review-full"
-            initial={{ opacity: 0, y: 5 }}
+            key="review-quote"
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            style={{ fontSize: 12, color: "#FFFFFF", background: "rgba(0,0,0,0.35)", padding: "10px 12px", borderRadius: 10, borderLeft: "3px solid #FACC15" }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            style={{ fontSize: 12, color: "#FFFFFF", fontStyle: "italic", background: "rgba(255,255,255,0.06)", padding: "8px 10px", borderRadius: 8, borderLeft: "3px solid #FACC15" }}
           >
             “Foreman sent a review text right after the job. Captured 18 new 5-star reviews this week!”
           </motion.div>
@@ -3286,6 +3278,26 @@ function FeatureGraphicWidget({ title }: { title: string }) {
       </AnimatePresence>
     </div>
   );
+}
+
+function FeatureGraphicWidget({ title }: { title: string }) {
+  const t = title.toLowerCase();
+  if (t.includes("english") || t.includes("spanish") || t.includes("bilingual")) {
+    return <WidgetBilingual />;
+  }
+  if (t.includes("emergenc") || t.includes("triage") || t.includes("first")) {
+    return <WidgetEmergency />;
+  }
+  if (t.includes("text") || t.includes("missed") || t.includes("volume")) {
+    return <WidgetSMS />;
+  }
+  if (t.includes("listen") || t.includes("control") || t.includes("trained") || t.includes("details")) {
+    return <WidgetLiveAudio />;
+  }
+  if (t.includes("money") || t.includes("dashboard") || t.includes("price")) {
+    return <WidgetRevenue />;
+  }
+  return <WidgetReviews />;
 }
 
 function FlipFeatureCard({
@@ -3660,21 +3672,8 @@ function WaterWavesBackground() {
     trail: [] as { x: number; y: number; alpha: number; size: number }[],
   });
 
-  // On touch/mobile: static gradient — skip the canvas + AI-sparkle cursor-chaser
-  // (mousemove never fires meaningfully on touch, so it was dead weight anyway).
-  if (isMobile || reducedMotion) {
-    return (
-      <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.22) 0%, rgba(15, 23, 42, 0.98) 65%, rgba(5, 8, 18, 1) 100%)"
-        }} />
-      </div>
-    );
-  }
-
   useEffect(() => {
-    if (!isInView) return;
+    if (isMobile || reducedMotion || !isInView) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d", { alpha: true });
@@ -3913,7 +3912,18 @@ function WaterWavesBackground() {
       window.removeEventListener("mouseleave", handleMouseLeave);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isInView]);
+  }, [isInView, isMobile, reducedMotion]);
+
+  if (isMobile || reducedMotion) {
+    return (
+      <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.22) 0%, rgba(15, 23, 42, 0.98) 65%, rgba(5, 8, 18, 1) 100%)"
+        }} />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
