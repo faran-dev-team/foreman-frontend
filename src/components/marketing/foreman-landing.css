@@ -1381,3 +1381,39 @@
     animation: none !important;
   }
 }
+
+/* ================================================================== */
+/*  MOBILE PERFORMANCE OVERRIDES                                       */
+/*  Applied to touch devices and narrow screens.                       */
+/*  backdrop-filter: blur(24px) stacked across many cards is one of   */
+/*  the most GPU-expensive things on mobile Safari/Chrome. Capping     */
+/*  to 8px gives back significant frame budget with no visible jank.  */
+/* ================================================================== */
+@media (max-width: 900px), (pointer: coarse) {
+  .fm-callcard,
+  .fm-probcard,
+  .fm-featcard {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  .fm-cta-banner {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  /* Disable wavy letter bounce on touch — pointless micro-anim cost */
+  .fm-wavy-letter {
+    animation: none !important;
+  }
+}
+
+/* content-visibility: auto tells the browser to skip layout/paint    */
+/* work for .fm-island sections not near the viewport. Meaningful on  */
+/* a page this long with this many animated children. The             */
+/* contain-intrinsic-size prevents layout shift by reserving space    */
+/* before the section is painted.                                     */
+.fm-island {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 800px;
+}

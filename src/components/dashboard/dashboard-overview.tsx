@@ -1,5 +1,7 @@
 "use client";
 
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Area,
   AreaChart,
@@ -9,7 +11,9 @@ import {
   Cell,
   Pie,
   PieChart,
+  Rectangle,
   ResponsiveContainer,
+  Sector,
   Tooltip,
   XAxis,
   YAxis,
@@ -39,19 +43,19 @@ const weeklyCallData = [
 ];
 
 const revenueData = [
-  { label: "Mon", revenue: 1200 },
-  { label: "Tue", revenue: 1850 },
-  { label: "Wed", revenue: 1400 },
-  { label: "Thu", revenue: 2200 },
-  { label: "Fri", revenue: 3100 },
-  { label: "Sat", revenue: 950 },
-  { label: "Sun", revenue: 580 },
+  { label: "Mon", revenue: 1200, jobs: "2 booked", calls: "4 calls" },
+  { label: "Tue", revenue: 1850, jobs: "4 booked", calls: "6 calls" },
+  { label: "Wed", revenue: 1400, jobs: "3 booked", calls: "5 calls" },
+  { label: "Thu", revenue: 2200, jobs: "5 booked", calls: "8 calls" },
+  { label: "Fri", revenue: 3100, jobs: "11 booked", calls: "14 calls" },
+  { label: "Sat", revenue: 950, jobs: "2 booked", calls: "3 calls" },
+  { label: "Sun", revenue: 580, jobs: "1 booked", calls: "2 calls" },
 ];
 
 const jobStatusData = [
-  { name: "Completed", value: 14, fill: C.green },
-  { name: "Pending", value: 7, fill: C.amber },
-  { name: "Cancelled", value: 3, fill: "#64748B" },
+  { name: "Completed", value: 14, fill: C.green, percentage: "58%" },
+  { name: "Pending", value: 7, fill: C.amber, percentage: "29%" },
+  { name: "Cancelled", value: 3, fill: "#64748B", percentage: "13%" },
 ];
 
 const recentCalls = [
@@ -61,6 +65,82 @@ const recentCalls = [
   { id: "c4", caller: "Tom Garrett", phone: "(512) 229-3347", service: "Water Heater", time: "12:38 PM", status: "booked", value: "$450" },
   { id: "c5", caller: "Linda Cruz", phone: "(737) 440-1129", service: "Duct Cleaning", time: "11:55 AM", status: "answered", value: "—" },
   { id: "c6", caller: "James Park", phone: "(512) 881-6602", service: "AC Tune-Up", time: "10:22 AM", status: "booked", value: "$125" },
+];
+
+// ─── Automated Onboarding Tour Steps ──────────────────────────────────────────
+const ONBOARDING_TOUR = [
+  {
+    target: "bar" as const,
+    index: 0,
+    day: "Mon",
+    fullDay: "Monday",
+    val: "$1,200",
+    detail: "4 calls · 2 booked jobs ($1,200)",
+  },
+  {
+    target: "bar" as const,
+    index: 1,
+    day: "Tue",
+    fullDay: "Tuesday",
+    val: "$1,850",
+    detail: "6 calls · 4 booked jobs ($1,850)",
+  },
+  {
+    target: "bar" as const,
+    index: 2,
+    day: "Wed",
+    fullDay: "Wednesday",
+    val: "$1,400",
+    detail: "5 calls · 3 booked jobs ($1,400)",
+  },
+  {
+    target: "bar" as const,
+    index: 3,
+    day: "Thu",
+    fullDay: "Thursday",
+    val: "$2,200",
+    detail: "8 calls · 5 booked jobs ($2,200)",
+  },
+  {
+    target: "bar" as const,
+    index: 4,
+    day: "Fri",
+    fullDay: "Friday",
+    val: "$3,100",
+    detail: "★ Highest revenue day · 11 booked jobs",
+  },
+  {
+    target: "bar" as const,
+    index: 5,
+    day: "Sat",
+    fullDay: "Saturday",
+    val: "$950",
+    detail: "3 calls · 2 booked jobs ($950)",
+  },
+  {
+    target: "bar" as const,
+    index: 6,
+    day: "Sun",
+    fullDay: "Sunday",
+    val: "$580",
+    detail: "2 calls · 1 booked job ($580)",
+  },
+  {
+    target: "donut" as const,
+    index: 0,
+    day: "Jobs",
+    fullDay: "Completed",
+    val: "14 Jobs (58%)",
+    detail: "14 jobs successfully completed this week",
+  },
+  {
+    target: "donut" as const,
+    index: 1,
+    day: "Jobs",
+    fullDay: "Pending",
+    val: "7 Jobs (29%)",
+    detail: "7 jobs queued for upcoming dispatch",
+  },
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -146,7 +226,7 @@ function StatCard({
 // ─── Chart wrappers ────────────────────────────────────────────────────────────
 function SectionCard({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
+    <div className="relative rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
       <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
       {desc && <p className="mt-0.5 text-xs text-slate-500">{desc}</p>}
       <div className="mt-4">{children}</div>
@@ -193,6 +273,94 @@ function AiStatusCard() {
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 export function DashboardOverview({ preview = false }: { preview?: boolean }) {
+  const [tourIndex, setTourIndex] = useState(0);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const [userHoveredBar, setUserHoveredBar] = useState<number | null>(null);
+  const [userHoveredSlice, setUserHoveredSlice] = useState<number | null>(null);
+  const [pointerPos, setPointerPos] = useState<{ x: number; y: number } | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-advancing onboarding tour loop
+  useEffect(() => {
+    if (isUserInteracting) return;
+    const interval = setInterval(() => {
+      setTourIndex((prev) => (prev + 1) % ONBOARDING_TOUR.length);
+    }, 2400);
+    return () => clearInterval(interval);
+  }, [isUserInteracting]);
+
+  const resetInteractingTimer = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setIsUserInteracting(false);
+    }, 2500);
+  };
+
+  const currentTourStep = ONBOARDING_TOUR[tourIndex];
+  const activeBarIndex = userHoveredBar !== null ? userHoveredBar : (currentTourStep.target === "bar" ? currentTourStep.index : null);
+  const activeSliceIndex = userHoveredSlice !== null ? userHoveredSlice : (currentTourStep.target === "donut" ? currentTourStep.index : null);
+  const activeSliceData = activeSliceIndex !== null ? jobStatusData[activeSliceIndex] : null;
+
+  // Dynamically compute exact pixel coordinate of active bar top-center or pie slice center
+  const updatePointerPosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const step = ONBOARDING_TOUR[tourIndex];
+
+    let targetEl: Element | null = null;
+    if (step.target === "bar") {
+      targetEl = containerRef.current.querySelector(`#dashboard-tour-bar-${step.index}`);
+    } else if (step.target === "donut") {
+      targetEl = containerRef.current.querySelector(`#dashboard-tour-slice-${step.index}`);
+    }
+
+    if (targetEl) {
+      const targetRect = targetEl.getBoundingClientRect();
+      if (targetRect.width > 0 && targetRect.height > 0) {
+        if (step.target === "bar") {
+          setPointerPos({
+            x: targetRect.left - containerRect.left + targetRect.width / 2,
+            y: targetRect.top - containerRect.top,
+          });
+        } else {
+          setPointerPos({
+            x: targetRect.left - containerRect.left + targetRect.width / 2,
+            y: targetRect.top - containerRect.top + targetRect.height / 2,
+          });
+        }
+      }
+    }
+  }, [tourIndex]);
+
+  useEffect(() => {
+    updatePointerPosition();
+    const rafId = requestAnimationFrame(updatePointerPosition);
+    const timerId = setTimeout(updatePointerPosition, 80);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timerId);
+    };
+  }, [tourIndex, updatePointerPosition]);
+
+  useEffect(() => {
+    const handleResize = () => updatePointerPosition();
+    window.addEventListener("resize", handleResize);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        updatePointerPosition();
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      resizeObserver?.disconnect();
+    };
+  }, [updatePointerPosition]);
+
   return (
     <div className="space-y-6">
 
@@ -302,10 +470,104 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
       </div>
       )}
 
-      {/* Revenue bar + Jobs donut */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SectionCard title="Revenue by Day" desc="Estimated job value captured this week">
-          <div className="h-52">
+      {/* Revenue bar + Jobs donut with Unified Continuous Onboarding Tour */}
+      <div
+        ref={containerRef}
+        className="relative grid gap-4 lg:grid-cols-2"
+        onMouseEnter={() => setIsUserInteracting(true)}
+        onMouseLeave={resetInteractingTimer}
+      >
+        {/* Unified Continuous Smooth Pointer across both cards (Hidden when real mouse hovers) */}
+        {!isUserInteracting && pointerPos && (
+          <motion.div
+            initial={false}
+            animate={{
+              x: pointerPos.x,
+              y: pointerPos.y,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 85,
+              damping: 17,
+              mass: 0.6,
+            }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              pointerEvents: "none",
+              zIndex: 40,
+            }}
+            className="hidden sm:block"
+          >
+            {/* Pointer SVG Arrow (Tip calibrated exactly at (0,0)) */}
+            <div style={{ filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.3))" }}>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                style={{
+                  transform: "translate(-3px, -3px) rotate(-8deg)",
+                  transformOrigin: "3px 3px",
+                }}
+              >
+                <path
+                  d="M3 3l7.5 17.5 3-6.5 6.5-3L3 3z"
+                  fill="#0F172A"
+                  stroke="#FFFFFF"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            {/* Native-Style Recharts Tooltip (Clean, white, exactly like real hover) */}
+            <motion.div
+              layout
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              style={{
+                position: "absolute",
+                left: pointerPos.x > (containerRef.current ? containerRef.current.clientWidth - 170 : 700) ? -165 : 16,
+                top: 4,
+                background: "#FFFFFF",
+                border: "1px solid #E2E8F0",
+                borderRadius: 10,
+                boxShadow: "0 8px 24px rgba(10,15,28,0.12)",
+                padding: "8px 12px",
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {currentTourStep.target === "bar" ? (
+                <>
+                  <p style={{ margin: "0 0 2px", fontWeight: 600, color: "#0F172A", fontSize: 11 }}>
+                    {currentTourStep.day}
+                  </p>
+                  <p style={{ margin: 0, color: "#F97A35", fontWeight: 600, fontSize: 12 }}>
+                    Revenue : <span style={{ fontWeight: 700 }}>{currentTourStep.val}</span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p style={{ margin: "0 0 2px", fontWeight: 600, color: "#0F172A", fontSize: 11 }}>
+                    {currentTourStep.fullDay}
+                  </p>
+                  <p style={{ margin: 0, color: "#0F172A", fontWeight: 600, fontSize: 12 }}>
+                    {currentTourStep.fullDay} : <span style={{ fontWeight: 700 }}>{currentTourStep.val}</span>
+                  </p>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Revenue by Day Card (Clean UI) */}
+        <SectionCard
+          title="Revenue by Day"
+          desc="Estimated job value captured this week"
+        >
+          <div className="relative h-52">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={revenueData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
@@ -316,19 +578,49 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                   contentStyle={{ borderRadius: 12, border: "1px solid #E2E8F0", boxShadow: "0 8px 24px rgba(10,15,28,0.08)" }}
                   cursor={{ fill: "rgba(249,122,53,0.06)" }}
                 />
-                <Bar dataKey="revenue" radius={[8, 8, 4, 4]} maxBarSize={44}>
-                  {revenueData.map((entry, i) => (
-                    <Cell key={entry.label} fill={i === 4 ? C.orange : "#E2E8F0"} />
-                  ))}
-                </Bar>
+                <Bar
+                  dataKey="revenue"
+                  radius={[8, 8, 4, 4]}
+                  maxBarSize={44}
+                  shape={(props: any) => {
+                    const { index } = props;
+                    const isActive = activeBarIndex === index;
+                    const isFriday = index === 4;
+                    const barFill = isActive ? (isFriday ? "#EA580C" : C.orange) : (isFriday ? C.orange : "#CBD5E1");
+                    return (
+                      <g id={`dashboard-tour-bar-${index}`} key={`tour-bar-${index}`}>
+                        <Rectangle
+                          {...props}
+                          fill={barFill}
+                          radius={[8, 8, 4, 4]}
+                          style={{
+                            transition: "fill 0.25s ease, filter 0.25s ease",
+                            filter: isActive ? "drop-shadow(0 6px 14px rgba(249,122,53,0.45))" : "none",
+                            cursor: "pointer",
+                          }}
+                        />
+                      </g>
+                    );
+                  }}
+                  onMouseMove={(data) => {
+                    if (data && typeof data.activeTooltipIndex === "number") {
+                      setUserHoveredBar(data.activeTooltipIndex);
+                    }
+                  }}
+                  onMouseLeave={() => setUserHoveredBar(null)}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </SectionCard>
 
-        <SectionCard title="Job Status Breakdown" desc="All jobs booked this week">
-          <div className="flex h-52 items-center gap-6">
-            <div className="flex-1">
+        {/* Job Status Breakdown Card (Clean UI) */}
+        <SectionCard
+          title="Job Status Breakdown"
+          desc="All jobs booked this week"
+        >
+          <div className="relative flex h-52 items-center gap-6">
+            <div className="relative flex-1">
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
@@ -339,10 +631,26 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                     outerRadius={76}
                     paddingAngle={4}
                     stroke="none"
+                    onMouseEnter={(_, index) => setUserHoveredSlice(index)}
+                    onMouseLeave={() => setUserHoveredSlice(null)}
                   >
-                    {jobStatusData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.fill} />
-                    ))}
+                    {jobStatusData.map((entry, i) => {
+                      const isActive = activeSliceIndex === i;
+                      return (
+                        <Cell
+                          key={entry.name}
+                          id={`dashboard-tour-slice-${i}`}
+                          fill={entry.fill}
+                          style={{
+                            transition: "filter 0.25s ease, transform 0.25s ease",
+                            filter: isActive ? `drop-shadow(0 6px 16px ${entry.fill}70)` : "none",
+                            transform: isActive ? "scale(1.05)" : "scale(1)",
+                            transformOrigin: "center",
+                            cursor: "pointer",
+                          }}
+                        />
+                      );
+                    })}
                   </Pie>
                   <Tooltip
                     contentStyle={{ borderRadius: 12, border: "1px solid #E2E8F0" }}
@@ -350,16 +658,48 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                   />
                 </PieChart>
               </ResponsiveContainer>
+
+              {/* Donut Center Rate Display */}
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl font-bold tracking-tight text-slate-900">
+                  {activeSliceData ? activeSliceData.value : "24"}
+                </span>
+                <span className="text-[10px] font-semibold text-slate-400">
+                  {activeSliceData ? `${activeSliceData.name} (${activeSliceData.percentage})` : "Total Jobs"}
+                </span>
+              </div>
             </div>
-            <ul className="shrink-0 space-y-3 pr-2">
-              {jobStatusData.map((s) => (
-                <li key={s.name} className="flex items-center gap-2.5">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.fill }} />
-                  <span className="text-sm text-slate-600">{s.name}</span>
-                  <span className="ml-auto text-sm font-semibold text-slate-900">{s.value}</span>
-                </li>
-              ))}
-              <li className="flex items-center gap-2.5 border-t border-slate-100 pt-2">
+
+            {/* Status List Legend with Interactive Hover Highlighting */}
+            <ul className="shrink-0 space-y-2 pr-2">
+              {jobStatusData.map((s, i) => {
+                const isActive = activeSliceIndex === i;
+                return (
+                  <li
+                    key={s.name}
+                    onMouseEnter={() => {
+                      setUserHoveredSlice(i);
+                      setIsUserInteracting(true);
+                    }}
+                    onMouseLeave={() => {
+                      setUserHoveredSlice(null);
+                      resetInteractingTimer();
+                    }}
+                    className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-slate-100/90 shadow-sm ring-1 ring-slate-200"
+                        : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.fill }} />
+                    <span className={`text-sm ${isActive ? "font-bold text-slate-900" : "text-slate-600"}`}>
+                      {s.name}
+                    </span>
+                    <span className="ml-auto text-sm font-semibold text-slate-900">{s.value}</span>
+                  </li>
+                );
+              })}
+              <li className="flex items-center gap-2.5 border-t border-slate-100 pt-2 px-2.5">
                 <span className="text-sm text-slate-500">Total</span>
                 <span className="ml-auto text-sm font-bold text-slate-900">24</span>
               </li>

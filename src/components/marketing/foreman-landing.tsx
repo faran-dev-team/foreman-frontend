@@ -170,9 +170,26 @@ function CountUp({
 /* ------------------------------------------------------------------ */
 /*  Reusable: Tilt Card with Glow                                      */
 /* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------
+   Mobile detection: matches small screens AND coarse-pointer (touch)
+   devices (tablets can be wide but still choke on blur/3D-transform).
+------------------------------------------------------------------ */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 900px), (pointer: coarse)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
+
 function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", style, animate, transition }: { children: React.ReactNode, className?: string, glowColor?: string, style?: React.CSSProperties, animate?: any, transition?: any }) {
   const ref = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const [isHovered, setIsHovered] = useState(false);
 
   const mouseX = useMotionValue(0);
@@ -182,7 +199,7 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
   const ry = useSpring(0, { damping: 25, stiffness: 250, mass: 0.5 });
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current || reducedMotion) return;
+    if (!ref.current || reducedMotion || isMobile) return;
     const { left, top, width, height } = ref.current.getBoundingClientRect();
     const x = e.clientX - left;
     const y = e.clientY - top;
@@ -190,9 +207,9 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
     mouseY.set(y);
     rx.set(((y - height / 2) / height) * -8);
     ry.set(((x - width / 2) / width) * 8);
-  }, [reducedMotion, mouseX, mouseY, rx, ry]);
+  }, [reducedMotion, isMobile, mouseX, mouseY, rx, ry]);
 
-  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseEnter = useCallback(() => { if (!isMobile) setIsHovered(true); }, [isMobile]);
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false);
     rx.set(0);
@@ -200,6 +217,17 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
   }, [rx, ry]);
 
   const background = useMotionTemplate`radial-gradient(350px circle at ${mouseX}px ${mouseY}px, ${glowColor}, transparent 80%)`;
+
+  // Flat, zero-compositing-cost render path for touch devices.
+  // perspective + preserve-3d forces each card onto its own GPU layer;
+  // on mobile that stacks up fast — this path skips all of it.
+  if (isMobile) {
+    return (
+      <div className={className} style={{ position: "relative", ...style }}>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -904,56 +932,85 @@ function HeroWaterWavesBackground() {
   const isInView = useInView(containerRef, { amount: 0.05, once: false });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const mousePos = useRef({ x: -1000, y: -1000 });
 
+  // On touch/mobile: skip canvas entirely — render a cheap static gradient.
+  // This animation was the single biggest jank source on load (starts
+  // rendering immediately at native DPR with a dense grid of sin/cos calls).
+  if (isMobile || reducedMotion) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: "58%",
+          zIndex: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 70% 60% at 50% 20%, rgba(56,189,248,0.10), transparent 70%)",
+          maskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+        }}
+      />
+    );
+  }
+
   useEffect(() => {
-    if (reducedMotion || !isInView) return;
+    if (!isInView) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     let animationFrameId: number;
-    let width = (canvas.width = canvas.parentElement?.offsetWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.offsetHeight || 500);
+    // Cap pixel ratio at 1 — was unset (defaulted to native, up to 3× on phones)
+    const dpr = 1;
+    let width = 0;
+    let height = 0;
+
+    const handleResize = () => {
+      if (!canvas.parentElement) return;
+      width = canvas.parentElement.offsetWidth;
+      height = canvas.parentElement.offsetHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    };
+    handleResize();
 
     let resizeTicking = false;
-    const handleResize = () => {
-      if (!canvas || !canvas.parentElement) return;
-      width = canvas.width = canvas.parentElement.offsetWidth;
-      height = canvas.height = canvas.parentElement.offsetHeight;
-    };
     const onResize = () => {
       if (!resizeTicking) {
         resizeTicking = true;
-        window.requestAnimationFrame(() => {
-          handleResize();
-          resizeTicking = false;
-        });
+        requestAnimationFrame(() => { handleResize(); resizeTicking = false; });
       }
     };
     const handleMouseMove = (e: MouseEvent) => {
-      if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      mousePos.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
+      mousePos.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
     window.addEventListener("resize", onResize, { passive: true });
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
     let time = 0;
+    let lastTs = 0;
+    // Throttle to ~30 fps instead of 60 fps
+    const FRAME_INTERVAL = 1000 / 30;
 
-    const render = () => {
+    const render = (ts: number) => {
+      animationFrameId = requestAnimationFrame(render);
+      if (ts - lastTs < FRAME_INTERVAL) return;
+      lastTs = ts;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, height);
-      time += 0.0025; // Smooth silky liquid wave speed
+      // Step doubled vs original since we run at half the frame rate
+      time += 0.005;
 
-      const isMobile = width < 768;
-      const stepX = isMobile ? 36 : 22;
-      const stepY = isMobile ? 28 : 18;
-
+      // Coarser grid — fewer sin/cos calls per frame
+      const stepX = 30;
+      const stepY = 24;
       const cols = Math.ceil(width / stepX) + 1;
       const rows = Math.ceil(height / stepY) + 1;
 
@@ -974,12 +1031,12 @@ function HeroWaterWavesBackground() {
           const x = c * stepX;
           const y = r * stepY;
 
-          // Harmonic 3D wave equations (exact same as FinalCTA)
+          // Harmonic 3D wave equations (identical visual, same coefficients)
           const wave1 = Math.sin(x * 0.01 + time * 2.2) * Math.cos(y * 0.008 + time * 1.8);
           const wave2 = Math.sin((x + y) * 0.007 - time * 1.9) * 0.7;
           const wave3 = Math.cos(x * 0.015 - y * 0.01 + time * 2.8) * 0.4;
 
-          // Interactive Mouse Cursor Water Ripple Distortion
+          // Interactive mouse ripple distortion
           const dx = x - mx;
           const dy = y - my;
           const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1001,44 +1058,34 @@ function HeroWaterWavesBackground() {
         }
 
         const normY = r / rows;
-        const alpha = Math.min(0.4, Math.max(0.06, (1 - normY * 0.65) * 0.35 + 0.06));
-
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = Math.min(0.4, Math.max(0.06, (1 - normY * 0.65) * 0.35 + 0.06));
         ctx.lineWidth = normY > 0.4 ? 1.6 : 1.1;
         ctx.stroke();
       }
 
       ctx.globalAlpha = 1;
 
-      // Glistening 3D Water Surface Light Reflections
-      const sparkCount = 28;
-      for (let i = 0; i < sparkCount; i++) {
+      // Fewer sparkles, no per-sparkle shadowBlur (shadowBlur is GPU-expensive)
+      ctx.fillStyle = "#FFFFFF";
+      for (let i = 0; i < 14; i++) {
         const sx = (Math.sin(i * 77 + time * 1.2) * 0.5 + 0.5) * width;
         const sy = (Math.cos(i * 44 + time * 1.4) * 0.5 + 0.5) * height;
-        const sparkAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.55;
-
-        ctx.save();
-        ctx.globalAlpha = sparkAlpha;
-        ctx.fillStyle = "#FFFFFF";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#38BDF8";
+        ctx.globalAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.5;
         ctx.beginPath();
-        ctx.arc(sx, sy, 1.4, 0, Math.PI * 2);
+        ctx.arc(sx, sy, 1.3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
       }
-
-      animationFrameId = requestAnimationFrame(render);
+      ctx.restore();
     };
 
-    render();
+    animationFrameId = requestAnimationFrame(render);
 
     return () => {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("mousemove", handleMouseMove);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [reducedMotion, isInView]);
+  }, [isInView]);
 
   return (
     <div
@@ -1502,8 +1549,8 @@ function DashboardPreview() {
               <div style={{ width: 36, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.04)", flexShrink: 0 }} />
             </div>
 
-            {/* App layout: sidebar + main (restored original 640px height) */}
-            <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 640, height: 640, overflow: "hidden" }}>
+            {/* App layout: sidebar + main (with horizontal scrolling on mobile) */}
+            <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 640, height: 640, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
               {/* Sidebar */}
               <div style={{
                 width: 256, flexShrink: 0,
@@ -1550,10 +1597,10 @@ function DashboardPreview() {
                 </div>
               </div>
 
-              {/* Dashboard content — scroll-synced to main page scroll */}
+              {/* Dashboard content — scroll-synced to main page scroll with horizontal scrolling */}
               <div
                 ref={scrollableRef}
-                style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}
+                style={{ flex: 1, minWidth: 640, overflowY: "auto", overflowX: "auto", WebkitOverflowScrolling: "touch" }}
               >
                 {/* Top header bar (matches dashboard-shell.tsx header) */}
                 <div style={{
@@ -1698,164 +1745,167 @@ const tradeIconMap: Record<string, React.ReactNode> = {
 /* ================================================================== */
 /*  INTERACTIVE CALL CARD (3D Circular Cone Stack, Spotlight Glow)   */
 /* ================================================================== */
+/*  TRADE SELECTOR & VERTICAL FLOW STACK                              */
 /* ================================================================== */
-/*  INTERACTIVE CALL CARD (Awwwards/Framer Motion Minimalist 3D Deck) */
-/* ================================================================== */
-const TradeInteractiveCard = memo(function TradeInteractiveCard({
-  trade,
-  offset,
-  isFront,
-  tradeIndex,
-}: {
-  trade: (typeof TRADES)[number];
-  offset: number;
-  isFront: boolean;
-  tradeIndex: number;
-}) {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const rotateX = useTransform(y, [-100, 100], [6, -6]);
-  const rotateY = useTransform(x, [-100, 100], [-6, 6]);
-
-  const spotlightX = useMotionValue(0);
-  const spotlightY = useMotionValue(0);
-  const spotlightBg = useMotionTemplate`radial-gradient(350px circle at ${spotlightX}px ${spotlightY}px, rgba(255, 255, 255, 0.18), transparent 80%)`;
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isFront) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-
-    x.set(offsetX - rect.width / 2);
-    y.set(offsetY - rect.height / 2);
-    spotlightX.set(offsetX);
-    spotlightY.set(offsetY);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-    setIsHovered(false);
-  };
-
-  const cardGlowColor = `rgba(249, 122, 53, 0.22)`;
-
-  // Symmetrical Left & Right 3D Fanned Deck Math
-  const xOffset = offset * 170; // Sleek overlapping spacing
-  const coneRotateY = isFront ? rotateY : offset * -20; // Subtle 3D arc
-  const coneRotateZ = isFront ? 0 : offset * -3;
-  const scale = isFront ? 1 : 0.88 - Math.abs(offset) * 0.05;
-  const opacity = isFront ? 1 : Math.max(0.3, 0.65 - Math.abs(offset) * 0.2);
-  const zIndex = 30 - Math.abs(offset) * 10;
-
-  return (
-    <motion.div
-      className="fm-callcard"
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        position: "absolute",
-        width: "100%",
-        maxWidth: 410,
-        top: 0,
-        left: "50%",
-        marginLeft: -205,
-        background: `linear-gradient(180deg, rgba(14,21,38,0.95) 0%, rgba(10,15,28,0.98) 65%, ${cardGlowColor} 100%)`,
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: `1px solid ${isFront ? (isHovered ? "rgba(255, 255, 255, 0.28)" : "rgba(249, 122, 53, 0.35)") : "rgba(255, 255, 255, 0.06)"}`,
-        borderRadius: 20,
-        boxShadow: isFront
-          ? `0 10px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(249, 122, 53, 0.18)`
-          : "0 6px 16px rgba(0, 0, 0, 0.25)",
-        transformOrigin: "center center",
-        zIndex: zIndex,
-        pointerEvents: isFront ? "auto" : "none",
-        rotateX: isFront ? rotateX : 0,
-        rotateY: coneRotateY,
-        rotateZ: coneRotateZ,
-        transformStyle: "preserve-3d",
-        overflow: "hidden",
-      }}
-      initial={false}
-      animate={{
-        x: xOffset,
-        y: Math.abs(offset) * 10,
-        scale: scale,
-        opacity: opacity,
-      }}
-      whileHover={isFront ? { scale: 1.025, y: -4 } : { scale: scale * 1.03 }}
-      transition={{
-        type: "spring",
-        stiffness: 280,
-        damping: 26,
-      }}
-    >
-      {/* Dynamic Cursor Spotlight Glow Effect */}
-      {isFront && (
-        <motion.div
-          style={{
-            pointerEvents: "none",
-            position: "absolute",
-            inset: -1,
-            opacity: isHovered ? 1 : 0,
-            transition: "opacity 300ms ease",
-            background: spotlightBg,
-            zIndex: 1,
-          }}
-        />
-      )}
-
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.accentOrange, display: "inline-block" }} />
-            <span className="fm-mono" style={{ fontSize: 11, letterSpacing: 2, color: C.accentOrange, fontWeight: 700 }}>INCOMING CALLS</span>
-          </div>
-        </div>
-        <div className="fm-callrow">
-          <div className="fm-callic" style={{ background: "rgba(249, 122, 53, 0.15)", border: "1px solid rgba(249, 122, 53, 0.3)" }}>
-            <PhoneIcon o />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>New {trade.label} Lead</div>
-            <div style={{ fontSize: 13, color: C.textBody }}>{trade.example}</div>
-          </div>
-          <span className="fm-badge fm-badge-booked">BOOKED</span>
-        </div>
-      </div>
-    </motion.div>
-  );
-});
+const TRADE_FLOW_DATA = [
+  {
+    id: "hvac",
+    label: "HVAC",
+    lead: "New HVAC Lead",
+    example: "AC blowing warm air, booked emergency repair 2pm",
+    metric: "+18% booking rate",
+    metricTop: "+24% peak answer rate",
+    metricBottom: "-35% missed calls",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "plumbing",
+    label: "Plumbing",
+    lead: "New Plumbing Lead",
+    example: "Leak in basement, booked emergency visit 3pm",
+    metric: "⚡ Dispatched in 42s",
+    metricTop: "+100% after-hours capture",
+    metricBottom: "0 missed emergency calls",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "electrical",
+    label: "Electrical",
+    lead: "New Electrical Lead",
+    example: "Breaker keeps tripping, booked estimate Wed 9am",
+    metric: "★ $480 Estimate Booked",
+    metricTop: "+32% estimate conversion",
+    metricBottom: "Instant panel triage",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </svg>
+    ),
+  },
+  {
+    id: "roofing",
+    label: "Roofing",
+    lead: "New Roofing Lead",
+    example: "Missing shingles after storm, booked inspection Fri 10am",
+    metric: "★ $1,850 Inspection Booked",
+    metricTop: "+40% storm surge capture",
+    metricBottom: "100% lead qualification",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    ),
+  },
+  {
+    id: "pest",
+    label: "Pest Control",
+    lead: "New Pest Control Lead",
+    example: "Termite evidence found, booked treatment Mon 8am",
+    metric: "✓ Perimeter Treatment Booked",
+    metricTop: "+28% recurring plans",
+    metricBottom: "Instant schedule routing",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="8" height="14" x="8" y="6" rx="4" />
+        <path d="m19 7-3 2M5 7l3 2M19 19l-3-2M5 19l3-2M20 13h-4M4 13h4M10 4l1 2M14 4l-1 2" />
+      </svg>
+    ),
+  },
+  {
+    id: "garage",
+    label: "Garage Door",
+    lead: "New Garage Door Lead",
+    example: "Spring broke, car stuck, booked emergency visit 4pm",
+    metric: "⚡ Emergency Visit 4pm",
+    metricTop: "+35% emergency dispatch",
+    metricBottom: "Same-day spring repair",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 20h16M4 20V8l8-4 8 4v12M9 20v-6h6v6" />
+      </svg>
+    ),
+  },
+  {
+    id: "restoration",
+    label: "Restoration",
+    lead: "New Restoration Lead",
+    example: "Water damage in basement, booked emergency dispatch",
+    metric: "★ $2,400 Claim Captured",
+    metricTop: "24/7 emergency intake",
+    metricBottom: "Instant insurance prep",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 3z" />
+      </svg>
+    ),
+  },
+  {
+    id: "property-management",
+    label: "Property Management",
+    lead: "New Tenant Maintenance Lead",
+    example: "Tenant AC failure, dispatched emergency HVAC tech",
+    metric: "✓ Tech Dispatched Unit 4B",
+    metricTop: "Automated work orders",
+    metricBottom: "Owner notified via SMS",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2" />
+        <path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
+      </svg>
+    ),
+  },
+  {
+    id: "law-firm",
+    label: "Law Firms",
+    lead: "New Legal Intake Lead",
+    example: "Auto accident case, booked attorney consultation today 2pm",
+    metric: "★ $1,500 Retainer Intake",
+    metricTop: "Conflict check & screening",
+    metricBottom: "Zero lost client calls",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v18M3 7l9-4 9 4M6 13l-3-6 6 0-3 6zM18 13l-3-6 6 0-3 6z" />
+      </svg>
+    ),
+  },
+];
 
 export function TradeSelector() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const activeTrade = TRADES[activeIndex];
-  const activeTradeTheme = TRADE_THEME_COLORS[activeIndex % TRADE_THEME_COLORS.length];
-  const reducedMotion = useReducedMotion();
 
+  // Auto-rotate every 3.2 seconds continuously (resets on manual tab selection)
   useEffect(() => {
-    if (isPaused) return;
     const timer = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % TRADES.length);
-    }, 3000);
+      setActiveIndex((prev) => (prev + 1) % TRADE_FLOW_DATA.length);
+    }, 3200);
     return () => clearInterval(timer);
-  }, [isPaused]);
+  }, [activeIndex]);
+
+  const total = TRADE_FLOW_DATA.length;
+  const prevIndex = (activeIndex - 1 + total) % total;
+  const currIndex = activeIndex;
+  const nextIndex = (activeIndex + 1) % total;
+
+  const prevTrade = TRADE_FLOW_DATA[prevIndex];
+  const currTrade = TRADE_FLOW_DATA[currIndex];
+  const nextTrade = TRADE_FLOW_DATA[nextIndex];
 
   return (
     <section
       className="fm-island"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      style={{ background: C.bgCard, padding: "48px 0 55px", zIndex: 3, position: "relative", overflow: "hidden" }}
+      style={{ background: C.bgCard, padding: "52px 0 60px", zIndex: 3, position: "relative", overflow: "hidden" }}
     >
       {/* Subtle Ambient Radial Glow */}
-      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 700, height: 400, background: "radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.06) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 800, height: 450, background: `radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.07) 0%, transparent 70%)`, pointerEvents: "none", zIndex: 0 }} />
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <Reveal className="fm-sechead" style={{ marginBottom: 24, maxWidth: "100%", textAlign: "center" }}>
@@ -1895,72 +1945,321 @@ export function TradeSelector() {
           </div>
         </Reveal>
 
+        {/* Trade Selector Pills Bar with Animated Gliding Capsule */}
         <Reveal delay={0.1}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 44 }}>
-            {TRADES.map((t, index) => {
-              const isActive = t.id === activeTrade.id;
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 38 }}>
+            {TRADE_FLOW_DATA.map((t, index) => {
+              const isActive = index === activeIndex;
               return (
-                <Link key={t.id} href={`/${t.id}`} passHref legacyBehavior>
-                  <motion.a
-                    onMouseEnter={() => { setActiveIndex(index); setIsPaused(true); }}
-                    whileHover={reducedMotion ? {} : { scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    animate={{
-                      y: isActive ? 6 : 0,
-                      scale: isActive ? 1.04 : 1,
-                    }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 320,
-                      damping: 18,
-                      mass: 1.1,
-                    }}
-                    style={{
-                      position: "relative",
-                      background: isActive ? "rgba(249, 122, 53, 0.1)" : "transparent",
-                      color: isActive ? C.accentOrange : C.textBody,
-                      border: `1.5px solid ${isActive ? C.accentOrange : "transparent"}`,
-                      borderRadius: 999,
-                      padding: "5px 14px",
-                      fontFamily: "var(--font-outfit), sans-serif",
-                      fontWeight: isActive ? 600 : 500,
-                      fontSize: 13.5,
-                      lineHeight: 1.2,
-                      cursor: "pointer",
-                      textDecoration: "none",
-                      boxShadow: isActive ? `0 4px 16px ${C.accentOrange}35` : "none",
-                    }}
-                  >
-                    {t.label}
-                  </motion.a>
-                </Link>
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  style={{
+                    position: "relative",
+                    background: "transparent",
+                    color: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.65)",
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "6px 14px",
+                    fontFamily: "var(--font-outfit), sans-serif",
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: 13.5,
+                    lineHeight: 1.2,
+                    cursor: "pointer",
+                    transition: "color 0.25s ease",
+                    zIndex: 1,
+                  }}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTradePill"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(249, 122, 53, 0.12)",
+                        border: "1px solid rgba(249, 122, 53, 0.5)",
+                        borderRadius: 999,
+                        boxShadow: "0 4px 16px rgba(249, 122, 53, 0.25)",
+                        zIndex: -1,
+                      }}
+                    />
+                  )}
+                  {!isActive && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(255, 255, 255, 0.03)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        borderRadius: 999,
+                        zIndex: -1,
+                      }}
+                    />
+                  )}
+                  {t.label}
+                </button>
               );
             })}
           </div>
         </Reveal>
 
-        <Reveal delay={0.2} className="fm-trade-card-container" style={{ maxWidth: 800, margin: "36px auto 48px", minHeight: 180, position: "relative", perspective: 1200 }}>
-          {TRADES.map((trade, i) => {
-            let offset = i - activeIndex;
-            const total = TRADES.length;
-            if (offset > total / 2) offset -= total;
-            if (offset < -total / 2) offset += total;
+        {/* Vertical Stack Flow Layout */}
+        <Reveal delay={0.15}>
+          <div
+            style={{
+              maxWidth: 820,
+              margin: "0 auto",
+              background: "rgba(14, 21, 38, 0.65)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 28,
+              padding: "36px 32px",
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                gap: 0,
+              }}
+              className="flex-col sm:flex-row"
+            >
+              {/* Left Column: True Continuous 3D Cylindrical Revolving Wheel (Zero Jerk) */}
+              <div
+                style={{
+                  position: "relative",
+                  height: 236,
+                  width: "100%",
+                  maxWidth: 410,
+                  perspective: 1100,
+                  transformStyle: "preserve-3d",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                {TRADE_FLOW_DATA.map((trade, i) => {
+                  const total = TRADE_FLOW_DATA.length;
+                  let diff = i - activeIndex;
+                  if (diff > total / 2) diff -= total;
+                  if (diff < -total / 2) diff += total;
 
-            const isFront = offset === 0;
-            const isVisible = Math.abs(offset) <= 2;
+                  const isActive = diff === 0;
+                  const isVisible = Math.abs(diff) <= 2;
 
-            if (!isVisible) return null;
+                  return (
+                    <motion.div
+                      key={trade.id}
+                      animate={{
+                        y: diff * 80,
+                        rotateX: -diff * 22,
+                        scale: isActive ? 1 : (Math.abs(diff) === 1 ? 0.94 : 0.86),
+                        opacity: isActive ? 1 : (Math.abs(diff) === 1 ? 0.42 : 0),
+                        zIndex: 10 - Math.abs(diff),
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 260,
+                        damping: 28,
+                        mass: 0.8,
+                      }}
+                      onClick={() => setActiveIndex(i)}
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        right: 0,
+                        background: isActive
+                          ? "linear-gradient(180deg, rgba(14,21,38,0.96) 0%, rgba(10,15,28,0.98) 100%)"
+                          : "linear-gradient(180deg, rgba(14,21,38,0.7) 0%, rgba(10,15,28,0.7) 100%)",
+                        backdropFilter: "blur(20px)",
+                        WebkitBackdropFilter: "blur(20px)",
+                        borderRadius: 20,
+                        padding: "16px 20px",
+                        minHeight: 76,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        boxShadow: isActive
+                          ? "0 18px 45px rgba(0, 0, 0, 0.6), 0 0 24px rgba(249, 122, 53, 0.22)"
+                          : "0 8px 24px rgba(0, 0, 0, 0.3)",
+                        border: isActive
+                          ? "1px solid rgba(249, 122, 53, 0.55)"
+                          : "1px solid rgba(255, 255, 255, 0.06)",
+                        cursor: isActive ? "default" : "pointer",
+                        pointerEvents: isVisible ? "auto" : "none",
+                        transformOrigin: diff < 0 ? "center bottom" : (diff > 0 ? "center top" : "center center"),
+                        userSelect: "none",
+                        transition: "background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 14,
+                          background: isActive ? "rgba(249, 122, 53, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                          border: isActive ? "1px solid rgba(249, 122, 53, 0.25)" : "1px solid rgba(255, 255, 255, 0.06)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          color: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.4)",
+                          transition: "all 0.35s ease",
+                        }}
+                      >
+                        {trade.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: 15,
+                            color: isActive ? C.textHeading : "rgba(255, 255, 255, 0.75)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            transition: "color 0.35s ease",
+                          }}
+                        >
+                          {trade.lead}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: isActive ? C.textBody : "rgba(255, 255, 255, 0.38)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            transition: "color 0.35s ease",
+                          }}
+                        >
+                          {trade.example}
+                        </div>
+                      </div>
+                      <motion.span
+                        animate={{ opacity: isActive ? 1 : 0, scale: isActive ? 1 : 0.8 }}
+                        transition={{ duration: 0.3 }}
+                        className="fm-badge fm-badge-booked"
+                        style={{ fontSize: 11, pointerEvents: "none" }}
+                      >
+                        BOOKED
+                      </motion.span>
+                    </motion.div>
+                  );
+                })}
+              </div>
 
-            return (
-              <TradeInteractiveCard
-                key={trade.id}
-                trade={trade}
-                offset={offset}
-                isFront={isFront}
-                tradeIndex={i}
-              />
-            );
-          })}
+              {/* Center: Glowing Flow Connecting Line with Ultra-Thin Radiant Shimmer Laser */}
+              <div
+                className="hidden sm:flex items-center justify-center"
+                style={{
+                  width: 72,
+                  height: 1,
+                  background: "rgba(255, 255, 255, 0.08)",
+                  position: "relative",
+                  margin: "0 6px",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Base glow hairline */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(90deg, rgba(249,122,53,0.15) 0%, rgba(249,122,53,0.4) 50%, rgba(249,122,53,0.15) 100%)",
+                  }}
+                />
+
+                {/* High-velocity radiant shimmer laser wave */}
+                <motion.div
+                  key={`laser-${currTrade.id}`}
+                  animate={{
+                    x: ["-100%", "220%"],
+                  }}
+                  transition={{
+                    duration: 1.3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    width: "45%",
+                    background: `linear-gradient(90deg, transparent 0%, ${C.accentOrange} 30%, #FFFFFF 65%, ${C.accentOrange} 90%, transparent 100%)`,
+                    boxShadow: "0 0 6px rgba(249, 122, 53, 0.8), 0 0 2px #FFFFFF",
+                  }}
+                />
+              </div>
+
+              {/* Right Column: Outcomes & Metrics Stack (Tailored to active trade) */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  height: 236,
+                  padding: "6px 0",
+                  minWidth: 200,
+                }}
+                className="mt-4 sm:mt-0 sm:pl-2"
+              >
+                {/* Top Active Metric */}
+                <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.45)", fontWeight: 500, paddingLeft: 6 }}>
+                  {currTrade.metricTop}
+                </div>
+
+                {/* Middle Highlighted Pill Badge (Dark Glass + Thin 1px Orange Border) */}
+                <motion.div
+                  key={`pill-wrap-${currTrade.id}`}
+                  initial={{ scale: 0.96 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 22 }}
+                  style={{
+                    background: "linear-gradient(180deg, rgba(14,21,38,0.96) 0%, rgba(10,15,28,0.98) 100%)",
+                    backdropFilter: "blur(20px)",
+                    WebkitBackdropFilter: "blur(20px)",
+                    color: "#FFFFFF",
+                    borderRadius: 999,
+                    padding: "10px 18px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 9,
+                    boxShadow: "0 14px 30px rgba(0, 0, 0, 0.5), 0 0 16px rgba(249, 122, 53, 0.2)",
+                    border: "1px solid rgba(249, 122, 53, 0.55)",
+                    width: "fit-content",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <div style={{ color: C.accentOrange, display: "flex", alignItems: "center" }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="20" x2="18" y2="10" />
+                      <line x1="12" y1="20" x2="12" y2="4" />
+                      <line x1="6" y1="20" x2="6" y2="14" />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+                    {currTrade.metric}
+                  </span>
+                </motion.div>
+
+                {/* Bottom Active Metric */}
+                <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.45)", fontWeight: 500, paddingLeft: 6 }}>
+                  {currTrade.metricBottom}
+                </div>
+              </div>
+            </div>
+          </div>
         </Reveal>
       </div>
     </section>
@@ -2004,106 +2303,89 @@ const PROBLEM_COPY: Record<LandingMode, { eyebrow: string; headline: string; bod
 };
 
 function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
-  const reducedMotion = useReducedMotion();
   const pCopy = PROBLEM_COPY[mode] || PROBLEM_COPY.main;
+  const reducedMotion = useReducedMotion();
 
   return (
-    <section className="fm-island" style={{ background: C.bgPrimary, padding: "28px 0", zIndex: 4, overflow: "hidden" }}>
+    <section className="fm-island" style={{ background: C.bgPrimary, padding: "56px 0 0", zIndex: 4, position: "relative", overflow: "hidden" }}>
+      {/* Subtle ambient background glow */}
+      <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)", width: 900, height: 500, background: "radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.06) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
-        <Reveal className="fm-sechead" style={{ marginBottom: 64, maxWidth: 900 }}>
-          <div className="fm-eyebrow">{pCopy.eyebrow}</div>
+        <Reveal className="fm-sechead" style={{ marginBottom: 48, maxWidth: 840, textAlign: "center", marginLeft: "auto", marginRight: "auto" }}>
+          <div style={{ color: C.accentOrange, letterSpacing: "0.14em", fontSize: 12.5, fontWeight: 800, textTransform: "uppercase", marginBottom: 20, fontFamily: "var(--font-outfit), sans-serif" }}>
+            {pCopy.eyebrow}
+          </div>
+
           <h2 style={{
             fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
-            fontSize: "clamp(32px, 4.8vw, 56px)",
+            fontSize: "clamp(32px, 4.4vw, 54px)",
             lineHeight: 1.15,
             fontWeight: 400,
             letterSpacing: "-0.02em",
             color: C.textHeading,
-            marginBottom: 20
+            maxWidth: 780,
+            margin: "0 auto 20px"
           }}>
             <ScrollTextReveal text={pCopy.headline} as="span" />
           </h2>
-          <div className="fm-secsub" style={{ maxWidth: 700, margin: "0 auto" }}>
+
+          <div style={{ maxWidth: 720, margin: "0 auto", fontSize: "clamp(15px, 1.8vw, 16.5px)", lineHeight: 1.6, color: "rgba(255, 255, 255, 0.7)" }}>
             <ScrollTextReveal text={pCopy.body} as="p" />
           </div>
         </Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch", maxWidth: 1000, margin: "0 auto" }}>
+        {/* Comparison Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, alignItems: "stretch", maxWidth: 960, margin: "0 auto" }}>
           <Reveal style={{ position: "relative" }}>
-            <Interactive3DCard
-              style={{
-                background: C.bgCard,
-                border: `1px solid ${C.borderPrimary}`,
-                borderRadius: 28,
-                padding: 48,
-                boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 16, color: C.textBody, fontWeight: 600, marginBottom: 12, transform: "translateZ(20px)" }}>
-                Missed calls without Foreman:
-              </div>
-              <div className="fm-statnum" style={{ color: C.textBody, transform: "translateZ(40px)" }}>
-                40%
-              </div>
-            </Interactive3DCard>
+            <div className="fm-hoverlift" style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 28, padding: "48px 32px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", position: "relative", zIndex: 2 }}>
+              <div style={{ fontSize: 16, color: "rgba(255, 255, 255, 0.75)", fontWeight: 600, marginBottom: 16 }}>Missed calls without Foreman:</div>
+              <div className="fm-statnum" style={{ fontSize: "clamp(48px, 6vw, 68px)", fontWeight: 800, color: "#B8BFCC" }}>40%</div>
+            </div>
           </Reveal>
           <Reveal delay={0.1} style={{ position: "relative" }}>
-            <Interactive3DCard
-              style={{
-                background: C.accentOrange,
-                borderRadius: 28,
-                padding: 48,
-                boxShadow: "0 24px 48px rgba(249,122,53,0.35)",
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 600, marginBottom: 12, transform: "translateZ(20px)" }}>
-                Missed calls:
-              </div>
-              <div className="fm-statnum" style={{ color: C.bgPrimary, position: "relative", display: "inline-block", transform: "translateZ(40px)" }}>
+            <div className="fm-hoverlift" style={{ background: C.accentOrange, borderRadius: 28, padding: "48px 32px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", position: "relative", zIndex: 2, boxShadow: "0 20px 40px rgba(242, 105, 28, 0.25)" }}>
+              <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 700, marginBottom: 16 }}>Missed calls:</div>
+              <div className="fm-statnum" style={{ fontSize: "clamp(48px, 6vw, 68px)", fontWeight: 800, color: C.bgPrimary, position: "relative", display: "inline-block" }}>
                 0%
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ delay: 0.5, type: "spring" }}
+                  transition={{ delay: 0.3, type: "spring" }}
                   style={{ position: "absolute", top: "55%", left: "50%", transform: "translate(-50%, -50%)", width: "170%", height: "170%", pointerEvents: "none" }}
                 >
                   <DoodleCircle style={{ width: "100%", height: "100%" }} />
                 </motion.div>
               </div>
-            </Interactive3DCard>
+            </div>
           </Reveal>
         </div>
-
-
       </div>
 
-      {/* Optional faint scrolling ribbon */}
-      <motion.div
-        aria-hidden
-        style={{
-          marginTop: 16,
-          whiteSpace: "nowrap", fontSize: "clamp(60px, 15vw, 160px)", fontWeight: 900,
-          color: "rgba(255,255,255,0.02)", pointerEvents: "none"
-        }}
-        animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-      >
-        ANSWERED QUALIFIED BOOKED ANSWERED QUALIFIED BOOKED
-      </motion.div>
+      {/* Animated Watermark Ribbon placed directly at the bottom of the cards */}
+      <div style={{ width: "100%", overflow: "hidden", pointerEvents: "none", userSelect: "none", marginTop: "50px", paddingBottom: "16px", position: "relative", zIndex: 0 }}>
+        <motion.div
+          aria-hidden
+          style={{
+            whiteSpace: "nowrap",
+            fontSize: "clamp(120px, 15vw, 175px)",
+            fontWeight: 900,
+            fontFamily: "var(--font-outfit), sans-serif",
+            lineHeight: 0.9,
+            letterSpacing: "0.02em",
+            textTransform: "uppercase",
+            color: "rgba(255, 255, 255, 0.038)",
+            display: "flex",
+            width: "max-content",
+          }}
+          animate={reducedMotion ? {} : { x: ["0%", "-50%"] }}
+          transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
+        >
+          <span>ANSWERED QUALIFIED BOOKED &nbsp; ANSWERED QUALIFIED BOOKED &nbsp; ANSWERED QUALIFIED BOOKED &nbsp;</span>
+          <span>ANSWERED QUALIFIED BOOKED &nbsp; ANSWERED QUALIFIED BOOKED &nbsp; ANSWERED QUALIFIED BOOKED &nbsp;</span>
+        </motion.div>
+      </div>
     </section>
   );
 }
@@ -3365,6 +3647,7 @@ function WaterWavesBackground() {
   const isInView = useInView(containerRef, { amount: 0.1, once: false });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const mousePos = useRef({ x: -1000, y: -1000 });
   const aiSparkle = useRef({
     x: -200,
@@ -3375,15 +3658,30 @@ function WaterWavesBackground() {
     trail: [] as { x: number; y: number; alpha: number; size: number }[],
   });
 
+  // On touch/mobile: static gradient — skip the canvas + AI-sparkle cursor-chaser
+  // (mousemove never fires meaningfully on touch, so it was dead weight anyway).
+  if (isMobile || reducedMotion) {
+    return (
+      <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.22) 0%, rgba(15, 23, 42, 0.98) 65%, rgba(5, 8, 18, 1) 100%)"
+        }} />
+      </div>
+    );
+  }
+
   useEffect(() => {
-    if (reducedMotion || !isInView) return;
+    if (!isInView) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
     let animationFrameId: number;
-    let dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2);
+    // Cap DPR at 1 — was Math.min(devicePixelRatio, 2) which on phones means 2×
+    // the canvas pixels to fill, doubling fill-rate cost.
+    const dpr = 1;
     let width = 0;
     let height = 0;
 
@@ -3427,17 +3725,24 @@ function WaterWavesBackground() {
     window.addEventListener("mouseleave", handleMouseLeave, { passive: true });
 
     let time = 0;
+    let lastTs = 0;
+    // Throttle to ~30 fps on desktop too — the waves look identical at 30fps
+    const FRAME_INTERVAL = 1000 / 30;
 
-    const render = () => {
+    const render = (ts: number) => {
+      animationFrameId = requestAnimationFrame(render);
+      if (ts - lastTs < FRAME_INTERVAL) return;
+      lastTs = ts;
+
       ctx.save();
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, height);
-      time += 0.0025;
+      // Step doubled vs original since we run at half the frame rate
+      time += 0.005;
 
-      const isMobile = width < 768;
-      const stepX = isMobile ? 38 : 24;
-      const stepY = isMobile ? 30 : 20;
-
+      // Coarser grid — fewer sin/cos calls per frame, same visual character
+      const stepX = 32;
+      const stepY = 26;
       const cols = Math.ceil(width / stepX) + 1;
       const rows = Math.ceil(height / stepY) + 1;
 
@@ -3488,22 +3793,17 @@ function WaterWavesBackground() {
 
       ctx.globalAlpha = 1;
 
-      const sparkCount = 24;
-      ctx.save();
+      // Sparkles: no per-particle shadowBlur (shadowBlur is GPU-expensive)
       ctx.fillStyle = "#FFFFFF";
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = "#38BDF8";
-      for (let i = 0; i < sparkCount; i++) {
+      for (let i = 0; i < 12; i++) {
         const sx = (Math.sin(i * 77 + time * 1.2) * 0.5 + 0.5) * width;
         const sy = (Math.cos(i * 44 + time * 1.4) * 0.5 + 0.5) * height;
-        const sparkAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.6;
-
-        ctx.globalAlpha = sparkAlpha;
+        ctx.globalAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.55;
         ctx.beginPath();
-        ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+        ctx.arc(sx, sy, 1.4, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.restore();
+      ctx.globalAlpha = 1;
 
       const isHovering = mx > 0 && mx < width && my > 0 && my < height;
 
@@ -3601,18 +3901,17 @@ function WaterWavesBackground() {
       }
 
       ctx.restore();
-      animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    animationFrameId = requestAnimationFrame(render);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseleave", handleMouseLeave);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [reducedMotion, isInView]);
+  }, [isInView]);
 
   return (
     <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
@@ -4691,13 +4990,13 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
       {/* Background glow effects */}
       <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 70%)`, pointerEvents: "none" }} />
 
-      {/* Massive FOREMAN Background Text Watermark */}
+      {/* Massive FOREMAN Background Text Watermark — Centered Above in Footer */}
       <div
         style={{
           position: "absolute",
-          bottom: 0,
+          top: "30%",
           left: "50%",
-          transform: "translateX(-50%)",
+          transform: "translate(-50%, -50%)",
           width: "100%",
           textAlign: "center",
           pointerEvents: "none",
@@ -4713,7 +5012,7 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
             fontSize: "clamp(80px, 20vw, 290px)",
             lineHeight: 0.85,
             letterSpacing: "-0.045em",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.01) 100%)",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.015) 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             display: "block",
@@ -5215,10 +5514,158 @@ function ScrollToTopButton() {
   );
 }
 
+// ------------------------------------------------------------------
+// CINEMATIC WORKFLOW TRADE CONFIGURATION
+// ------------------------------------------------------------------
+interface WorkflowTradeItem {
+  service: string;
+  issue: string;
+  caller: string;
+  avatar: string;
+  phone: string;
+  location: string;
+  tech: string;
+  techInitial: string;
+  smsConfirm: string;
+  smsTracking: string;
+  crmApp: string;
+  revenue: string;
+}
+
+const WORKFLOW_TRADE_DATA: Record<string, WorkflowTradeItem> = {
+  hvac: {
+    service: "HVAC Repair",
+    issue: "No Cooling",
+    caller: "Mike Johnson",
+    avatar: "https://randomuser.me/api/portraits/men/33.jpg",
+    phone: "+1 (512) 849-2041",
+    location: "Austin TX",
+    tech: "Mike (Tech)",
+    techInitial: "M",
+    smsConfirm: "Hi Mike! Your HVAC repair is confirmed for today between 2-4 PM. Your tech is Mike.",
+    smsTracking: "Great! Tech Mike will send live tracking when en route.",
+    crmApp: "Housecall Pro",
+    revenue: "+$650",
+  },
+  plumbing: {
+    service: "Emergency Plumbing",
+    issue: "Basement Pipe Leak",
+    caller: "Sarah Miller",
+    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+    phone: "+1 (512) 692-4118",
+    location: "Austin TX",
+    tech: "Dave (Plumber)",
+    techInitial: "D",
+    smsConfirm: "Hi Sarah! Your plumbing visit is confirmed for today between 2-4 PM. Your tech is Dave.",
+    smsTracking: "Great! Tech Dave is dispatched with leak repair kit.",
+    crmApp: "ServiceTitan",
+    revenue: "+$520",
+  },
+  electrical: {
+    service: "Electrical Repair",
+    issue: "Breaker Tripping",
+    caller: "Robert Davis",
+    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+    phone: "+1 (512) 731-9032",
+    location: "Austin TX",
+    tech: "Alex (Electrician)",
+    techInitial: "A",
+    smsConfirm: "Hi Robert! Your electrical inspection is confirmed for today between 2-4 PM. Your electrician is Alex.",
+    smsTracking: "Great! Tech Alex will arrive with panel diagnostics equipment.",
+    crmApp: "Jobber",
+    revenue: "+$480",
+  },
+  roofing: {
+    service: "Roof Inspection",
+    issue: "Storm Shingle Damage",
+    caller: "Emily Clark",
+    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
+    phone: "+1 (512) 554-1290",
+    location: "Austin TX",
+    tech: "Carlos (Roofer)",
+    techInitial: "C",
+    smsConfirm: "Hi Emily! Your roof inspection is confirmed for today between 2-4 PM. Your inspector is Carlos.",
+    smsTracking: "Great! Inspector Carlos will provide a drone roof damage report.",
+    crmApp: "AccuLynx",
+    revenue: "+$1,850",
+  },
+  pest: {
+    service: "Pest Treatment",
+    issue: "Termite Activity",
+    caller: "Brian Kelly",
+    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
+    phone: "+1 (512) 388-7612",
+    location: "Austin TX",
+    tech: "Sam (Exterminator)",
+    techInitial: "S",
+    smsConfirm: "Hi Brian! Your pest treatment is confirmed for today between 2-4 PM. Your specialist is Sam.",
+    smsTracking: "Great! Specialist Sam is en route with perimeter treatment gear.",
+    crmApp: "FieldRoutes",
+    revenue: "+$420",
+  },
+  garage: {
+    service: "Garage Door Repair",
+    issue: "Broken Torsion Spring",
+    caller: "Karen White",
+    avatar: "https://randomuser.me/api/portraits/women/29.jpg",
+    phone: "+1 (512) 419-8803",
+    location: "Austin TX",
+    tech: "Jason (Tech)",
+    techInitial: "J",
+    smsConfirm: "Hi Karen! Your garage door repair is confirmed for today between 2-4 PM. Your tech is Jason.",
+    smsTracking: "Great! Tech Jason is bringing high-cycle replacement springs.",
+    crmApp: "Housecall Pro",
+    revenue: "+$390",
+  },
+  restoration: {
+    service: "Water Restoration",
+    issue: "Flooded Crawlspace",
+    caller: "David Wilson",
+    avatar: "https://randomuser.me/api/portraits/men/52.jpg",
+    phone: "+1 (512) 902-3341",
+    location: "Austin TX",
+    tech: "Chris (Lead Tech)",
+    techInitial: "C",
+    smsConfirm: "Hi David! Emergency restoration crew is dispatched for 2:00 PM. Crew lead is Chris.",
+    smsTracking: "Great! Crew lead Chris is on the way with industrial extractors.",
+    crmApp: "Encircle",
+    revenue: "+$2,400",
+  },
+  "property-management": {
+    service: "Maintenance Dispatch",
+    issue: "Tenant AC Failure",
+    caller: "Jennifer Taylor",
+    avatar: "https://randomuser.me/api/portraits/women/65.jpg",
+    phone: "+1 (512) 670-2294",
+    location: "Austin TX",
+    tech: "Mark (Maintenance)",
+    techInitial: "M",
+    smsConfirm: "Hi Jennifer! Maintenance dispatch confirmed for Unit 4B at 2:00 PM. Tech is Mark.",
+    smsTracking: "Great! Tech Mark is en route with work order #4819.",
+    crmApp: "AppFolio",
+    revenue: "+$350",
+  },
+  "law-firm": {
+    service: "Legal Intake",
+    issue: "Auto Accident Consultation",
+    caller: "Marcus Evans",
+    avatar: "https://randomuser.me/api/portraits/men/75.jpg",
+    phone: "+1 (512) 819-4502",
+    location: "Austin TX",
+    tech: "Sarah (Attorney)",
+    techInitial: "S",
+    smsConfirm: "Hi Marcus! Consultation confirmed for today at 2:00 PM with Attorney Sarah.",
+    smsTracking: "Great! Attorney Sarah is preparing your case evaluation file.",
+    crmApp: "Clio",
+    revenue: "+$1,500",
+  },
+};
+
 /* ================================================================== */
 /*  CINEMATIC WORKFLOW (S-CURVE)                                      */
 /* ================================================================== */
-function CinematicWorkflow() {
+export function CinematicWorkflow({ tradeId = "hvac" }: { tradeId?: string }) {
+  const data = WORKFLOW_TRADE_DATA[tradeId] || WORKFLOW_TRADE_DATA.hvac;
   const reducedMotion = useReducedMotion();
   const [step, setStep] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
@@ -5329,17 +5776,17 @@ function CinematicWorkflow() {
 
         {/* 3x3 Grid Layout */}
         <div className="fm-cinematic-grid">
-          <div className="fm-cinematic-step step1"><StepPhone active={step >= 1} /></div>
+          <div className="fm-cinematic-step step1"><StepPhone active={step >= 1} data={data} /></div>
           <div className="fm-cinematic-step step2"><StepAI active={step >= 2} listens={step >= 3} /></div>
-          <div className="fm-cinematic-step step4"><StepQualification active={step >= 4} /></div>
+          <div className="fm-cinematic-step step4"><StepQualification active={step >= 4} data={data} /></div>
 
-          <div ref={row2Ref} className="fm-cinematic-step step5"><StepAppointment active={step >= 5} /></div>
+          <div ref={row2Ref} className="fm-cinematic-step step5"><StepAppointment active={step >= 5} data={data} /></div>
           <div className="fm-cinematic-step step6"><StepCalendar active={step >= 6} /></div>
-          <div className="fm-cinematic-step step7"><StepDispatch active={step >= 7} /></div>
+          <div className="fm-cinematic-step step7"><StepDispatch active={step >= 7} data={data} /></div>
 
-          <div ref={row3Ref} className="fm-cinematic-step step8"><StepSMS active={step >= 8} /></div>
-          <div className="fm-cinematic-step step9"><StepCRM active={step >= 9} /></div>
-          <div className="fm-cinematic-step step10"><StepRevenue active={step >= 10} /></div>
+          <div ref={row3Ref} className="fm-cinematic-step step8"><StepSMS active={step >= 8} data={data} /></div>
+          <div className="fm-cinematic-step step9"><StepCRM active={step >= 9} data={data} /></div>
+          <div className="fm-cinematic-step step10"><StepRevenue active={step >= 10} data={data} /></div>
         </div>
 
       </div>
@@ -5351,7 +5798,7 @@ function CinematicWorkflow() {
 // STEP COMPONENTS (Strict 8px Grid System & Alignment)
 // ------------------------------------------------------------------
 
-function StepPhone({ active }: { active: boolean }) {
+function StepPhone({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: C.accentOrange }}>1 INCOMING CALL</motion.div>
@@ -5365,16 +5812,16 @@ function StepPhone({ active }: { active: boolean }) {
 
         {/* Caller Avatar */}
         <motion.div animate={active ? { scale: [1, 1.05, 1] } : {}} transition={{ duration: 2, repeat: Infinity }} style={{ width: 52, height: 52, borderRadius: "50%", border: "2px solid rgba(96,165,250,0.5)", overflow: "hidden", background: "#1E293B", alignSelf: "center", margin: "12px auto" }}>
-          <img src="https://randomuser.me/api/portraits/men/33.jpg" alt="Mike Johnson" width={52} height={52} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
+          <img src={data.avatar} alt={data.caller} width={52} height={52} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
         </motion.div>
 
         {/* Caller Information */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-          <h3 style={{ fontSize: 16, color: "#fff", marginBottom: 2, fontWeight: 700, fontFamily: "var(--font-outfit), sans-serif" }}>Mike Johnson</h3>
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginBottom: 8, fontFamily: "monospace" }}>+1 (512) 849-2041</p>
+          <h3 style={{ fontSize: 16, color: "#fff", marginBottom: 2, fontWeight: 700, fontFamily: "var(--font-outfit), sans-serif" }}>{data.caller}</h3>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginBottom: 8, fontFamily: "monospace" }}>{data.phone}</p>
           <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", padding: "3.5px 12px", borderRadius: 999, marginTop: 4, marginBottom: 8 }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
-            <span style={{ color: "#60A5FA", fontSize: 11, fontWeight: 600 }}>HVAC Repair</span>
+            <span style={{ color: "#60A5FA", fontSize: 11, fontWeight: 600 }}>{data.service}</span>
           </div>
         </div>
 
@@ -5455,13 +5902,13 @@ function StepAI({ active, listens }: { active: boolean, listens: boolean }) {
   );
 }
 
-function StepQualification({ active }: { active: boolean }) {
+function StepQualification({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   const fields = [
     { label: "Customer", value: "Verified" },
-    { label: "Service", value: "HVAC Repair" },
-    { label: "Issue", value: "No Cooling" },
+    { label: "Service", value: data.service },
+    { label: "Issue", value: data.issue },
     { label: "Priority", value: "Emergency" },
-    { label: "Location", value: "Austin TX" }
+    { label: "Location", value: data.location }
   ];
 
   return (
@@ -5494,7 +5941,7 @@ function StepQualification({ active }: { active: boolean }) {
   );
 }
 
-function StepAppointment({ active }: { active: boolean }) {
+function StepAppointment({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#FBBF24" }}>5 SUGGESTION</motion.div>
@@ -5505,7 +5952,7 @@ function StepAppointment({ active }: { active: boolean }) {
         </motion.div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "0 8px" }}>
           <h3 style={{ color: "#fff", fontSize: 16, fontWeight: 600, marginBottom: 6, fontFamily: "var(--font-outfit), sans-serif", textAlign: "center" }}>Suggesting Time</h3>
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.4, margin: 0, textAlign: "center" }}>Cross-referencing availability for Austin, TX.</p>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.4, margin: 0, textAlign: "center" }}>Cross-referencing availability for {data.location}.</p>
         </div>
         {active && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ width: "100%", background: "#151928", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", marginTop: 12, marginBottom: 4, textAlign: "center" }}>
@@ -5546,7 +5993,7 @@ function StepCalendar({ active }: { active: boolean }) {
   );
 }
 
-function StepDispatch({ active }: { active: boolean }) {
+function StepDispatch({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#38BDF8" }}>7 DISPATCH</motion.div>
@@ -5567,9 +6014,9 @@ function StepDispatch({ active }: { active: boolean }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(15,23,42,0.85)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {/* 24px Avatar Badge */}
-              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#38BDF8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11 }}>M</div>
+              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#38BDF8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11 }}>{data.techInitial}</div>
               <div>
-                <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Mike (Tech)</div>
+                <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{data.tech}</div>
                 <div style={{ color: "#38BDF8", fontSize: 10, fontWeight: 500 }}>Assigned</div>
               </div>
             </div>
@@ -5586,7 +6033,7 @@ function StepDispatch({ active }: { active: boolean }) {
   );
 }
 
-function StepSMS({ active }: { active: boolean }) {
+function StepSMS({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#34D399" }}>8 SMS SENT</motion.div>
@@ -5594,7 +6041,7 @@ function StepSMS({ active }: { active: boolean }) {
         {active && (
           <motion.div initial={{ opacity: 0, y: 12, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#151928", padding: 10, borderRadius: 14, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 6px 16px rgba(0,0,0,0.3)" }}>
             <p style={{ color: "#fff", fontSize: 11, lineHeight: 1.35, margin: 0 }}>
-              &quot;Hi Mike! Your HVAC repair is confirmed for today between 2-4 PM. Your tech is Mike.&quot;
+              &quot;{data.smsConfirm}&quot;
             </p>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 4 }}>
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 9.5 }}>Delivered</span>
@@ -5610,7 +6057,7 @@ function StepSMS({ active }: { active: boolean }) {
         {active && (
           <motion.div initial={{ opacity: 0, y: 12, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 1.1, type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#151928", padding: 10, borderRadius: 14, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 6px 16px rgba(0,0,0,0.3)", marginTop: 8 }}>
             <p style={{ color: "#fff", fontSize: 11, lineHeight: 1.35, margin: 0 }}>
-              &quot;Great! Tech Mike will send live tracking when en route.&quot;
+              &quot;{data.smsTracking}&quot;
             </p>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 4 }}>
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 9.5 }}>Delivered</span>
@@ -5623,7 +6070,7 @@ function StepSMS({ active }: { active: boolean }) {
   );
 }
 
-function StepCRM({ active }: { active: boolean }) {
+function StepCRM({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   const steps = ["Customer Saved", "Estimate Generated", "Job Created"];
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -5631,7 +6078,7 @@ function StepCRM({ active }: { active: boolean }) {
       <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 16, display: "flex", flexDirection: "column", justifyContent: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 10 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-          <span style={{ color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "var(--font-outfit), sans-serif" }}>Housecall Pro</span>
+          <span style={{ color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "var(--font-outfit), sans-serif" }}>{data.crmApp}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
           {steps.map((s, i) => (
@@ -5652,7 +6099,7 @@ function StepCRM({ active }: { active: boolean }) {
   );
 }
 
-function StepRevenue({ active }: { active: boolean }) {
+function StepRevenue({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#F97A35" }}>10 COMPLETED</motion.div>
@@ -5672,7 +6119,7 @@ function StepRevenue({ active }: { active: boolean }) {
 
         {active ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, type: "spring" }} style={{ fontSize: 32, color: "#fff", fontWeight: 700, marginBottom: 4, letterSpacing: -1.5, zIndex: 1, textAlign: "center" }}>
-            +$650
+            {data.revenue}
           </motion.div>
         ) : (
           <div style={{ fontSize: 32, color: "rgba(255,255,255,0.1)", fontWeight: 700, marginBottom: 4, letterSpacing: -1.5, zIndex: 1, textAlign: "center" }}>$0</div>
@@ -5726,9 +6173,6 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
         {/* <FinalCTA mode={mode} /> */}
         {/* <Pricing /> */}
         <FAQ mode={mode} />
-        <div>
-          <CinematicWorkflow />
-        </div>
         <Footer />
         <PersistentWidget />
         <ScrollToTopButton />

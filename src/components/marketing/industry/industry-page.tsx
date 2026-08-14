@@ -1,5 +1,5 @@
 'use client';
-import { Nav, Footer, Pricing, FAQ, Check } from '../foreman-landing';
+import { Nav, Footer, Pricing, FAQ, Check, CinematicWorkflow } from '../foreman-landing';
 import { ReactLenis } from '@studio-freight/react-lenis';
 import { TradeId } from './content';
 
@@ -42,6 +42,10 @@ export function IndustryPage({ tradeId }: { tradeId: TradeId }) {
 
         <FAQ mode={tradeId as any} />
         
+        <div id="workflow">
+          <CinematicWorkflow tradeId={tradeId} />
+        </div>
+
         <Footer hideIntegrations />
       </main>
     </ReactLenis>
