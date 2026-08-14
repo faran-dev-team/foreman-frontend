@@ -1431,6 +1431,7 @@ const DashboardOverview = dynamic(
 );
 
 function DashboardPreview() {
+  const isMobile = useIsMobile();
   const trackRef = useRef<HTMLDivElement>(null);
   const stickyFrameRef = useRef<HTMLDivElement>(null);
   const scrollableRef = useRef<HTMLDivElement>(null);
@@ -1441,6 +1442,7 @@ function DashboardPreview() {
   });
 
   useEffect(() => {
+    if (isMobile) return; // skip scroll-sync entirely on mobile — no benefit, real cost
     const updateInnerScroll = (progress: number) => {
       if (scrollableRef.current) {
         const maxScroll = scrollableRef.current.scrollHeight - scrollableRef.current.clientHeight;
@@ -1470,7 +1472,7 @@ function DashboardPreview() {
       unsub();
       resizeObserver?.disconnect();
     };
-  }, [scrollYProgress]);
+  }, [scrollYProgress, isMobile]);
 
   return (
     <section
@@ -1478,7 +1480,7 @@ function DashboardPreview() {
       style={{
         background: brand.carbon,
         position: "relative",
-        minHeight: "150vh",
+        minHeight: isMobile ? "auto" : "150vh",
         padding: "48px 0 0",
       }}
     >
@@ -1515,8 +1517,8 @@ function DashboardPreview() {
         <div
           ref={stickyFrameRef}
           style={{
-            position: "sticky",
-            top: "60px",
+            position: isMobile ? "relative" : "sticky",
+            top: isMobile ? "auto" : "60px",
             zIndex: 10,
             paddingBottom: "40px",
           }}
@@ -3331,7 +3333,7 @@ function FlipFeatureCard({
         }}
       >
         {/* FRONT FACE OF CARD (FRAMELESS GLASS) */}
-        <div style={{
+        <div className="fm-featcard-face" style={{
           position: "absolute",
           inset: 0,
           backfaceVisibility: "hidden",
@@ -3393,7 +3395,7 @@ function FlipFeatureCard({
         </div>
 
         {/* BACK FACE OF CARD */}
-        <div style={{
+        <div className="fm-featcard-face" style={{
           position: "absolute",
           inset: 0,
           transform: "rotateY(180deg)",
@@ -6133,6 +6135,7 @@ function StepRevenue({ active, data }: { active: boolean; data: WorkflowTradeIte
 /*  PAGE                                                               */
 /* ================================================================== */
 export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
+  const isMobile = useIsMobile();
   useEffect(() => {
     if (window.location.hash) {
       setTimeout(() => {
@@ -6145,7 +6148,17 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
   }, []);
 
   return (
-    <ReactLenis root options={{ lerp: 0.08, duration: 1.2, wheelMultiplier: 1, touchMultiplier: 2, syncTouch: true, smoothWheel: true }}>
+    <ReactLenis
+      root
+      options={{
+        lerp: 0.08,
+        duration: 1.2,
+        wheelMultiplier: 1,
+        touchMultiplier: 2,
+        syncTouch: false,
+        smoothWheel: !isMobile,
+      }}
+    >
       <main
         className="fm-landing"
         style={{

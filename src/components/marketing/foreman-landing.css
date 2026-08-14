@@ -1392,11 +1392,8 @@
 @media (max-width: 900px), (pointer: coarse) {
   .fm-callcard,
   .fm-probcard,
-  .fm-featcard {
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-  }
-
+  .fm-featcard,
+  .fm-featcard-face,
   .fm-cta-banner {
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
