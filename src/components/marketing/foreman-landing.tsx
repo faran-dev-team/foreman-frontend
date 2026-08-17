@@ -1549,7 +1549,7 @@ function DashboardPreview() {
             </div>
 
             {/* App layout: sidebar + main (with horizontal scrolling on mobile) */}
-            <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 640, height: 640, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+            <div style={{ display: "flex", background: "#F8FAFC", maxHeight: 640, height: 640, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
               {/* Sidebar */}
               <div style={{
                 width: 256, flexShrink: 0,
