@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import { RevenueCapturedCard } from "@/components/jobs/revenue-captured-card";
@@ -112,7 +114,13 @@ export function JobsPanel() {
 
   const jobs = jobsQuery.data?.jobs ?? [];
   const total = jobsQuery.data?.total ?? jobs.length;
-  const revenueCaptured = jobsQuery.data?.revenue_captured_usd ?? 0;
+  const revenueCaptured = useMemo(() => {
+    const fromApi = jobsQuery.data?.revenue_captured_usd;
+    if (fromApi != null && fromApi > 0) {
+      return fromApi;
+    }
+    return jobs.reduce((sum, job) => sum + (job.est_value_usd ?? 0), 0);
+  }, [jobs, jobsQuery.data?.revenue_captured_usd]);
 
   const showInitialSkeleton = jobsQuery.isPending && !jobsQuery.data;
   const isRefreshing = jobsQuery.isFetching && !jobsQuery.isPending;

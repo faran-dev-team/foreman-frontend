@@ -7,9 +7,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { IntentBadge, OutcomeBadge } from "@/components/calls/call-badges";
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
 import { useShop } from "@/components/dashboard/shop-provider";
+import { useJobsListQuery } from "@/hooks/use-dashboard-queries";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 import { fetchCalls } from "@/lib/api/calls";
 import { ApiError } from "@/lib/api/client";
+import { enrichCallsWithJobOutcomes } from "@/lib/calls/enrich-call-outcomes";
 import type { CallListItem } from "@/lib/api/types";
 
 type ViewState = "loading" | "ready" | "error";
@@ -110,6 +112,7 @@ function CallsTableSkeleton() {
 export function CallsTable() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const { shopId, loading: shopLoading } = useShop();
+  const jobsQuery = useJobsListQuery();
   const cached = getCallsCache();
 
   const [viewState, setViewState] = useState<ViewState>(
@@ -234,6 +237,12 @@ export function CallsTable() {
     };
   }, [loadCalls, shopId, isLoaded, isSignedIn, shopLoading]);
 
+  const displayCalls = useMemo(
+    () =>
+      enrichCallsWithJobOutcomes(calls, jobsQuery.data?.jobs ?? []),
+    [calls, jobsQuery.data?.jobs],
+  );
+
   const outcomeCounts = useMemo(() => {
     const counts = {
       booked: 0,
@@ -243,7 +252,7 @@ export function CallsTable() {
       other: 0,
     };
 
-    for (const call of calls) {
+    for (const call of displayCalls) {
       const key = (call.outcome || "").toLowerCase();
       if (key === "booked") counts.booked += 1;
       else if (key === "not_booked") counts.not_booked += 1;
@@ -253,7 +262,7 @@ export function CallsTable() {
     }
 
     return counts;
-  }, [calls]);
+  }, [displayCalls]);
 
   // Keep skeleton while Clerk/shop settle — never flash auth error early.
   if ((!isLoaded || (!shopId && shopLoading)) && viewState === "loading") {
@@ -349,7 +358,7 @@ export function CallsTable() {
         <>
           {/* Mobile card list */}
           <ul className="space-y-3 sm:hidden">
-            {calls.map((call) => {
+            {displayCalls.map((call) => {
               const caller = formatCaller(call);
               return (
                 <li key={call.id}>
@@ -408,7 +417,7 @@ export function CallsTable() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {calls.map((call) => {
+                {displayCalls.map((call) => {
                   const caller = formatCaller(call);
                   return (
                     <tr

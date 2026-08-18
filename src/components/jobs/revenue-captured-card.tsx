@@ -39,7 +39,7 @@ export function RevenueCapturedCard({
       </p>
       <p className="mt-2 text-sm text-slate-300">
         {jobCount === 0
-          ? "No completed jobs with estimated value yet"
+          ? "No booked jobs with estimated value yet"
           : `Estimated value from ${jobCount} booked job${jobCount === 1 ? "" : "s"} in this period`}
       </p>
     </div>
