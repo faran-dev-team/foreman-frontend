@@ -7,7 +7,7 @@ import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, memo } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   motion,
   useScroll,
@@ -42,8 +42,8 @@ const CALENDLY_LINK = CALENDLY_PILOT_URL;
 const NAV_SECTIONS = [
   { href: "#how", label: "How it works" },
   { href: "#features", label: "Features" },
-  { href: "#pricing", label: "Pricing" },
-] as const;
+  { href: CALENDLY_LINK, label: "Pay as you go" },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Brand tokens (shared with owner dashboard via @/lib/brand)         */
@@ -391,7 +391,7 @@ function NavAuthLinks({ className, onNavigate, renderDesktopItem }: { className:
   );
 }
 
-export function Nav() {
+export function Nav({ mode }: { mode?: LandingMode | "industry" } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -400,6 +400,20 @@ export function Nav() {
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   const router = useRouter();
+  const pathname = usePathname();
+  const isNiche = mode ? mode !== "main" : (pathname && pathname !== "/" && pathname !== "");
+
+  const navSections = isNiche
+    ? [
+        { href: "#how", label: "How it works" },
+        { href: "#features", label: "Features" },
+        { href: "#pricing", label: "Pricing" },
+      ]
+    : [
+        { href: "#how", label: "How it works" },
+        { href: "#features", label: "Features" },
+        { href: CALENDLY_LINK, label: "Pay as you go" },
+      ];
 
   const handleScrollTo = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (href.startsWith("#") || href.startsWith("/#")) {
@@ -468,8 +482,17 @@ export function Nav() {
             <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 18, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
           </Link>
           <div className="fm-nav-desktop" onMouseLeave={() => setHoveredId(null)}>
-            {NAV_SECTIONS.map((item) => (
-              <a key={item.href} href={item.href} className="fm-navlink" onMouseEnter={() => setHoveredId(item.href)} onClick={(e) => handleScrollTo(e, item.href)} style={{ position: "relative", padding: "8px 16px" }}>
+            {navSections.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                target={item.href.startsWith("http") ? "_blank" : undefined}
+                rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                className="fm-navlink"
+                onMouseEnter={() => setHoveredId(item.href)}
+                onClick={(e) => handleScrollTo(e, item.href)}
+                style={{ position: "relative", padding: "8px 16px" }}
+              >
                 <span style={{ position: "relative", zIndex: 2 }}>{item.label}</span>
                 {hoveredId === item.href && !reducedMotion && <motion.div layoutId="navHover" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.08)", borderRadius: 999, zIndex: 1 }} transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
               </a>
@@ -492,7 +515,18 @@ export function Nav() {
         </div>
         <div id="fm-mobile-nav" className={`fm-nav-mobile${mobileOpen ? " fm-nav-mobile-open" : ""}`}>
           <div className="fm-wrap fm-nav-mobile-inner">
-            {NAV_SECTIONS.map((item) => <a key={item.href} href={item.href} className="fm-nav-mobile-link" onClick={(e) => handleScrollTo(e, item.href)}>{item.label}</a>)}
+            {navSections.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                target={item.href.startsWith("http") ? "_blank" : undefined}
+                rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                className="fm-nav-mobile-link"
+                onClick={(e) => handleScrollTo(e, item.href)}
+              >
+                {item.label}
+              </a>
+            ))}
             <NavAuthLinks className="fm-nav-mobile-link" onNavigate={closeMobile} />
             <a href={CALENDLY_LINK} className="fm-btn fm-btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={closeMobile}>Book a pilot call</a>
           </div>
@@ -1122,6 +1156,15 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
   const [isHovered, setIsHovered] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
+  const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCursorPos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+    setIsHovered(true);
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setCursorPos({
@@ -1176,7 +1219,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
             target="_blank"
             rel="noopener noreferrer"
             className="fm-hero-headline-link"
-            onMouseEnter={() => setIsHovered(true)}
+            onMouseEnter={handleMouseEnter}
             onMouseLeave={() => setIsHovered(false)}
             onMouseMove={handleMouseMove}
             style={{ position: "relative", display: "inline-block" }}
@@ -1226,15 +1269,15 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
               {isHovered && (
                 <motion.div
                   className="fm-headline-hover-badge-centered"
-                  initial={{ opacity: 0, scale: 0.5 }}
+                  initial={{ opacity: 0, scale: 0.65 }}
                   animate={{
                     opacity: 1,
                     scale: 1,
                     x: cursorPos.x,
                     y: cursorPos.y,
                   }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 28, mass: 0.3 }}
+                  exit={{ opacity: 0, scale: 0.65, transition: { duration: 0.1 } }}
+                  transition={{ type: "spring", stiffness: 1400, damping: 45, mass: 0.08 }}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -1243,10 +1286,13 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
                     zIndex: 50,
                   }}
                 >
+                  <span className="fm-badge-shimmer" />
                   <span>Request a Demo</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M7 17L17 7M17 7H7M17 7V17" />
-                  </svg>
+                  <span className="fm-badge-arrow-pill">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M7 17L17 7M17 7H7M17 7V17" />
+                    </svg>
+                  </span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -3811,27 +3857,27 @@ function WaterWavesBackground() {
       if (isHovering) {
         const star = aiSparkle.current;
         if (star.x < 0 || star.y < 0) {
-          star.x = mx + 30;
-          star.y = my + 30;
+          star.x = mx;
+          star.y = my;
         }
 
         const fdx = mx - star.x;
         const fdy = my - star.y;
         const fdist = Math.sqrt(fdx * fdx + fdy * fdy);
 
-        if (fdist > 8) {
-          const targetSpeed = Math.min(7, fdist * 0.1);
+        if (fdist > 4) {
+          const targetSpeed = Math.min(26, fdist * 0.28);
           const angle = Math.atan2(fdy, fdx);
-          star.vx += (Math.cos(angle) * targetSpeed - star.vx) * 0.14;
-          star.vy += (Math.sin(angle) * targetSpeed - star.vy) * 0.14;
+          star.vx += (Math.cos(angle) * targetSpeed - star.vx) * 0.35;
+          star.vy += (Math.sin(angle) * targetSpeed - star.vy) * 0.35;
         } else {
-          star.vx *= 0.82;
-          star.vy *= 0.82;
+          star.vx *= 0.75;
+          star.vy *= 0.75;
         }
 
         star.x += star.vx;
         star.y += star.vy;
-        star.rotation += 0.06;
+        star.rotation += 0.12;
 
         if (Math.hypot(star.vx, star.vy) > 0.5) {
           star.trail.push({
@@ -4954,8 +5000,10 @@ function ForemanWordmarkSection({ yText, opacityText, scaleText }: { yText: any;
 /* ================================================================== */
 /*  FOOTER                                                             */
 /* ================================================================== */
-export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolean }) {
+export function Footer({ hideIntegrations = false, mode }: { hideIntegrations?: boolean; mode?: LandingMode | "industry" }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isNiche = mode ? mode !== "main" : (pathname && pathname !== "/" && pathname !== "");
   const footerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: footerRef,
@@ -5002,13 +5050,13 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
       {/* Background glow effects */}
       <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 70%)`, pointerEvents: "none" }} />
 
-      {/* Massive FOREMAN Background Text Watermark — Centered Above in Footer */}
+      {/* Massive FOREMAN Background Text Watermark — Positioned at Bottom */}
       <div
         style={{
           position: "absolute",
-          top: "30%",
+          bottom: 30,
           left: "50%",
-          transform: "translate(-50%, -50%)",
+          transform: "translateX(-50%)",
           width: "100%",
           textAlign: "center",
           pointerEvents: "none",
@@ -5021,8 +5069,8 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
           style={{
             fontFamily: "var(--font-outfit), sans-serif",
             fontWeight: 900,
-            fontSize: "clamp(80px, 20vw, 290px)",
-            lineHeight: 0.85,
+            fontSize: "clamp(80px, 21vw, 360px)",
+            lineHeight: 0.8,
             letterSpacing: "-0.045em",
             background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.015) 100%)",
             WebkitBackgroundClip: "text",
@@ -5077,7 +5125,7 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
             {[
               { label: "Features", href: "#features" },
               { label: "How it works", href: "#how" },
-              { label: "Pricing", href: "#pricing" },
+              { label: isNiche ? "Pricing" : "Pay as you go", href: isNiche ? "#pricing" : CALENDLY_LINK },
               { label: "Integrations", href: "#integrations" },
               { label: "Book a Pilot", href: CALENDLY_LINK }
             ].filter(link => !(hideIntegrations && link.label === "Integrations")).map((link) => (

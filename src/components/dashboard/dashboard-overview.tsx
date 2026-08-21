@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Bar,
   BarChart,
@@ -11,7 +11,6 @@ import {
   PieChart,
   Rectangle,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -168,61 +167,35 @@ function SectionCard({
 export function DashboardOverview({ preview = false }: { preview?: boolean }) {
   // Track 1 (Top Row Tour)
   const [topIndex, setTopIndex] = useState(0);
-  const [isTopHovered, setIsTopHovered] = useState(false);
-  const [userHoveredBar, setUserHoveredBar] = useState<number | null>(null);
-  const [userHoveredSlice, setUserHoveredSlice] = useState<number | null>(null);
   const [topPointerPos, setTopPointerPos] = useState<{ x: number; y: number } | null>(null);
 
   // Track 2 (Bottom Row Tour)
   const [bottomIndex, setBottomIndex] = useState(0);
-  const [isBottomHovered, setIsBottomHovered] = useState(false);
   const [bottomPointerPos, setBottomPointerPos] = useState<{ x: number; y: number } | null>(null);
 
-  // User manual hover tooltip
-  const [customHoverTip, setCustomHoverTip] = useState<string | null>(null);
-
   const containerRef = useRef<HTMLDivElement>(null);
-  const topTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const bottomTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Loop Track 1 (Top Row)
+  // Loop Track 1 (Top Row) — runs continuously
   useEffect(() => {
-    if (isTopHovered) return;
     const interval = setInterval(() => {
       setTopIndex((prev) => (prev + 1) % TOP_ROW_TOUR.length);
     }, 2500);
     return () => clearInterval(interval);
-  }, [isTopHovered]);
+  }, []);
 
-  // Loop Track 2 (Bottom Row)
+  // Loop Track 2 (Bottom Row) — runs continuously
   useEffect(() => {
-    if (isBottomHovered) return;
     const interval = setInterval(() => {
       setBottomIndex((prev) => (prev + 1) % BOTTOM_ROW_TOUR.length);
     }, 2800);
     return () => clearInterval(interval);
-  }, [isBottomHovered]);
-
-  const resetTopTimer = () => {
-    if (topTimerRef.current) clearTimeout(topTimerRef.current);
-    topTimerRef.current = setTimeout(() => {
-      setIsTopHovered(false);
-    }, 2600);
-  };
-
-  const resetBottomTimer = () => {
-    if (bottomTimerRef.current) clearTimeout(bottomTimerRef.current);
-    bottomTimerRef.current = setTimeout(() => {
-      setIsBottomHovered(false);
-      setCustomHoverTip(null);
-    }, 2600);
-  };
+  }, []);
 
   const currentTopStep = TOP_ROW_TOUR[topIndex];
   const currentBottomStep = BOTTOM_ROW_TOUR[bottomIndex];
 
-  const activeBarIndex = userHoveredBar !== null ? userHoveredBar : (currentTopStep.target === "bar" ? currentTopStep.index : null);
-  const activeSliceIndex = userHoveredSlice !== null ? userHoveredSlice : (currentTopStep.target === "donut" ? currentTopStep.index : null);
+  const activeBarIndex = currentTopStep.target === "bar" ? currentTopStep.index : null;
+  const activeSliceIndex = currentTopStep.target === "donut" ? currentTopStep.index : null;
   const activeSliceData = activeSliceIndex !== null ? jobStatusData[activeSliceIndex] : null;
 
   // Compute exact coordinates for Pointer 1 (Top Row)
@@ -295,13 +268,28 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
       updateTopPointerPosition();
       updateBottomPointerPosition();
     });
-    const timerId = setTimeout(() => {
+    const t1 = setTimeout(() => {
       updateTopPointerPosition();
       updateBottomPointerPosition();
-    }, 100);
+    }, 60);
+    const t2 = setTimeout(() => {
+      updateTopPointerPosition();
+      updateBottomPointerPosition();
+    }, 180);
+    const t3 = setTimeout(() => {
+      updateTopPointerPosition();
+      updateBottomPointerPosition();
+    }, 360);
+    const t4 = setTimeout(() => {
+      updateTopPointerPosition();
+      updateBottomPointerPosition();
+    }, 600);
     return () => {
       cancelAnimationFrame(rafId);
-      clearTimeout(timerId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
     };
   }, [topIndex, bottomIndex, updateTopPointerPosition, updateBottomPointerPosition]);
 
@@ -359,15 +347,15 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
       <div ref={containerRef} className="relative space-y-3">
 
         {/* ─── POINTER ANIMATION 1: TOP ROW (Revenue & Job Status) ─── */}
-        {!isTopHovered && topPointerPos && (
+        {topPointerPos && (
           <motion.div
-            initial={false}
-            animate={{ x: topPointerPos.x, y: topPointerPos.y }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1, x: topPointerPos.x, y: topPointerPos.y }}
             transition={{ type: "spring", stiffness: 90, damping: 18, mass: 0.5 }}
             style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none", zIndex: 50 }}
             className="hidden sm:block"
           >
-            <div style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.25))" }}>
+            <div style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ transform: "translate(-2px, -2px) rotate(-8deg)", transformOrigin: "2px 2px" }}>
                 <path d="M3 3l7.5 17.5 3-6.5 6.5-3L3 3z" fill="#0F172A" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round" />
               </svg>
@@ -379,10 +367,10 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                 position: "absolute",
                 left: topPointerPos.x > (containerRef.current ? containerRef.current.clientWidth - 160 : 600) ? -150 : 14,
                 top: 2,
-                background: "#FFFFFF",
-                border: "1px solid #E2E8F0",
+                background: "#0F172A",
+                border: "1px solid rgba(255,255,255,0.15)",
                 borderRadius: 6,
-                boxShadow: "0 4px 14px rgba(10,15,28,0.08)",
+                boxShadow: "0 8px 20px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2)",
                 padding: "4px 8px",
                 pointerEvents: "none",
                 whiteSpace: "nowrap",
@@ -390,23 +378,23 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
             >
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#F97A35]" />
-                <span className="text-[10px] font-semibold text-slate-800">{currentTopStep.title}:</span>
-                <span className="text-[10px] font-bold text-slate-950">{currentTopStep.val}</span>
+                <span className="text-[10px] font-semibold text-slate-300">{currentTopStep.title}:</span>
+                <span className="text-[10px] font-bold text-white">{currentTopStep.val}</span>
               </div>
             </motion.div>
           </motion.div>
         )}
 
         {/* ─── POINTER ANIMATION 2: BOTTOM ROW (Live Transcript & Reports) ─── */}
-        {!isBottomHovered && bottomPointerPos && (
+        {bottomPointerPos && (
           <motion.div
-            initial={false}
-            animate={{ x: bottomPointerPos.x, y: bottomPointerPos.y }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1, x: bottomPointerPos.x, y: bottomPointerPos.y }}
             transition={{ type: "spring", stiffness: 90, damping: 18, mass: 0.5 }}
             style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none", zIndex: 50 }}
             className="hidden sm:block"
           >
-            <div style={{ filter: "drop-shadow(0 2px 5px rgba(0,0,0,0.25))" }}>
+            <div style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ transform: "translate(-2px, -2px) rotate(-8deg)", transformOrigin: "2px 2px" }}>
                 <path d="M3 3l7.5 17.5 3-6.5 6.5-3L3 3z" fill="#0F172A" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round" />
               </svg>
@@ -418,10 +406,10 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                 position: "absolute",
                 left: bottomPointerPos.x > (containerRef.current ? containerRef.current.clientWidth - 170 : 600) ? -160 : 14,
                 top: 2,
-                background: "#FFFFFF",
-                border: "1px solid #E2E8F0",
+                background: "#0F172A",
+                border: "1px solid rgba(255,255,255,0.15)",
                 borderRadius: 6,
-                boxShadow: "0 4px 14px rgba(10,15,28,0.08)",
+                boxShadow: "0 8px 20px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2)",
                 padding: "4px 8px",
                 pointerEvents: "none",
                 whiteSpace: "nowrap",
@@ -429,19 +417,15 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
             >
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#1FAA59]" />
-                <span className="text-[10px] font-semibold text-slate-800">{currentBottomStep.title}:</span>
-                <span className="text-[10px] font-bold text-slate-950">{currentBottomStep.val}</span>
+                <span className="text-[10px] font-semibold text-slate-300">{currentBottomStep.title}:</span>
+                <span className="text-[10px] font-bold text-white">{currentBottomStep.val}</span>
               </div>
             </motion.div>
           </motion.div>
         )}
 
         {/* ── ROW 1: 2 COLUMNS (Revenue by Day & Job Status Breakdown) ── */}
-        <div
-          className="grid gap-3 lg:grid-cols-2"
-          onMouseEnter={() => setIsTopHovered(true)}
-          onMouseLeave={resetTopTimer}
-        >
+        <div className="grid gap-3 lg:grid-cols-2">
           {/* Box 1: Revenue by Day */}
           <SectionCard title="Revenue by Day" desc="Estimated job value captured this week">
             <div className="relative h-44">
@@ -450,11 +434,6 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                   <XAxis dataKey="label" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: "#CBD5E1", fontSize: 9 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                  <Tooltip
-                    formatter={(val: number) => [fmt$(val), "Revenue"]}
-                    contentStyle={{ borderRadius: 6, border: "1px solid #E2E8F0", padding: "3px 6px", fontSize: 11 }}
-                    cursor={{ fill: "rgba(249,122,53,0.06)" }}
-                  />
                   <Bar
                     dataKey="revenue"
                     radius={[6, 6, 3, 3]}
@@ -466,12 +445,10 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                       const barFill = isActive ? (isFriday ? "#EA580C" : C.orange) : (isFriday ? C.orange : "#CBD5E1");
                       return (
                         <g id={`dashboard-tour-bar-${index}`} key={`tour-bar-${index}`}>
-                          <Rectangle {...props} fill={barFill} radius={[6, 6, 3, 3]} style={{ transition: "fill 0.25s ease", filter: isActive ? "drop-shadow(0 4px 10px rgba(249,122,53,0.4))" : "none", cursor: "pointer" }} />
+                          <Rectangle {...props} fill={barFill} radius={[6, 6, 3, 3]} style={{ transition: "fill 0.25s ease", filter: isActive ? "drop-shadow(0 4px 10px rgba(249,122,53,0.4))" : "none", cursor: "default" }} />
                         </g>
                       );
                     }}
-                    onMouseMove={(data) => data && typeof data.activeTooltipIndex === "number" && setUserHoveredBar(data.activeTooltipIndex)}
-                    onMouseLeave={() => setUserHoveredBar(null)}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -484,9 +461,9 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
               <div className="relative flex-1">
                 <ResponsiveContainer width="100%" height={170}>
                   <PieChart>
-                    <Pie data={jobStatusData} dataKey="value" nameKey="name" innerRadius={42} outerRadius={64} paddingAngle={4} stroke="none" onMouseEnter={(_, index) => setUserHoveredSlice(index)} onMouseLeave={() => setUserHoveredSlice(null)}>
+                    <Pie data={jobStatusData} dataKey="value" nameKey="name" innerRadius={42} outerRadius={64} paddingAngle={4} stroke="none">
                       {jobStatusData.map((entry, i) => (
-                        <Cell key={entry.name} id={`dashboard-tour-slice-${i}`} fill={entry.fill} style={{ transform: activeSliceIndex === i ? "scale(1.05)" : "scale(1)", transformOrigin: "center", cursor: "pointer" }} />
+                        <Cell key={entry.name} id={`dashboard-tour-slice-${i}`} fill={entry.fill} style={{ transform: activeSliceIndex === i ? "scale(1.05)" : "scale(1)", transformOrigin: "center", cursor: "default" }} />
                       ))}
                     </Pie>
                   </PieChart>
@@ -500,7 +477,7 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                 {jobStatusData.map((s, i) => {
                   const isActive = activeSliceIndex === i;
                   return (
-                    <li key={s.name} onMouseEnter={() => { setUserHoveredSlice(i); setIsTopHovered(true); }} onMouseLeave={() => { setUserHoveredSlice(null); resetTopTimer(); }} className={`flex items-center gap-2 rounded-md px-2 py-1 transition-all cursor-pointer ${isActive ? "bg-slate-100/90 shadow-2xs ring-1 ring-slate-200" : "hover:bg-slate-50"}`}>
+                    <li key={s.name} className={`flex items-center gap-2 rounded-md px-2 py-1 transition-all cursor-pointer ${isActive ? "bg-slate-100/90 shadow-2xs ring-1 ring-slate-200" : "hover:bg-slate-50"}`}>
                       <span className="h-2 w-2 rounded-full" style={{ background: s.fill }} />
                       <span className={`text-xs ${isActive ? "font-bold text-slate-900" : "text-slate-600"}`}>{s.name}</span>
                       <span className="ml-auto text-xs font-semibold text-slate-900">{s.value}</span>
@@ -517,11 +494,7 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
         </div>
 
         {/* ── ROW 2: 2 COLUMNS (Live Transcript & Weekly Reports - Equal Balanced Height) ── */}
-        <div
-          className="grid gap-3 lg:grid-cols-2 items-stretch"
-          onMouseEnter={() => setIsBottomHovered(true)}
-          onMouseLeave={resetBottomTimer}
-        >
+        <div className="grid gap-3 lg:grid-cols-2 items-stretch">
           {/* Box 3: Live Transcript */}
           <SectionCard
             title="Live Transcript"
@@ -550,8 +523,6 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                 <div
                   id="dashboard-tour-caller-info"
                   className="flex items-center gap-2 cursor-pointer"
-                  onMouseEnter={() => { setCustomHoverTip("David Miller · HVAC Call (512) 993-2104"); setIsBottomHovered(true); }}
-                  onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
                 >
                   <div className="relative flex h-6 w-6 items-center justify-center rounded-md bg-slate-900 text-white font-bold text-[10px] shadow-xs">
                     AI
@@ -570,8 +541,6 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                 <div
                   id="dashboard-tour-waveform"
                   className="flex items-center gap-1 rounded-full bg-white px-2 py-0.5 border border-slate-200/80 shadow-2xs cursor-pointer transition hover:border-emerald-300 hover:shadow-xs"
-                  onMouseEnter={() => { setCustomHoverTip("Live Audio Stream · Active Transcription"); setIsBottomHovered(true); }}
-                  onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
                 >
                   <div className="flex items-center gap-0.5 h-2.5">
                     {[40, 85, 30, 95, 60, 80, 45].map((h, idx) => (
@@ -590,23 +559,17 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
 
               {/* Sleek Dialogue Messages */}
               <div className="my-2 space-y-1.5 text-xs">
-                <div
-                  className="rounded-md bg-white p-2 border border-slate-200/70 shadow-2xs transition hover:border-slate-300 cursor-pointer"
-                  onMouseEnter={() => { setCustomHoverTip("Caller Speech · AC Malfunction Inquiry"); setIsBottomHovered(true); }}
-                  onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
-                >
+                <div className="rounded-md bg-white p-2 border border-slate-200/70 shadow-2xs transition hover:border-slate-300 cursor-pointer">
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Caller</p>
                   <p className="text-slate-700 text-[11px] leading-relaxed">&ldquo;AC unit stopped blowing cold air and making a humming sound.&rdquo;</p>
                 </div>
                 <div
                   id="dashboard-tour-ai-bubble"
                   className={`rounded-md p-2 border shadow-2xs transition cursor-pointer ${
-                    currentBottomStep.target === "ai_bubble" && !isBottomHovered
+                    currentBottomStep.target === "ai_bubble"
                       ? "bg-orange-100/90 border-orange-300 ring-2 ring-orange-400/40"
                       : "bg-orange-50/80 border-orange-200/60 hover:bg-orange-100/70"
                   }`}
-                  onMouseEnter={() => { setCustomHoverTip("Foreman AI Agent · 10:00 AM Slot Confirmed"); setIsBottomHovered(true); }}
-                  onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
                 >
                   <p className="text-[9px] font-bold text-orange-600 uppercase tracking-wider mb-0.5">Foreman AI</p>
                   <p className="text-slate-900 text-[11px] font-medium leading-relaxed">&ldquo;I have tomorrow at 10:00 AM reserved with senior tech Brad.&rdquo;</p>
@@ -614,11 +577,7 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
               </div>
 
               {/* Symmetrical Bottom Sync Footer */}
-              <div
-                className="flex items-center justify-between border-t border-slate-200/70 pt-2 text-[11px] text-slate-500 cursor-pointer"
-                onMouseEnter={() => { setCustomHoverTip("Auto-synced slot to Google Calendar & Resend SMS"); setIsBottomHovered(true); }}
-                onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
-              >
+              <div className="flex items-center justify-between border-t border-slate-200/70 pt-2 text-[11px] text-slate-500 cursor-pointer">
                 <span className="flex items-center gap-1 font-medium text-slate-700 text-[10px]">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block shadow-2xs" />
                   Auto-Dispatched to Tech Brad
@@ -654,11 +613,7 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
             >
               {/* Key Report KPI Grid */}
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div
-                  className="rounded-md border border-slate-200/80 bg-white p-2 shadow-2xs transition hover:border-slate-300 hover:shadow-xs cursor-pointer"
-                  onMouseEnter={() => { setCustomHoverTip("Total Inbound: 143 Calls (+12% vs last week)"); setIsBottomHovered(true); }}
-                  onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
-                >
+                <div className="rounded-md border border-slate-200/80 bg-white p-2 shadow-2xs transition hover:border-slate-300 hover:shadow-xs cursor-pointer">
                   <p className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Total Calls</p>
                   <p className="text-sm font-bold text-slate-900 mt-0.5">143</p>
                   <p className="text-[9px] font-semibold text-emerald-600 mt-0.2">+12% vs last wk</p>
@@ -666,12 +621,10 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                 <div
                   id="dashboard-tour-kpi-answer"
                   className={`rounded-md border p-2 shadow-2xs transition cursor-pointer ${
-                    currentBottomStep.target === "kpi_answer" && !isBottomHovered
+                    currentBottomStep.target === "kpi_answer"
                       ? "border-emerald-400 bg-emerald-50/80 ring-2 ring-emerald-400/40"
                       : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs"
                   }`}
-                  onMouseEnter={() => { setCustomHoverTip("AI Answer Rate: 141 of 143 answered instantly"); setIsBottomHovered(true); }}
-                  onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
                 >
                   <p className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Answer Rate</p>
                   <p className="text-sm font-bold text-slate-900 mt-0.5">98.6%</p>
@@ -680,12 +633,10 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                 <div
                   id="dashboard-tour-kpi-value"
                   className={`rounded-md border p-2 shadow-2xs transition cursor-pointer ${
-                    currentBottomStep.target === "kpi_value" && !isBottomHovered
+                    currentBottomStep.target === "kpi_value"
                       ? "border-emerald-400 bg-emerald-50/80 ring-2 ring-emerald-400/40"
                       : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs"
                   }`}
-                  onMouseEnter={() => { setCustomHoverTip("Total Captured: $11,280 across 42 booked jobs"); setIsBottomHovered(true); }}
-                  onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
                 >
                   <p className="text-[9px] uppercase font-bold tracking-wider text-slate-400">Booked Value</p>
                   <p className="text-sm font-bold text-emerald-700 mt-0.5">$11,280</p>
@@ -697,12 +648,10 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
               <div
                 id="dashboard-tour-lead-bar"
                 className={`my-1.5 space-y-1 p-1 rounded-md transition cursor-pointer ${
-                  currentBottomStep.target === "lead_bar" && !isBottomHovered
+                  currentBottomStep.target === "lead_bar"
                     ? "bg-orange-100/50 ring-2 ring-orange-400/40"
                     : "hover:bg-slate-100/60"
                 }`}
-                onMouseEnter={() => { setCustomHoverTip("Lead Conversion: 87.4% (+7.4% higher than 80% target)"); setIsBottomHovered(true); }}
-                onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
               >
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-slate-700">Lead Conversion</span>
@@ -714,11 +663,7 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
               </div>
 
               {/* Symmetrical Bottom Sync Footer */}
-              <div
-                className="flex items-center justify-between border-t border-slate-200/70 pt-2 text-[11px] text-slate-500 cursor-pointer"
-                onMouseEnter={() => { setCustomHoverTip("Synced with Google Calendar, Resend SMS & PDF Export"); setIsBottomHovered(true); }}
-                onMouseLeave={() => { setCustomHoverTip(null); resetBottomTimer(); }}
-              >
+              <div className="flex items-center justify-between border-t border-slate-200/70 pt-2 text-[11px] text-slate-500 cursor-pointer">
                 <span className="flex items-center gap-1 font-medium text-slate-700 text-[10px]">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block shadow-2xs" />
                   Google Calendar & CSV Synced
@@ -732,24 +677,6 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
         </div>
 
       </div>
-
-      {/* Interactive Micro-Tooltip Pill when User Hovers Any Element */}
-      <AnimatePresence>
-        {customHoverTip && (
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 3 }}
-            transition={{ duration: 0.12 }}
-            className="flex items-center justify-center"
-          >
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-0.5 text-[11px] font-medium text-white shadow-md">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#F97A35]" />
-              {customHoverTip}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );
