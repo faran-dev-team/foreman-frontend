@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 
-const LIVE_LISTEN_BASE = "/api/v1/dashboard/live-listen";
+const LIVE_LISTEN_BASE = "/api/v1/dashboard/live-transcript";
 
 export type LiveListenCapabilities = {
   live_transcript: boolean;
