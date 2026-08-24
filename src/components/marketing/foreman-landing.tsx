@@ -5097,7 +5097,7 @@ export function Footer({ hideIntegrations = false, mode }: { hideIntegrations?: 
             </p>
             <div style={{ display: "flex", gap: 16 }}>
               {[
-                { id: "x", url: "https://x.com" },
+                { id: "x", url: "https://x.com/foremanai_?s=11" },
                 { id: "linkedin", url: "https://www.linkedin.com/company/foremanaii/?viewAsMember=true" },
                 { id: "instagram", url: "https://www.instagram.com/foreman.ai_?igsh=MTVyampxZHo1OTJqNQ==" }
               ].map((social, i) => (
