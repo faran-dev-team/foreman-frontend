@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 
-import { Outfit, IBM_Plex_Mono } from "next/font/google";
+import { Outfit, IBM_Plex_Mono, Playfair_Display } from "next/font/google";
 import { NotificationProvider } from "@/components/providers/NotificationProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 
@@ -9,6 +9,7 @@ import "./globals.css";
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-mono" });
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-playfair" });
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={`min-h-screen antialiased ${outfit.variable} ${mono.variable}`}>
+        <body className={`min-h-screen antialiased ${outfit.variable} ${mono.variable} ${playfair.variable}`}>
           <QueryProvider>
             <NotificationProvider>{children}</NotificationProvider>
           </QueryProvider>

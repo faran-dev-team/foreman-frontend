@@ -1224,7 +1224,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
             onMouseMove={handleMouseMove}
             style={{ position: "relative", display: "inline-block" }}
           >
-            <h1 className="fm-h1" style={mode === "main" ? { fontFamily: '"Playfair Display", "Times New Roman", serif' } : {}}>
+            <h1 className="fm-h1" style={mode === "main" ? { fontFamily: 'var(--font-playfair), "Playfair Display", "Times New Roman", serif' } : {}}>
               {content.headline.map((line, i) => {
                 const words = line.trim().split(" ");
                 return (
@@ -1540,7 +1540,7 @@ function DashboardPreview() {
         <div className="fm-sechead" style={{ marginBottom: 44, textAlign: "center", maxWidth: "100%" }}>
           <div className="fm-eyebrow">OWNER DASHBOARD</div>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 5vw, 56px)",
             lineHeight: 1.15,
             fontWeight: 400,
@@ -1955,7 +1955,7 @@ export function TradeSelector() {
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <Reveal className="fm-sechead" style={{ marginBottom: 24, maxWidth: "100%", textAlign: "center" }}>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 4.8vw, 56px)",
             lineHeight: 1.15,
             fontWeight: 400,
@@ -1976,7 +1976,7 @@ export function TradeSelector() {
             boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
           }}>
             <h3 className="fm-cta-banner-text" style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
               fontWeight: 400,
               color: C.textHeading,
               margin: 0,
@@ -2363,7 +2363,7 @@ function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
           </div>
 
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 4.4vw, 54px)",
             lineHeight: 1.15,
             fontWeight: 400,
@@ -2456,7 +2456,7 @@ function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
           <div className="fm-eyebrow">{pCopy.eyebrow}</div>
           <div style={{ margin: "24px 0", position: "relative", display: "inline-block" }}>
             <h2 style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
               fontSize: "clamp(32px, 5vw, 48px)",
               lineHeight: 1.1,
               fontWeight: 400,
@@ -2632,7 +2632,7 @@ function IntegrationsRow() {
 
           <div style={{ marginBottom: 64, position: "relative" }}>
             <h2 style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
               fontSize: "clamp(40px, 6vw, 64px)",
               lineHeight: 1.1,
               fontWeight: 400,
@@ -3627,7 +3627,7 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
         <Reveal className="fm-sechead" style={{ marginBottom: 40, textAlign: "center", maxWidth: "100%" }}>
           <div className="fm-eyebrow" style={{ display: "inline-block" }}>{fCopy.eyebrow}</div>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(36px, 5vw, 52px)",
             lineHeight: 1.1,
             fontWeight: 400,
@@ -4047,7 +4047,7 @@ function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
         <Reveal>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(36px, 5.5vw, 64px)",
             lineHeight: 1.12,
             fontWeight: 400,
@@ -4603,7 +4603,7 @@ export function TestimonialsSection() {
         <Reveal className="fm-sechead" style={{ marginBottom: 48, maxWidth: "100%", textAlign: "center" }}>
           <div className="fm-eyebrow">REAL CONTRACTOR RESULTS</div>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 5vw, 56px)",
             lineHeight: 1.15,
             fontWeight: 400,
@@ -5388,7 +5388,7 @@ export function Pricing() {
 
           <div className="relative z-10">
             <h2 style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
               fontSize: "clamp(32px, 4.8vw, 56px)",
               lineHeight: 1.15,
               fontWeight: 400,
@@ -5466,7 +5466,7 @@ export function FAQ({ mode = "main" }: { mode?: LandingMode }) {
         <Reveal className="fm-sechead">
           <div className="fm-eyebrow">STRAIGHT ANSWERS</div>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 4.8vw, 56px)",
             lineHeight: 1.15,
             fontWeight: 400,

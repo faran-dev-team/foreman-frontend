@@ -24,6 +24,10 @@
   font-family: var(--font-mono), monospace;
 }
 
+.fm-serif {
+  font-family: var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif;
+}
+
 .fm-eyebrow {
   font-family: var(--font-outfit), sans-serif;
   font-size: 16px;

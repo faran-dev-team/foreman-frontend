@@ -24,29 +24,48 @@ export function HeroSection({ tradeId }: { tradeId: TradeId }) {
         <div className="flex-1 text-center lg:text-left">
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 border" style={{ borderColor: C.accentOrange, background: `${C.accentOrange}15`, color: C.accentOrange }}>
             <Zap size={14} className="fill-current" />
-            <span className="text-xs font-bold tracking-widest uppercase">{content.heroBadge}</span>
+            <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontSize: "13px", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase" }}>{content.heroBadge}</span>
           </motion.div>
 
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }} className="text-5xl lg:text-7xl font-bold tracking-tight mb-6" style={{ color: C.textHeading, lineHeight: 1.1 }}>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="fm-h1 mb-6"
+            style={{
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Times New Roman", serif',
+              display: "block",
+              textAlign: "inherit",
+              fontSize: "clamp(34px, 4.8vw, 68px)",
+              lineHeight: 1.12,
+              letterSpacing: "-0.02em",
+              fontWeight: 500,
+            }}
+          >
             {content.heroHeadline}
           </motion.h1>
 
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 }} className="text-lg lg:text-xl mb-10 max-w-2xl mx-auto lg:mx-0" style={{ color: C.textBody, lineHeight: 1.6 }}>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="fm-hero-sub mb-10 max-w-2xl mx-auto lg:mx-0"
+          >
             {content.heroSub}
           </motion.p>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.3 }} className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
-            <MagneticButton href="#demo" className="fm-btn fm-btn-primary px-8 py-4 text-lg w-full sm:w-auto shadow-[0_0_40px_rgba(249,122,53,0.3)]">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.3 }} className="fm-hero-cta justify-center lg:justify-start">
+            <MagneticButton href="#demo" className="fm-btn fm-btn-primary w-full sm:w-auto shadow-[0_0_40px_rgba(249,122,53,0.3)]">
               See the Demo <ArrowRight size={18} className="ml-2" />
             </MagneticButton>
-            <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-ghost px-8 py-4 text-lg w-full sm:w-auto">
+            <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-ghost w-full sm:w-auto">
               Book a Pilot Call
             </MagneticButton>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6, duration: 1 }} className="mt-10 flex items-center justify-center lg:justify-start gap-6 text-sm" style={{ color: C.textBody }}>
-            <div className="flex items-center gap-2"><ShieldCheck size={16} color={C.accentGreenText} /> No credit card required</div>
-            <div className="flex items-center gap-2"><Star size={16} color={C.accentOrange} className="fill-current" /> 5.0 on G2</div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6, duration: 1 }} className="mt-10 fm-hero-trust justify-center lg:justify-start">
+            <span className="flex items-center gap-2"><ShieldCheck size={16} color={C.accentGreenText} /> No credit card required</span>
+            <span className="flex items-center gap-2"><Star size={16} color={C.accentOrange} className="fill-current" /> 5.0 on G2</span>
           </motion.div>
         </div>
 
