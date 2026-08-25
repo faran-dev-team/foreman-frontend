@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 import {
   GoogleCalendarConnect,
   GoogleCalendarConnectSkeleton,
@@ -17,13 +18,11 @@ export const metadata: Metadata = {
 export default function SettingsPage() {
   return (
     <section className="space-y-6 sm:space-y-8">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Settings</h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Manage integrations, shop configuration, and automation for reviews,
-          reminders, and follow-ups.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Settings"
+        lead="Manage integrations, shop setup, and automation."
+        support="Reviews, reminders, and follow ups."
+      />
 
       <NotificationPreferenceToggle />
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 import { ReviewDetailPanel } from "@/components/reviews/review-detail-panel";
 
 export const metadata: Metadata = {
@@ -13,14 +14,11 @@ type ReviewDetailPageProps = {
 export default function ReviewDetailPage({ params }: ReviewDetailPageProps) {
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-          Review request
-        </h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Delivery tracking and retry for this Google review ask.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Review request"
+        lead="Delivery tracking for this Google review request."
+        support="Retry the send if it failed."
+      />
 
       <ReviewDetailPanel reviewId={params.reviewId} />
     </section>

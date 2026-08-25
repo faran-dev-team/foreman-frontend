@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 import {
   FollowUpsPanel,
   FollowUpsPanelFallback,
@@ -13,15 +14,11 @@ export const metadata: Metadata = {
 export default function FollowUpsPage() {
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-          Post-service follow-ups
-        </h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Track feedback emails after completed jobs — status, delivery, rating,
-          and manual retry when a send fails.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Follow ups"
+        lead="Track feedback emails after completed jobs."
+        support="Check status, delivery, rating, and retry a send if it fails."
+      />
 
       <Suspense fallback={<FollowUpsPanelFallback />}>
         <FollowUpsPanel />

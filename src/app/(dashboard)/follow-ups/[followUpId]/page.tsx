@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 import { FollowUpDetailPanel } from "@/components/follow-ups/follow-up-detail-panel";
 
 export const metadata: Metadata = {
@@ -13,14 +14,11 @@ type FollowUpDetailPageProps = {
 export default function FollowUpDetailPage({ params }: FollowUpDetailPageProps) {
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-          Follow-up detail
-        </h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Delivery tracking, retry, and staff-recorded customer feedback.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Follow up detail"
+        lead="Delivery tracking and customer feedback for this follow up."
+        support="Retry the send if it failed."
+      />
 
       <FollowUpDetailPanel followUpId={params.followUpId} />
     </section>
