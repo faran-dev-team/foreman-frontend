@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 import {
   RemindersPanel,
   RemindersPanelFallback,
@@ -13,15 +14,11 @@ export const metadata: Metadata = {
 export default function RemindersPage() {
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-          Appointment reminders
-        </h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Track 24-hour and 1-hour reminder emails — status, delivery, and
-          manual retry when a send fails.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Appointment reminders"
+        lead="Track reminder emails sent a day before and an hour before the visit."
+        support="Check status, delivery, and retry a send if it fails."
+      />
 
       <Suspense fallback={<RemindersPanelFallback />}>
         <RemindersPanel />

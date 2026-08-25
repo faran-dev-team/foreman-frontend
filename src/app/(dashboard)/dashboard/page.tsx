@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 import {
   RevenueDashboardPanel,
   RevenueDashboardPanelFallback,
@@ -13,13 +14,11 @@ export const metadata: Metadata = {
 export default function DashboardPage() {
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Dashboard</h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Revenue captured, call performance, lead sources, and live bookings —
-          what Foreman booked for your shop.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Dashboard"
+        lead="Revenue captured, call performance, lead sources, and live bookings."
+        support="See what Foreman booked for your shop."
+      />
 
       <Suspense fallback={<RevenueDashboardPanelFallback />}>
         <RevenueDashboardPanel />

@@ -5,6 +5,7 @@ import {
   CallsTable,
   CallsTableFallback,
 } from "@/components/calls/calls-table";
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 
 export const metadata: Metadata = {
   title: "Calls | Foreman",
@@ -13,13 +14,11 @@ export const metadata: Metadata = {
 export default function CallsPage() {
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Calls</h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Live and recent inbound calls — time, caller, intent, outcome, and
-          estimated value.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Calls"
+        lead="Live and recent inbound calls."
+        support="Time, caller, intent, outcome, and estimated value."
+      />
 
       <Suspense fallback={<CallsTableFallback />}>
         <CallsTable />

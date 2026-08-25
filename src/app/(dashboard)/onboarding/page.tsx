@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 import {
   OnboardingWizardPanel,
   OnboardingWizardPanelFallback,
@@ -13,15 +14,11 @@ export const metadata: Metadata = {
 export default function OnboardingPage() {
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-          Onboarding wizard
-        </h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Set up business info, hours, service area, pricing catalog, and
-          calendar — step by step.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Onboarding wizard"
+        lead="Set up business info, hours, service area, pricing catalog, and calendar."
+        support="Walk through it step by step."
+      />
 
       <Suspense fallback={<OnboardingWizardPanelFallback />}>
         <OnboardingWizardPanel />

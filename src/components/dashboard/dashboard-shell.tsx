@@ -190,11 +190,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </button>
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <ForemanLogo size={22} className="hidden sm:block" />
-            <p className="min-w-0 truncate text-sm text-slate-500 sm:hidden">
+            <p className="min-w-0 truncate text-sm font-medium text-slate-700 sm:hidden">
               Owner portal
             </p>
-            <p className="hidden min-w-0 truncate text-sm text-slate-500 sm:block">
-              Foreman Launch+ · Owner portal
+            <p className="hidden min-w-0 truncate text-sm font-medium text-slate-700 sm:block">
+              Foreman Owner portal
             </p>
           </div>
           <NotificationBell />

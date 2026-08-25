@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { DashboardPageHero } from "@/components/dashboard/dashboard-page-hero";
 import { ReminderDetailPanel } from "@/components/reminders/reminder-detail-panel";
 
 export const metadata: Metadata = {
@@ -13,14 +14,11 @@ type ReminderDetailPageProps = {
 export default function ReminderDetailPage({ params }: ReminderDetailPageProps) {
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-          Reminder detail
-        </h2>
-        <p className="mt-1.5 text-sm text-slate-600 sm:mt-2 sm:text-base">
-          Delivery tracking and retry for this appointment reminder.
-        </p>
-      </div>
+      <DashboardPageHero
+        title="Reminder detail"
+        lead="Delivery tracking for this appointment reminder."
+        support="Retry the send if it failed."
+      />
 
       <ReminderDetailPanel reminderId={params.reminderId} />
     </section>
