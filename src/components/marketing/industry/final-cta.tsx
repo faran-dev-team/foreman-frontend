@@ -16,14 +16,24 @@ export function CTASection({ tradeId }: { tradeId: TradeId }) {
       />
 
       <div className="relative z-10 text-center px-6 max-w-3xl">
-        <h2 className="text-5xl font-bold text-white mb-6 tracking-tight">Stop Missing Jobs.</h2>
-        <p className="text-xl text-gray-300 mb-10">Let Foreman answer every call and book jobs while you sleep.</p>
+        <h2 style={{
+          fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
+          fontSize: "clamp(32px, 5vw, 56px)",
+          lineHeight: 1.15,
+          fontWeight: 400,
+          letterSpacing: "-0.02em",
+          color: "#FFFFFF",
+          margin: "0 auto 16px",
+        }}>
+          Stop Missing Jobs.
+        </h2>
+        <p className="fm-secsub mb-10 text-xl" style={{ maxWidth: 600, margin: "0 auto 36px" }}>Let Foreman answer every call and book jobs while you sleep.</p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn px-10 py-5 text-lg font-bold rounded-full text-white shadow-2xl transition-transform hover:scale-105" style={{ background: `linear-gradient(135deg, ${C.accentOrange}, #ef4444)` }}>
+        <div className="fm-hero-cta justify-center">
+          <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary shadow-2xl">
             Book a Pilot Call
           </MagneticButton>
-          <MagneticButton href="#demo" className="fm-btn px-10 py-5 text-lg font-bold rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors backdrop-blur-md">
+          <MagneticButton href="#demo" className="fm-btn fm-btn-ghost">
             See the Demo
           </MagneticButton>
         </div>

@@ -1,5 +1,6 @@
 'use client';
-import { Nav, Footer, Pricing, FAQ, Check } from '../foreman-landing';
+import { Nav, Footer, Pricing, FAQ, Check, CinematicWorkflow, C } from '../foreman-landing';
+import '../foreman-landing.css';
 import { ReactLenis } from '@studio-freight/react-lenis';
 import { TradeId } from './content';
 
@@ -11,11 +12,17 @@ import { FeatureGrid } from './feature-grid';
 import { CTASection } from './final-cta';
 
 export function IndustryPage({ tradeId }: { tradeId: TradeId }) {
-  // If the trade is 'law-firm', we can fallback to 'main' for FAQ if we want, or define law-firm FAQ.
-  // FAQ component defaults to 'main' if not found.
   return (
     <ReactLenis root options={{ lerp: 0.05, duration: 1.6, smoothWheel: true }}>
-      <main className="font-outfit bg-[#0A0F1C] text-white overflow-x-clip">
+      <main
+        className="fm-landing font-sans"
+        style={{
+          fontFamily: "var(--font-outfit), sans-serif",
+          color: C.textHeading,
+          background: C.navBg,
+          overflowX: "clip",
+        }}
+      >
         <Nav />
         <HeroSection tradeId={tradeId} />
         <MathSection tradeId={tradeId} />
@@ -40,8 +47,12 @@ export function IndustryPage({ tradeId }: { tradeId: TradeId }) {
           </div>
         </div>
 
-        <FAQ mode={tradeId as any} />
+        <FAQ mode="main" />
         
+        <div id="workflow">
+          <CinematicWorkflow tradeId={tradeId} />
+        </div>
+
         <Footer hideIntegrations />
       </main>
     </ReactLenis>

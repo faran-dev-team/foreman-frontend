@@ -9,6 +9,7 @@
   --foreground: #0a0f1c;
   --foreman-orange: #f97a35;
   --foreman-carbon: #0a0f1c;
+  --font-serif: var(--font-playfair), "Playfair Display", "Libre Baskerville", Georgia, serif;
 }
 
 body {

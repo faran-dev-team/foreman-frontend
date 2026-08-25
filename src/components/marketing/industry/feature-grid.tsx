@@ -15,9 +15,19 @@ export function FeatureGrid({ tradeId }: { tradeId: TradeId }) {
   return (
     <section className="py-24" style={{ background: C.bgPrimary }} ref={ref}>
       <div className="max-w-[1200px] mx-auto px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-white mb-4">Everything You Need</h2>
-          <p className="text-gray-400">Purpose-built features for service businesses.</p>
+        <div className="fm-sechead mb-16 text-center">
+          <h2 style={{
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 5vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: "#FFFFFF",
+            margin: "0 auto 16px",
+          }}>
+            Everything You Need
+          </h2>
+          <p className="fm-secsub">Purpose-built features for service businesses.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -16,7 +16,9 @@ const isPublicRoute = createRouteMatcher([
   "/privacy",
   "/terms",
   "/about",
-  "/contact"
+  "/contact",
+  "/videos(.*)",
+  "/images(.*)"
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
@@ -27,7 +29,7 @@ export default clerkMiddleware(async (auth, request) => {
 
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|mp4|webm|ogg|mp3|wav|mov)).*)",
     "/(api|trpc)(.*)",
   ],
 };

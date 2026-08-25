@@ -14,23 +14,27 @@ export const brand = {
 } as const;
 
 export function ForemanLogo({
-  size = 40,
+  size = 32,
   bg = brand.orange,
   fg = brand.carbon,
   className,
+  style,
 }: {
   size?: number;
+  width?: number | string;
   bg?: string;
   fg?: string;
   className?: string;
+  style?: React.CSSProperties;
 }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 100 100"
-      aria-hidden
       className={className}
+      style={style}
+      aria-hidden
     >
       <rect width="100" height="100" rx="24" fill={bg} />
       <rect x="30" y="26" width="16" height="52" rx="2.5" fill={fg} />

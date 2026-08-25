@@ -17,12 +17,21 @@ export function MathSection({ tradeId }: { tradeId: TradeId }) {
           initial={{ opacity: 0, y: 20 }} 
           animate={isInView ? { opacity: 1, y: 0 } : {}} 
           transition={{ duration: 0.6 }} 
-          className="text-center mb-16"
+          className="fm-sechead text-center mb-16"
         >
-          <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-6 text-white leading-tight">
+          <h2 style={{
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 5vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: "#FFFFFF",
+            maxWidth: 750,
+            margin: "0 auto 16px",
+          }}>
             {content.mathHeadline}
           </h2>
-          <p className="text-xl text-gray-400 leading-relaxed max-w-3xl mx-auto">
+          <p className="fm-secsub max-w-3xl mx-auto">
             {content.mathBody}
           </p>
         </motion.div>

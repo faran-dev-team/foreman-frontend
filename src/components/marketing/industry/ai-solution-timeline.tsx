@@ -21,9 +21,19 @@ export function TimelineSection() {
 
   return (
     <section className="py-24" style={{ background: C.bgPrimary }} ref={containerRef}>
-      <div className="max-w-[800px] mx-auto px-6 text-center mb-16">
-        <h2 className="text-4xl font-bold text-white mb-4">How It Works</h2>
-        <p className="text-lg text-gray-400">A completely automated workflow from ring to revenue.</p>
+      <div className="fm-sechead max-w-[800px] mx-auto px-6 text-center mb-16">
+        <h2 style={{
+          fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
+          fontSize: "clamp(32px, 5vw, 56px)",
+          lineHeight: 1.15,
+          fontWeight: 400,
+          letterSpacing: "-0.02em",
+          color: "#FFFFFF",
+          margin: "0 auto 16px",
+        }}>
+          How It Works
+        </h2>
+        <p className="fm-secsub">A completely automated workflow from ring to revenue.</p>
       </div>
 
       <div className="max-w-[600px] mx-auto relative px-6">

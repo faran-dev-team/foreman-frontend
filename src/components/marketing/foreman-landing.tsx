@@ -5,8 +5,9 @@ export type LandingMode = "main" | "hvac" | "plumbing" | "restoration" | "proper
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
+import dynamic from "next/dynamic";
+import { useRouter, usePathname } from "next/navigation";
 import {
   motion,
   useScroll,
@@ -25,24 +26,9 @@ import { ReactLenis } from "@studio-freight/react-lenis";
 
 import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 import {
-  DoodleTechnicianOnCall,
-  DoodleHardHat,
   DoodleRingingPhone,
-  DoodleWrenchGear,
   DoodleHouseCheck,
-  DoodleServiceVan,
   DoodleClipboard,
-  DoodleThumbsUp,
-  DoodleSignalBars,
-  DoodleQuestion,
-  NicheHVAC,
-  NichePlumbing,
-  NicheElectrical,
-  NicheRoofing,
-  NichePest,
-  NicheGarage,
-  NicheLocksmith,
-  NicheAppliance,
   DoodleIntegrations,
   DoodleSunburst,
 } from "./foreman-illustrations";
@@ -56,8 +42,8 @@ const CALENDLY_LINK = CALENDLY_PILOT_URL;
 const NAV_SECTIONS = [
   { href: "#how", label: "How it works" },
   { href: "#features", label: "Features" },
-  { href: "#pricing", label: "Pricing" },
-] as const;
+  { href: CALENDLY_LINK, label: "Pay as you go" },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Brand tokens (shared with owner dashboard via @/lib/brand)         */
@@ -80,15 +66,17 @@ export const C = {
 /*  Reusable: F-monogram logo                                          */
 /* ------------------------------------------------------------------ */
 export function Logo({
-  size = 40,
+  size = 32,
+  width,
   bg = C.accentOrange,
   fg = C.bgPrimary,
 }: {
   size?: number;
+  width?: number | string;
   bg?: string;
   fg?: string;
 }) {
-  return <ForemanLogo size={size} bg={bg} fg={fg} />;
+  return <ForemanLogo size={size} width={width} bg={bg} fg={fg} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -126,15 +114,6 @@ export function Reveal({
 /* ------------------------------------------------------------------ */
 /*  Reusable: scroll-driven word-by-word text reveal                  */
 /* ------------------------------------------------------------------ */
-function ScrollWord({ word, range, progress }: { word: string; range: [number, number]; progress: any }) {
-  const opacity = useTransform(progress, range, [0.15, 1.0]);
-  return (
-    <span style={{ position: "relative", display: "inline-block", marginRight: "0.28em" }}>
-      <motion.span style={{ opacity }}>{word}</motion.span>
-    </span>
-  );
-}
-
 export function ScrollTextReveal({
   text,
   className,
@@ -146,21 +125,9 @@ export function ScrollTextReveal({
   style?: React.CSSProperties;
   as?: any;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start 0.85", "end 0.40"],
-  });
-
-  const words = text.split(" ");
-
   return (
-    <Component ref={containerRef} className={className} style={{ ...style, display: "inline-block" }}>
-      {words.map((word, i) => {
-        const start = i / words.length;
-        const end = start + 1 / words.length;
-        return <ScrollWord key={i} word={word} range={[start, end]} progress={scrollYProgress} />;
-      })}
+    <Component className={className} style={{ ...style, display: "inline-block" }}>
+      {text}
     </Component>
   );
 }
@@ -203,9 +170,26 @@ function CountUp({
 /* ------------------------------------------------------------------ */
 /*  Reusable: Tilt Card with Glow                                      */
 /* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------
+   Mobile detection: matches small screens AND coarse-pointer (touch)
+   devices (tablets can be wide but still choke on blur/3D-transform).
+------------------------------------------------------------------ */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 900px), (pointer: coarse)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
+
 function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", style, animate, transition }: { children: React.ReactNode, className?: string, glowColor?: string, style?: React.CSSProperties, animate?: any, transition?: any }) {
   const ref = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const [isHovered, setIsHovered] = useState(false);
 
   const mouseX = useMotionValue(0);
@@ -215,7 +199,7 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
   const ry = useSpring(0, { damping: 25, stiffness: 250, mass: 0.5 });
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current || reducedMotion) return;
+    if (!ref.current || reducedMotion || isMobile) return;
     const { left, top, width, height } = ref.current.getBoundingClientRect();
     const x = e.clientX - left;
     const y = e.clientY - top;
@@ -223,9 +207,9 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
     mouseY.set(y);
     rx.set(((y - height / 2) / height) * -8);
     ry.set(((x - width / 2) / width) * 8);
-  }, [reducedMotion, mouseX, mouseY, rx, ry]);
+  }, [reducedMotion, isMobile, mouseX, mouseY, rx, ry]);
 
-  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseEnter = useCallback(() => { if (!isMobile) setIsHovered(true); }, [isMobile]);
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false);
     rx.set(0);
@@ -233,6 +217,17 @@ function TiltCard({ children, className, glowColor = "rgba(255,255,255,0.12)", s
   }, [rx, ry]);
 
   const background = useMotionTemplate`radial-gradient(350px circle at ${mouseX}px ${mouseY}px, ${glowColor}, transparent 80%)`;
+
+  // Flat, zero-compositing-cost render path for touch devices.
+  // perspective + preserve-3d forces each card onto its own GPU layer;
+  // on mobile that stacks up fast — this path skips all of it.
+  if (isMobile) {
+    return (
+      <div className={className} style={{ position: "relative", ...style }}>
+        {children}
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -396,7 +391,7 @@ function NavAuthLinks({ className, onNavigate, renderDesktopItem }: { className:
   );
 }
 
-export function Nav() {
+export function Nav({ mode }: { mode?: LandingMode | "industry" } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -405,6 +400,20 @@ export function Nav() {
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   const router = useRouter();
+  const pathname = usePathname();
+  const isNiche = mode ? mode !== "main" : (pathname && pathname !== "/" && pathname !== "");
+
+  const navSections = isNiche
+    ? [
+        { href: "#how", label: "How it works" },
+        { href: "#features", label: "Features" },
+        { href: "#pricing", label: "Pricing" },
+      ]
+    : [
+        { href: "#how", label: "How it works" },
+        { href: "#features", label: "Features" },
+        { href: CALENDLY_LINK, label: "Pay as you go" },
+      ];
 
   const handleScrollTo = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (href.startsWith("#") || href.startsWith("/#")) {
@@ -467,14 +476,23 @@ export function Nav() {
           transition: "background .4s cubic-bezier(0.16,1,0.3,1), border-color .4s cubic-bezier(0.16,1,0.3,1)",
         }}
       >
-        <div className="fm-wrap fm-nav-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: scrolled ? 64 : 88, transition: "height 0.45s cubic-bezier(0.16,1,0.3,1)", gap: 16 }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1)", transform: `scale(${scrolled ? 0.85 : 1})`, transformOrigin: "left center" }}><Logo size={38} /></div>
-            <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 22, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
+        <div className="fm-wrap fm-nav-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: scrolled ? 54 : 64, transition: "height 0.45s cubic-bezier(0.16,1,0.3,1)", gap: 16 }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <div style={{ transition: "transform 0.45s cubic-bezier(0.16,1,0.3,1)", transform: `scale(${scrolled ? 0.9 : 1})`, transformOrigin: "left center" }}><Logo size={32} /></div>
+            <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 18, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
           </Link>
           <div className="fm-nav-desktop" onMouseLeave={() => setHoveredId(null)}>
-            {NAV_SECTIONS.map((item) => (
-              <a key={item.href} href={item.href} className="fm-navlink" onMouseEnter={() => setHoveredId(item.href)} onClick={(e) => handleScrollTo(e, item.href)} style={{ position: "relative", padding: "8px 16px" }}>
+            {navSections.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                target={item.href.startsWith("http") ? "_blank" : undefined}
+                rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                className="fm-navlink"
+                onMouseEnter={() => setHoveredId(item.href)}
+                onClick={(e) => handleScrollTo(e, item.href)}
+                style={{ position: "relative", padding: "8px 16px" }}
+              >
                 <span style={{ position: "relative", zIndex: 2 }}>{item.label}</span>
                 {hoveredId === item.href && !reducedMotion && <motion.div layoutId="navHover" style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.08)", borderRadius: 999, zIndex: 1 }} transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
               </a>
@@ -497,7 +515,18 @@ export function Nav() {
         </div>
         <div id="fm-mobile-nav" className={`fm-nav-mobile${mobileOpen ? " fm-nav-mobile-open" : ""}`}>
           <div className="fm-wrap fm-nav-mobile-inner">
-            {NAV_SECTIONS.map((item) => <a key={item.href} href={item.href} className="fm-nav-mobile-link" onClick={(e) => handleScrollTo(e, item.href)}>{item.label}</a>)}
+            {navSections.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                target={item.href.startsWith("http") ? "_blank" : undefined}
+                rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                className="fm-nav-mobile-link"
+                onClick={(e) => handleScrollTo(e, item.href)}
+              >
+                {item.label}
+              </a>
+            ))}
             <NavAuthLinks className="fm-nav-mobile-link" onNavigate={closeMobile} />
             <a href={CALENDLY_LINK} className="fm-btn fm-btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={closeMobile}>Book a pilot call</a>
           </div>
@@ -532,7 +561,7 @@ const HERO_CALLS: HeroCallEntry[] = [
   { initials: "JK", name: "James K.", trade: "Electrical", issue: "Breaker panel upgrade", time: "8:47 PM", priority: "standard", revenue: 2400 },
 ];
 
-function CallCardWaveform() {
+const CallCardWaveform = memo(function CallCardWaveform() {
   const bars = [0.45, 0.9, 0.6, 1, 0.5, 0.75, 0.4];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 2.5, height: 16 }} aria-hidden>
@@ -547,9 +576,9 @@ function CallCardWaveform() {
       ))}
     </div>
   );
-}
+});
 
-function CallCardAvatar({ initials, priority }: { initials: string; priority: "standard" | "emergency" }) {
+const CallCardAvatar = memo(function CallCardAvatar({ initials, priority }: { initials: string; priority: "standard" | "emergency" }) {
   const accent = priority === "emergency" ? C.accentOrange : "rgba(255,255,255,0.18)";
   return (
     <div style={{
@@ -564,7 +593,7 @@ function CallCardAvatar({ initials, priority }: { initials: string; priority: "s
       {initials}
     </div>
   );
-}
+});
 
 export function MagneticButton({ children, href, className, target, rel, style }: { children: React.ReactNode, href: string, className?: string, target?: string, rel?: string, style?: React.CSSProperties }) {
   const ref = useRef<HTMLAnchorElement>(null);
@@ -932,9 +961,193 @@ const HERO_COPY: Record<LandingMode, { eyebrow: string; headline: string[]; head
   }
 };
 
+function HeroWaterWavesBackground() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { amount: 0.05, once: false });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const reducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
+  const mousePos = useRef({ x: -1000, y: -1000 });
+
+  useEffect(() => {
+    if (isMobile || reducedMotion || !isInView) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    // Cap pixel ratio at 1 — was unset (defaulted to native, up to 3× on phones)
+    const dpr = 1;
+    let width = 0;
+    let height = 0;
+
+    const handleResize = () => {
+      if (!canvas.parentElement) return;
+      width = canvas.parentElement.offsetWidth;
+      height = canvas.parentElement.offsetHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    };
+    handleResize();
+
+    let resizeTicking = false;
+    const onResize = () => {
+      if (!resizeTicking) {
+        resizeTicking = true;
+        requestAnimationFrame(() => { handleResize(); resizeTicking = false; });
+      }
+    };
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mousePos.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
+    window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+
+    let time = 0;
+    let lastTs = 0;
+    // Throttle to ~30 fps instead of 60 fps
+    const FRAME_INTERVAL = 1000 / 30;
+
+    const render = (ts: number) => {
+      animationFrameId = requestAnimationFrame(render);
+      if (ts - lastTs < FRAME_INTERVAL) return;
+      lastTs = ts;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+      // Step doubled vs original since we run at half the frame rate
+      time += 0.005;
+
+      // Coarser grid — fewer sin/cos calls per frame
+      const stepX = 30;
+      const stepY = 24;
+      const cols = Math.ceil(width / stepX) + 1;
+      const rows = Math.ceil(height / stepY) + 1;
+
+      const mx = mousePos.current.x;
+      const my = mousePos.current.y;
+
+      // Hoist linear gradient outside row loop to avoid per-frame GC churn
+      const strokeGrad = ctx.createLinearGradient(0, 0, width, 0);
+      strokeGrad.addColorStop(0, "rgb(56, 189, 248)");
+      strokeGrad.addColorStop(0.5, "rgb(14, 165, 233)");
+      strokeGrad.addColorStop(1, "rgb(168, 85, 247)");
+      ctx.strokeStyle = strokeGrad;
+
+      // Draw 3D liquid wave mesh
+      for (let r = 0; r < rows; r++) {
+        ctx.beginPath();
+        for (let c = 0; c < cols; c++) {
+          const x = c * stepX;
+          const y = r * stepY;
+
+          // Harmonic 3D wave equations (identical visual, same coefficients)
+          const wave1 = Math.sin(x * 0.01 + time * 2.2) * Math.cos(y * 0.008 + time * 1.8);
+          const wave2 = Math.sin((x + y) * 0.007 - time * 1.9) * 0.7;
+          const wave3 = Math.cos(x * 0.015 - y * 0.01 + time * 2.8) * 0.4;
+
+          // Interactive mouse ripple distortion
+          const dx = x - mx;
+          const dy = y - my;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          let mouseRipple = 0;
+          if (dist < 180) {
+            mouseRipple = Math.sin(dist * 0.08 - time * 6) * ((180 - dist) / 180) * 28;
+          }
+
+          const elevation = (wave1 + wave2 + wave3) * 32 + mouseRipple;
+          const depthRatio = y / height;
+          const projX = x + Math.sin(time * 1.5 + y * 0.012) * (1 - depthRatio) * 10;
+          const projY = y + elevation;
+
+          if (c === 0) {
+            ctx.moveTo(projX, projY);
+          } else {
+            ctx.lineTo(projX, projY);
+          }
+        }
+
+        const normY = r / rows;
+        ctx.globalAlpha = Math.min(0.4, Math.max(0.06, (1 - normY * 0.65) * 0.35 + 0.06));
+        ctx.lineWidth = normY > 0.4 ? 1.6 : 1.1;
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1;
+
+      // Fewer sparkles, no per-sparkle shadowBlur (shadowBlur is GPU-expensive)
+      ctx.fillStyle = "#FFFFFF";
+      for (let i = 0; i < 14; i++) {
+        const sx = (Math.sin(i * 77 + time * 1.2) * 0.5 + 0.5) * width;
+        const sy = (Math.cos(i * 44 + time * 1.4) * 0.5 + 0.5) * height;
+        ctx.globalAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.5;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isInView, isMobile, reducedMotion]);
+
+  if (isMobile || reducedMotion) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: "58%",
+          zIndex: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 70% 60% at 50% 20%, rgba(56,189,248,0.10), transparent 70%)",
+          maskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: "58%",
+        overflow: "hidden",
+        pointerEvents: "none",
+        zIndex: 0,
+        maskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+        WebkitMaskImage: "linear-gradient(to bottom, black 35%, transparent 95%)",
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "block",
+        }}
+      />
+    </div>
+  );
+}
+
 function Hero({ mode = "main" }: { mode?: LandingMode }) {
   const ref = useRef(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const yGlow = useTransform(scrollYProgress, [0, 1], [0, 160]);
   const reducedMotion = useReducedMotion();
@@ -943,11 +1156,14 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
   const [isHovered, setIsHovered] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => { });
-    }
-  }, []);
+  const handleMouseEnter = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCursorPos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+    setIsHovered(true);
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -958,41 +1174,15 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
   };
 
   return (
-    <header id="top" ref={ref} style={{ background: C.bgPrimary, color: C.textHeading, padding: "60px 0 60px", position: "relative", overflow: "hidden" }}>
-      {/* Background Video Layer */}
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        onCanPlay={(e) => {
-          e.currentTarget.play().catch(() => { });
-        }}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          zIndex: 0,
-          opacity: 0.38,
-          pointerEvents: "none"
-        }}
-      >
-        <source src="/videos/bg-wave.webm" type="video/webm" />
-        <source src="https://framerusercontent.com/assets/U83OMjeKVajyjISNUuuTiUXc.webm" type="video/webm" />
-        <source src="/videos/bg-trades.mp4" type="video/mp4" />
-      </video>
-
+    <header id="top" ref={ref} style={{ background: "#050812", color: C.textHeading, padding: "60px 0 60px", position: "relative", overflow: "hidden" }}>
+      {/* 3D Water Waves Background */}
+      <WaterWavesBackground />
       {/* Primary radial glow — top right */}
       <motion.div
         aria-hidden
         style={{
           position: "absolute", top: -240, right: -200, width: 720, height: 720, y: yGlow, zIndex: 0,
-          background: `radial-gradient(circle, ${C.accentOrange}20 0%, ${C.accentOrange}08 40%, transparent 70%)`,
+          background: `radial-gradient(circle, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 40%, transparent 70%)`,
         }}
         animate={reducedMotion ? {} : { scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
@@ -1020,7 +1210,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
       />
 
       <div className="fm-wrap fm-hero-grid" style={{ position: "relative", zIndex: 3 }}>
-        <div>
+        <div style={{ maxWidth: 860, margin: "0 auto", width: "100%" }}>
           <motion.div className="fm-eyebrow" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             {content.eyebrow}
           </motion.div>
@@ -1029,12 +1219,12 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
             target="_blank"
             rel="noopener noreferrer"
             className="fm-hero-headline-link"
-            onMouseEnter={() => setIsHovered(true)}
+            onMouseEnter={handleMouseEnter}
             onMouseLeave={() => setIsHovered(false)}
             onMouseMove={handleMouseMove}
             style={{ position: "relative", display: "inline-block" }}
           >
-            <h1 className="fm-h1" style={mode === "main" ? { fontFamily: '"Playfair Display", "Times New Roman", serif' } : {}}>
+            <h1 className="fm-h1" style={mode === "main" ? { fontFamily: 'var(--font-playfair), "Playfair Display", "Times New Roman", serif' } : {}}>
               {content.headline.map((line, i) => {
                 const words = line.trim().split(" ");
                 return (
@@ -1043,7 +1233,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
                       <motion.span
                         key={wIdx}
                         style={{ display: "inline-block", marginRight: "0.28em", transformStyle: "preserve-3d" }}
-                        initial={{ opacity: 0, y: "100%", rotateX: reducedMotion ? 0 : -25, scale: 0.95 }}
+                        initial={{ opacity: 1, y: "0%", rotateX: 0, scale: 1 }}
                         animate={{ opacity: 1, y: "0%", rotateX: 0, scale: 1 }}
                         transition={{
                           duration: 0.95,
@@ -1056,7 +1246,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
                     ))}
                     {i === content.headline.length - 1 && (
                       <motion.span
-                        initial={{ opacity: 0, y: "100%", scale: 0.85, filter: "blur(8px)" }}
+                        initial={{ opacity: 1, y: "0%", scale: 1, filter: "blur(0px)" }}
                         animate={{ opacity: 1, y: "0%", scale: 1, filter: "blur(0px)" }}
                         transition={{ duration: 1.1, delay: 0.12 + (i * 0.15) + (words.length * 0.08), ease: [0.16, 1, 0.3, 1] }}
                         className="fm-serif-italic"
@@ -1079,15 +1269,15 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
               {isHovered && (
                 <motion.div
                   className="fm-headline-hover-badge-centered"
-                  initial={{ opacity: 0, scale: 0.5 }}
+                  initial={{ opacity: 0, scale: 0.65 }}
                   animate={{
                     opacity: 1,
                     scale: 1,
                     x: cursorPos.x,
                     y: cursorPos.y,
                   }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 28, mass: 0.3 }}
+                  exit={{ opacity: 0, scale: 0.65, transition: { duration: 0.1 } }}
+                  transition={{ type: "spring", stiffness: 1400, damping: 45, mass: 0.08 }}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -1096,10 +1286,13 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
                     zIndex: 50,
                   }}
                 >
+                  <span className="fm-badge-shimmer" />
                   <span>Request a Demo</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M7 17L17 7M17 7H7M17 7V17" />
-                  </svg>
+                  <span className="fm-badge-arrow-pill">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M7 17L17 7M17 7H7M17 7V17" />
+                    </svg>
+                  </span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1116,6 +1309,7 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            style={{ marginBottom: 36 }}
           >
             {["No monthly fee during pilot", "Pay only per booking", "Live in 24 hours"].map((t, i) => (
               <motion.span
@@ -1128,9 +1322,136 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
               </motion.span>
             ))}
           </motion.div>
+
+          {/* Interactive Hero Video Bot Player with Play / Pause Controls */}
+          {/* <HeroVideoBotPlayer /> */}
         </div>
       </div>
     </header>
+  );
+}
+
+function HeroVideoBotPlayer() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [progress, setProgress] = useState(0);
+
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    const p = (videoRef.current.currentTime / (videoRef.current.duration || 1)) * 100;
+    setProgress(isNaN(p) ? 0 : p);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.92, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.7, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      style={{
+        position: "relative",
+        borderRadius: 18,
+        overflow: "hidden",
+        background: "rgba(10, 15, 28, 0.9)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255, 255, 255, 0.12)",
+        boxShadow: "0 24px 60px rgba(0, 0, 0, 0.65), 0 0 30px rgba(249, 122, 53, 0.12)",
+        maxWidth: 540,
+        width: "100%",
+        margin: "0 auto",
+      }}
+    >
+      {/* Video Viewport */}
+      <div
+        onClick={togglePlay}
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: "16 / 9",
+          cursor: "pointer",
+          background: "#000000",
+        }}
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onTimeUpdate={handleTimeUpdate}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        >
+          <source src="/videos/foreman.mp4" type="video/mp4" />
+          <source src="/videos/bg-trades.mp4" type="video/mp4" />
+        </video>
+
+        {/* Single Center Play Button Overlay */}
+        <AnimatePresence>
+          {!isPlaying && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.75 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.75 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0, 0, 0, 0.42)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #F97A35 0%, #EA580C 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 10px 28px rgba(249, 122, 53, 0.65), 0 0 20px rgba(249, 122, 53, 0.4)",
+                  paddingLeft: 4,
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFFFFF">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Laser-thin progress bar */}
+      <div style={{ width: "100%", height: 2.5, background: "rgba(255, 255, 255, 0.08)" }}>
+        <div
+          style={{
+            height: "100%",
+            width: `${progress}%`,
+            background: "linear-gradient(90deg, #F97A35, #FFB020)",
+            transition: "width 0.15s linear",
+          }}
+        />
+      </div>
+    </motion.div>
   );
 }
 
@@ -1138,28 +1459,63 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
 /*  DASHBOARD PREVIEW (landing only — renders real DashboardOverview)  */
 /* ================================================================== */
 
-import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+const DashboardOverview = dynamic(
+  () => import("@/components/dashboard/dashboard-overview").then((mod) => mod.DashboardOverview),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{ height: 600, display: "flex", flexDirection: "column", gap: 16, padding: "28px 32px", background: "rgba(255,255,255,0.02)", borderRadius: 12 }}>
+        <div style={{ height: 28, width: "25%", background: "rgba(255,255,255,0.08)", borderRadius: 6 }} />
+        <div style={{ height: 110, width: "100%", background: "rgba(255,255,255,0.05)", borderRadius: 8 }} />
+        <div style={{ height: 320, width: "100%", background: "rgba(255,255,255,0.04)", borderRadius: 8 }} />
+      </div>
+    ),
+  }
+);
 
 function DashboardPreview() {
+  const isMobile = useIsMobile();
   const trackRef = useRef<HTMLDivElement>(null);
+  const stickyFrameRef = useRef<HTMLDivElement>(null);
   const scrollableRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
-    target: trackRef,
-    offset: ["start -240px", "end end"],
+    target: stickyFrameRef,
+    offset: ["start 60px", "end end"],
   });
 
   useEffect(() => {
+    if (isMobile) return; // skip scroll-sync entirely on mobile — no benefit, real cost
     const updateInnerScroll = (progress: number) => {
       if (scrollableRef.current) {
         const maxScroll = scrollableRef.current.scrollHeight - scrollableRef.current.clientHeight;
-        scrollableRef.current.scrollTop = progress * Math.max(0, maxScroll);
+        if (maxScroll > 0) {
+          // Internal dashboard scrolling starts the moment app.foreman.ai / dashboard touches the navbar
+          const normalized = Math.min(1, Math.max(0, progress / 0.88));
+          scrollableRef.current.scrollTop = normalized * maxScroll;
+        }
       }
     };
 
     updateInnerScroll(scrollYProgress.get());
-    return scrollYProgress.on("change", updateInnerScroll);
-  }, [scrollYProgress]);
+    const unsub = scrollYProgress.on("change", updateInnerScroll);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && scrollableRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        updateInnerScroll(scrollYProgress.get());
+      });
+      resizeObserver.observe(scrollableRef.current);
+      if (scrollableRef.current.firstElementChild) {
+        resizeObserver.observe(scrollableRef.current.firstElementChild as HTMLElement);
+      }
+    }
+
+    return () => {
+      unsub();
+      resizeObserver?.disconnect();
+    };
+  }, [scrollYProgress, isMobile]);
 
   return (
     <section
@@ -1167,47 +1523,49 @@ function DashboardPreview() {
       style={{
         background: brand.carbon,
         position: "relative",
-        height: "250vh",
+        minHeight: isMobile ? "auto" : "150vh",
+        padding: "48px 0 0",
       }}
     >
-      {/* Sticky container — section scrolls further down into view so dashboard card is centered before sticking */}
-      <div
-        style={{
-          position: "sticky",
-          top: "-240px",
-          padding: "40px 0 60px",
-          overflow: "hidden",
-        }}
-      >
-        {/* Ambient glow */}
-        <div aria-hidden style={{
-          position: "absolute", top: -120, left: "50%", transform: "translateX(-50%)",
-          width: 900, height: 450, borderRadius: "50%",
-          background: `radial-gradient(ellipse, ${brand.orange}18 0%, transparent 70%)`,
-          pointerEvents: "none",
-        }} />
+      {/* Ambient glow */}
+      <div aria-hidden style={{
+        position: "absolute", top: 40, left: "50%", transform: "translateX(-50%)",
+        width: 900, height: 450, borderRadius: "50%",
+        background: `radial-gradient(ellipse, ${brand.orange}18 0%, transparent 70%)`,
+        pointerEvents: "none",
+      }} />
 
-        <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
-          {/* Eyebrow + headline */}
-          <Reveal className="fm-sechead" style={{ marginBottom: 48, textAlign: "center", maxWidth: "100%" }}>
-            <div className="fm-eyebrow">OWNER DASHBOARD</div>
-            <h2 style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
-              fontSize: "clamp(32px, 5vw, 56px)",
-              lineHeight: 1.15,
-              fontWeight: 400,
-              letterSpacing: "-0.02em",
-              color: C.textHeading,
-              maxWidth: 750,
-              margin: "0 auto 16px",
-            }}>
-              <ScrollTextReveal text="Your shop's performance, live in one place." as="span" />
-            </h2>
-            <div className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
-              <ScrollTextReveal text="Every call, booking, and dollar Foreman captures shows up here in real time." as="p" />
-            </div>
-          </Reveal>
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
+        {/* Eyebrow + headline scrolls naturally above the browser frame */}
+        <div className="fm-sechead" style={{ marginBottom: 44, textAlign: "center", maxWidth: "100%" }}>
+          <div className="fm-eyebrow">OWNER DASHBOARD</div>
+          <h2 style={{
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 5vw, 56px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            maxWidth: 750,
+            margin: "0 auto 16px",
+          }}>
+            Your shop&apos;s performance, live in one place.
+          </h2>
+          <p className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto" }}>
+            Every call, booking, and dollar Foreman captures shows up here in real time.
+          </p>
+        </div>
 
+        {/* Sticky browser frame — locks under the navbar when app.foreman.ai / dashboard touches top: 60px */}
+        <div
+          ref={stickyFrameRef}
+          style={{
+            position: isMobile ? "relative" : "sticky",
+            top: isMobile ? "auto" : "60px",
+            zIndex: 10,
+            paddingBottom: "40px",
+          }}
+        >
           {/* Browser chrome frame */}
           <div
             style={{
@@ -1236,8 +1594,8 @@ function DashboardPreview() {
               <div style={{ width: 36, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.04)", flexShrink: 0 }} />
             </div>
 
-            {/* App layout: sidebar + main (restored original 640px height) */}
-            <div style={{ display: "flex", background: "#F4F6F9", maxHeight: 640, height: 640, overflow: "hidden" }}>
+            {/* App layout: sidebar + main (with horizontal scrolling on mobile) */}
+            <div style={{ display: "flex", background: "#F8FAFC", maxHeight: 640, height: 640, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
               {/* Sidebar */}
               <div style={{
                 width: 256, flexShrink: 0,
@@ -1284,10 +1642,10 @@ function DashboardPreview() {
                 </div>
               </div>
 
-              {/* Dashboard content — scroll-synced to main page scroll */}
+              {/* Dashboard content — scroll-synced to main page scroll with horizontal scrolling */}
               <div
                 ref={scrollableRef}
-                style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}
+                style={{ flex: 1, minWidth: 640, overflowY: "auto", overflowX: "auto", WebkitOverflowScrolling: "touch" }}
               >
                 {/* Top header bar (matches dashboard-shell.tsx header) */}
                 <div style={{
@@ -1341,8 +1699,20 @@ const TRADES = [
   { id: "pest", label: "Pest Control", example: "Termite evidence found, booked treatment Mon 8am" },
   { id: "garage", label: "Garage Door", example: "Spring broke, car stuck, booked emergency visit 4pm" },
   { id: "restoration", label: "Restoration", example: "Water damage, booked emergency dispatch" },
-  { id: "property-management", label: "Property Mgmt", example: "Tenant locked out, dispatched maintenance" },
+  { id: "property-management", label: "Property Management", example: "Tenant locked out, dispatched maintenance" },
   { id: "law-firm", label: "Law Firms", example: "Accident inquiry, booked intake consultation Wed 10am" },
+];
+
+const TRADE_THEME_COLORS = [
+  { id: "hvac", color: "#F97A35", rgb: "249, 122, 53" },        // HVAC - Orange
+  { id: "plumbing", color: "#38BDF8", rgb: "56, 189, 248" },    // Plumbing - Sky Blue
+  { id: "electrical", color: "#FACC15", rgb: "250, 204, 21" },  // Electrical - Gold Yellow
+  { id: "roofing", color: "#A855F7", rgb: "168, 85, 247" },     // Roofing - Purple
+  { id: "pest", color: "#34D399", rgb: "52, 211, 153" },        // Pest - Emerald Green
+  { id: "garage", color: "#EC4899", rgb: "236, 72, 153" },      // Garage - Pink/Magenta
+  { id: "restoration", color: "#EF4444", rgb: "239, 68, 68" },  // Restoration - Red
+  { id: "property-management", color: "#6366F1", rgb: "99, 102, 241" }, // Property Management - Indigo
+  { id: "law-firm", color: "#0EA5E9", rgb: "14, 165, 233" },    // Law Firm - Cyan/Sky
 ];
 
 const NICHE_DETAILS: Record<string, { problemHeadline: string, problemBody: string, features: string[], ctaText: string }> = {
@@ -1403,15 +1773,15 @@ const NICHE_DETAILS: Record<string, { problemHeadline: string, problemBody: stri
 };
 
 const tradeIconMap: Record<string, React.ReactNode> = {
-  hvac: <img src="/images/hvac.png" alt="HVAC" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  plumbing: <img src="/images/plumber.png" alt="Plumbing" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  electrical: <img src="/images/electrician.png" alt="Electrical" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  roofing: <img src="/images/roofing (2).png" alt="Roofing" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  pest: <img src="/images/pest.png" alt="Pest Control" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  garage: <img src="/images/garage.png" alt="Garage Door" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  restoration: <img src="/images/restoration.png" alt="Restoration" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  "property-management": <img src="/images/property.png" alt="Property Management" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />,
-  "law-firm": <img src="/images/property.png" alt="Law Firms" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+  hvac: <img src="/images/hvac.png" alt="HVAC" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  plumbing: <img src="/images/plumber.png" alt="Plumbing" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  electrical: <img src="/images/electrician.png" alt="Electrical" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  roofing: <img src="/images/roofing (2).png" alt="Roofing" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  pest: <img src="/images/pest.png" alt="Pest Control" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  garage: <img src="/images/garage.png" alt="Garage Door" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  restoration: <img src="/images/restoration.png" alt="Restoration" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  "property-management": <img src="/images/property.png" alt="Property Management" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />,
+  "law-firm": <img src="/images/property.png" alt="Law Firms" width={40} height={40} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "contain" }} />
 };
 
 /* ================================================================== */
@@ -1420,188 +1790,183 @@ const tradeIconMap: Record<string, React.ReactNode> = {
 /* ================================================================== */
 /*  INTERACTIVE CALL CARD (3D Circular Cone Stack, Spotlight Glow)   */
 /* ================================================================== */
+/*  TRADE SELECTOR & VERTICAL FLOW STACK                              */
 /* ================================================================== */
-/*  INTERACTIVE CALL CARD (Awwwards/Framer Motion Minimalist 3D Deck) */
-/* ================================================================== */
-function TradeInteractiveCard({
-  trade,
-  offset,
-  isFront,
-  tradeIndex,
-}: {
-  trade: (typeof TRADES)[number];
-  offset: number;
-  isFront: boolean;
-  tradeIndex: number;
-}) {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const rotateX = useTransform(y, [-100, 100], [6, -6]);
-  const rotateY = useTransform(x, [-100, 100], [-6, 6]);
-
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isFront) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const offsetY = e.clientY - rect.top;
-
-    x.set(offsetX - rect.width / 2);
-    y.set(offsetY - rect.height / 2);
-    setMousePos({ x: offsetX, y: offsetY });
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-    setIsHovered(false);
-  };
-
-  // Subtle ambient bottom glow palette for high-end minimalist deck
-  const glowColors = [
-    "rgba(249, 122, 53, 0.22)",  // HVAC - Orange
-    "rgba(56, 189, 248, 0.22)",  // Plumbing - Blue
-    "rgba(250, 204, 21, 0.22)",  // Electrical - Yellow
-    "rgba(168, 85, 247, 0.22)",  // Roofing - Purple
-    "rgba(52, 211, 153, 0.22)",  // Pest - Green
-    "rgba(236, 72, 153, 0.22)",  // Garage - Magenta
-    "rgba(239, 68, 68, 0.22)",   // Restoration - Red
-    "rgba(99, 102, 241, 0.22)",  // Property Mgmt - Indigo
-    "rgba(14, 165, 233, 0.22)",  // Law Firm - Sky
-  ];
-  const cardGlowColor = glowColors[tradeIndex % glowColors.length];
-
-  // Symmetrical Left & Right 3D Fanned Deck Math
-  const xOffset = offset * 170; // Sleek overlapping spacing
-  const coneRotateY = isFront ? rotateY : offset * -20; // Subtle 3D arc
-  const coneRotateZ = isFront ? 0 : offset * -3;
-  const scale = isFront ? 1 : 0.88 - Math.abs(offset) * 0.05;
-  const opacity = isFront ? 1 : Math.max(0.3, 0.65 - Math.abs(offset) * 0.2);
-  const zIndex = 30 - Math.abs(offset) * 10;
-
-  return (
-    <motion.div
-      className="fm-callcard"
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        position: "absolute",
-        width: "100%",
-        maxWidth: 440,
-        top: 0,
-        left: "50%",
-        marginLeft: -220,
-        background: `linear-gradient(180deg, rgba(14,21,38,0.95) 0%, rgba(10,15,28,0.98) 65%, ${cardGlowColor} 100%)`,
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        border: `1px solid ${isFront ? "rgba(249, 122, 53, 0.35)" : "rgba(255, 255, 255, 0.06)"}`,
-        borderRadius: 20,
-        boxShadow: isFront
-          ? "0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(249, 122, 53, 0.15)"
-          : "0 12px 32px rgba(0, 0, 0, 0.5)",
-        transformOrigin: "center center",
-        zIndex: zIndex,
-        pointerEvents: isFront ? "auto" : "none",
-        rotateX: isFront ? rotateX : 0,
-        rotateY: coneRotateY,
-        rotateZ: coneRotateZ,
-        transformStyle: "preserve-3d",
-        overflow: "hidden",
-      }}
-      initial={false}
-      animate={{
-        x: xOffset,
-        y: Math.abs(offset) * 10,
-        scale: scale,
-        opacity: opacity,
-      }}
-      whileHover={isFront ? { scale: 1.025, y: -4 } : { scale: scale * 1.03 }}
-      transition={{
-        type: "spring",
-        stiffness: 280,
-        damping: 26,
-      }}
-    >
-      {/* Dynamic Cursor Spotlight Glow Effect */}
-      {isFront && (
-        <div
-          style={{
-            pointerEvents: "none",
-            position: "absolute",
-            inset: -1,
-            opacity: isHovered ? 1 : 0,
-            transition: "opacity 300ms ease",
-            background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(249, 122, 53, 0.18), transparent 80%)`,
-            zIndex: 1,
-          }}
-        />
-      )}
-
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span className="fm-mono" style={{ fontSize: 11, letterSpacing: 2, color: C.textBody, opacity: 0.8 }}>INCOMING CALLS</span>
-        </div>
-        <div className="fm-callrow">
-          <div className="fm-callic"><PhoneIcon /></div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: C.textHeading }}>New {trade.label} Lead</div>
-            <div style={{ fontSize: 13, color: C.textBody }}>{trade.example}</div>
-          </div>
-          <span className="fm-badge fm-badge-booked">BOOKED</span>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
+const TRADE_FLOW_DATA = [
+  {
+    id: "hvac",
+    label: "HVAC",
+    lead: "New HVAC Lead",
+    example: "AC blowing warm air, booked emergency repair 2pm",
+    metric: "+18% booking rate",
+    metricTop: "+24% peak answer rate",
+    metricBottom: "-35% missed calls",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "plumbing",
+    label: "Plumbing",
+    lead: "New Plumbing Lead",
+    example: "Leak in basement, booked emergency visit 3pm",
+    metric: "⚡ Dispatched in 42s",
+    metricTop: "+100% after-hours capture",
+    metricBottom: "0 missed emergency calls",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "electrical",
+    label: "Electrical",
+    lead: "New Electrical Lead",
+    example: "Breaker keeps tripping, booked estimate Wed 9am",
+    metric: "★ $480 Estimate Booked",
+    metricTop: "+32% estimate conversion",
+    metricBottom: "Instant panel triage",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </svg>
+    ),
+  },
+  {
+    id: "roofing",
+    label: "Roofing",
+    lead: "New Roofing Lead",
+    example: "Missing shingles after storm, booked inspection Fri 10am",
+    metric: "★ $1,850 Inspection Booked",
+    metricTop: "+40% storm surge capture",
+    metricBottom: "100% lead qualification",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    ),
+  },
+  {
+    id: "pest",
+    label: "Pest Control",
+    lead: "New Pest Control Lead",
+    example: "Termite evidence found, booked treatment Mon 8am",
+    metric: "✓ Perimeter Treatment Booked",
+    metricTop: "+28% recurring plans",
+    metricBottom: "Instant schedule routing",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="8" height="14" x="8" y="6" rx="4" />
+        <path d="m19 7-3 2M5 7l3 2M19 19l-3-2M5 19l3-2M20 13h-4M4 13h4M10 4l1 2M14 4l-1 2" />
+      </svg>
+    ),
+  },
+  {
+    id: "garage",
+    label: "Garage Door",
+    lead: "New Garage Door Lead",
+    example: "Spring broke, car stuck, booked emergency visit 4pm",
+    metric: "⚡ Emergency Visit 4pm",
+    metricTop: "+35% emergency dispatch",
+    metricBottom: "Same-day spring repair",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 20h16M4 20V8l8-4 8 4v12M9 20v-6h6v6" />
+      </svg>
+    ),
+  },
+  {
+    id: "restoration",
+    label: "Restoration",
+    lead: "New Restoration Lead",
+    example: "Water damage in basement, booked emergency dispatch",
+    metric: "★ $2,400 Claim Captured",
+    metricTop: "24/7 emergency intake",
+    metricBottom: "Instant insurance prep",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 3z" />
+      </svg>
+    ),
+  },
+  {
+    id: "property-management",
+    label: "Property Management",
+    lead: "New Tenant Maintenance Lead",
+    example: "Tenant AC failure, dispatched emergency HVAC tech",
+    metric: "✓ Tech Dispatched Unit 4B",
+    metricTop: "Automated work orders",
+    metricBottom: "Owner notified via SMS",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2" />
+        <path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
+      </svg>
+    ),
+  },
+  {
+    id: "law-firm",
+    label: "Law Firms",
+    lead: "New Legal Intake Lead",
+    example: "Auto accident case, booked attorney consultation today 2pm",
+    metric: "★ $1,500 Retainer Intake",
+    metricTop: "Conflict check & screening",
+    metricBottom: "Zero lost client calls",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v18M3 7l9-4 9 4M6 13l-3-6 6 0-3 6zM18 13l-3-6 6 0-3 6z" />
+      </svg>
+    ),
+  },
+];
 
 export function TradeSelector() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const activeTrade = TRADES[activeIndex];
-  const reducedMotion = useReducedMotion();
 
+  // Auto-rotate every 3.2 seconds continuously (resets on manual tab selection)
   useEffect(() => {
-    if (isPaused) return;
     const timer = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % TRADES.length);
-    }, 3000);
+      setActiveIndex((prev) => (prev + 1) % TRADE_FLOW_DATA.length);
+    }, 3200);
     return () => clearInterval(timer);
-  }, [isPaused]);
+  }, [activeIndex]);
+
+  const total = TRADE_FLOW_DATA.length;
+  const prevIndex = (activeIndex - 1 + total) % total;
+  const currIndex = activeIndex;
+  const nextIndex = (activeIndex + 1) % total;
+
+  const prevTrade = TRADE_FLOW_DATA[prevIndex];
+  const currTrade = TRADE_FLOW_DATA[currIndex];
+  const nextTrade = TRADE_FLOW_DATA[nextIndex];
 
   return (
     <section
       className="fm-island"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      style={{ background: C.bgCard, padding: "36px 0 64px", zIndex: 3, position: "relative", overflow: "hidden" }}
+      style={{ background: C.bgCard, padding: "52px 0 60px", zIndex: 3, position: "relative", overflow: "hidden" }}
     >
       {/* Subtle Ambient Radial Glow */}
-      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 700, height: 400, background: "radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.06) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 800, height: 450, background: `radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.07) 0%, transparent 70%)`, pointerEvents: "none", zIndex: 0 }} />
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
-        <Reveal className="fm-sechead" style={{ marginBottom: 36, maxWidth: "100%", textAlign: "center" }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 24, maxWidth: "100%", textAlign: "center" }}>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 4.8vw, 56px)",
             lineHeight: 1.15,
             fontWeight: 400,
             letterSpacing: "-0.02em",
             color: C.textHeading
           }}>
-            <WavyText
-              text="Knows your trade. Asks the right questions. Books the job."
-              waveHeight={10}
-              duration={1.8}
-              stagger={0.04}
-            />
+            Knows your trade. Asks the right questions. Books the job.
           </h2>
         </Reveal>
 
-        <Reveal delay={0.05} style={{ maxWidth: 860, margin: "0 auto 40px" }}>
+        <Reveal delay={0.05} style={{ maxWidth: 860, margin: "0 auto 28px" }}>
           <div className="fm-cta-banner" style={{
             background: "rgba(14, 21, 38, 0.75)",
             backdropFilter: "blur(20px)",
@@ -1611,7 +1976,7 @@ export function TradeSelector() {
             boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
           }}>
             <h3 className="fm-cta-banner-text" style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
               fontWeight: 400,
               color: C.textHeading,
               margin: 0,
@@ -1625,62 +1990,321 @@ export function TradeSelector() {
           </div>
         </Reveal>
 
+        {/* Trade Selector Pills Bar with Animated Gliding Capsule */}
         <Reveal delay={0.1}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 44 }}>
-            {TRADES.map((t, index) => {
-              const isActive = t.id === activeTrade.id;
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 38 }}>
+            {TRADE_FLOW_DATA.map((t, index) => {
+              const isActive = index === activeIndex;
               return (
-                <Link key={t.id} href={`/${t.id}`} passHref legacyBehavior>
-                  <motion.a
-                    onMouseEnter={() => { setActiveIndex(index); setIsPaused(true); }}
-                    whileHover={reducedMotion ? {} : { scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ type: "spring", stiffness: 420, damping: 26 }}
-                    style={{
-                      background: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.03)",
-                      color: isActive ? "#FFFFFF" : C.textBody,
-                      border: `1px solid ${isActive ? C.accentOrange : "rgba(255, 255, 255, 0.08)"}`,
-                      borderRadius: 999,
-                      padding: "9px 20px",
-                      fontFamily: "var(--font-outfit), sans-serif",
-                      fontWeight: isActive ? 600 : 500,
-                      fontSize: 14.5,
-                      cursor: "pointer",
-                      textDecoration: "none",
-                      boxShadow: isActive ? `0 6px 20px ${C.accentOrange}40` : "none",
-                      transition: "background 250ms cubic-bezier(0.16,1,0.3,1), color 250ms cubic-bezier(0.16,1,0.3,1), border-color 250ms cubic-bezier(0.16,1,0.3,1), box-shadow 250ms cubic-bezier(0.16,1,0.3,1)",
-                    }}
-                  >
-                    {t.label}
-                  </motion.a>
-                </Link>
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  style={{
+                    position: "relative",
+                    background: "transparent",
+                    color: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.65)",
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "6px 14px",
+                    fontFamily: "var(--font-outfit), sans-serif",
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: 13.5,
+                    lineHeight: 1.2,
+                    cursor: "pointer",
+                    transition: "color 0.25s ease",
+                    zIndex: 1,
+                  }}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTradePill"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(249, 122, 53, 0.12)",
+                        border: "1px solid rgba(249, 122, 53, 0.5)",
+                        borderRadius: 999,
+                        boxShadow: "0 4px 16px rgba(249, 122, 53, 0.25)",
+                        zIndex: -1,
+                      }}
+                    />
+                  )}
+                  {!isActive && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(255, 255, 255, 0.03)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        borderRadius: 999,
+                        zIndex: -1,
+                      }}
+                    />
+                  )}
+                  {t.label}
+                </button>
               );
             })}
           </div>
         </Reveal>
 
-        <Reveal delay={0.2} className="fm-trade-card-container" style={{ maxWidth: 800, margin: "0 auto", minHeight: 180, position: "relative", perspective: 1200 }}>
-          {TRADES.map((trade, i) => {
-            let offset = i - activeIndex;
-            const total = TRADES.length;
-            if (offset > total / 2) offset -= total;
-            if (offset < -total / 2) offset += total;
+        {/* Vertical Stack Flow Layout */}
+        <Reveal delay={0.15}>
+          <div
+            style={{
+              maxWidth: 820,
+              margin: "0 auto",
+              background: "rgba(14, 21, 38, 0.65)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: 28,
+              padding: "36px 32px",
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                gap: 0,
+              }}
+              className="flex-col sm:flex-row"
+            >
+              {/* Left Column: True Continuous 3D Cylindrical Revolving Wheel (Zero Jerk) */}
+              <div
+                style={{
+                  position: "relative",
+                  height: 236,
+                  width: "100%",
+                  maxWidth: 410,
+                  perspective: 1100,
+                  transformStyle: "preserve-3d",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                {TRADE_FLOW_DATA.map((trade, i) => {
+                  const total = TRADE_FLOW_DATA.length;
+                  let diff = i - activeIndex;
+                  if (diff > total / 2) diff -= total;
+                  if (diff < -total / 2) diff += total;
 
-            const isFront = offset === 0;
-            const isVisible = Math.abs(offset) <= 2;
+                  const isActive = diff === 0;
+                  const isVisible = Math.abs(diff) <= 2;
 
-            if (!isVisible) return null;
+                  return (
+                    <motion.div
+                      key={trade.id}
+                      animate={{
+                        y: diff * 80,
+                        rotateX: -diff * 22,
+                        scale: isActive ? 1 : (Math.abs(diff) === 1 ? 0.94 : 0.86),
+                        opacity: isActive ? 1 : (Math.abs(diff) === 1 ? 0.42 : 0),
+                        zIndex: 10 - Math.abs(diff),
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 260,
+                        damping: 28,
+                        mass: 0.8,
+                      }}
+                      onClick={() => setActiveIndex(i)}
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        right: 0,
+                        background: isActive
+                          ? "linear-gradient(180deg, rgba(14,21,38,0.96) 0%, rgba(10,15,28,0.98) 100%)"
+                          : "linear-gradient(180deg, rgba(14,21,38,0.7) 0%, rgba(10,15,28,0.7) 100%)",
+                        backdropFilter: "blur(20px)",
+                        WebkitBackdropFilter: "blur(20px)",
+                        borderRadius: 20,
+                        padding: "16px 20px",
+                        minHeight: 76,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        boxShadow: isActive
+                          ? "0 18px 45px rgba(0, 0, 0, 0.6), 0 0 24px rgba(249, 122, 53, 0.22)"
+                          : "0 8px 24px rgba(0, 0, 0, 0.3)",
+                        border: isActive
+                          ? "1px solid rgba(249, 122, 53, 0.55)"
+                          : "1px solid rgba(255, 255, 255, 0.06)",
+                        cursor: isActive ? "default" : "pointer",
+                        pointerEvents: isVisible ? "auto" : "none",
+                        transformOrigin: diff < 0 ? "center bottom" : (diff > 0 ? "center top" : "center center"),
+                        userSelect: "none",
+                        transition: "background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 14,
+                          background: isActive ? "rgba(249, 122, 53, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                          border: isActive ? "1px solid rgba(249, 122, 53, 0.25)" : "1px solid rgba(255, 255, 255, 0.06)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          color: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.4)",
+                          transition: "all 0.35s ease",
+                        }}
+                      >
+                        {trade.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: 15,
+                            color: isActive ? C.textHeading : "rgba(255, 255, 255, 0.75)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            transition: "color 0.35s ease",
+                          }}
+                        >
+                          {trade.lead}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: isActive ? C.textBody : "rgba(255, 255, 255, 0.38)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            transition: "color 0.35s ease",
+                          }}
+                        >
+                          {trade.example}
+                        </div>
+                      </div>
+                      <motion.span
+                        animate={{ opacity: isActive ? 1 : 0, scale: isActive ? 1 : 0.8 }}
+                        transition={{ duration: 0.3 }}
+                        className="fm-badge fm-badge-booked"
+                        style={{ fontSize: 11, pointerEvents: "none" }}
+                      >
+                        BOOKED
+                      </motion.span>
+                    </motion.div>
+                  );
+                })}
+              </div>
 
-            return (
-              <TradeInteractiveCard
-                key={trade.id}
-                trade={trade}
-                offset={offset}
-                isFront={isFront}
-                tradeIndex={i}
-              />
-            );
-          })}
+              {/* Center: Glowing Flow Connecting Line with Ultra-Thin Radiant Shimmer Laser */}
+              <div
+                className="hidden sm:flex items-center justify-center"
+                style={{
+                  width: 72,
+                  height: 1,
+                  background: "rgba(255, 255, 255, 0.08)",
+                  position: "relative",
+                  margin: "0 6px",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Base glow hairline */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(90deg, rgba(249,122,53,0.15) 0%, rgba(249,122,53,0.4) 50%, rgba(249,122,53,0.15) 100%)",
+                  }}
+                />
+
+                {/* High-velocity radiant shimmer laser wave */}
+                <motion.div
+                  key={`laser-${currTrade.id}`}
+                  animate={{
+                    x: ["-100%", "220%"],
+                  }}
+                  transition={{
+                    duration: 1.3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    width: "45%",
+                    background: `linear-gradient(90deg, transparent 0%, ${C.accentOrange} 30%, #FFFFFF 65%, ${C.accentOrange} 90%, transparent 100%)`,
+                    boxShadow: "0 0 6px rgba(249, 122, 53, 0.8), 0 0 2px #FFFFFF",
+                  }}
+                />
+              </div>
+
+              {/* Right Column: Outcomes & Metrics Stack (Tailored to active trade) */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  height: 236,
+                  padding: "6px 0",
+                  minWidth: 200,
+                }}
+                className="mt-4 sm:mt-0 sm:pl-2"
+              >
+                {/* Top Active Metric */}
+                <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.45)", fontWeight: 500, paddingLeft: 6 }}>
+                  {currTrade.metricTop}
+                </div>
+
+                {/* Middle Highlighted Pill Badge (Dark Glass + Thin 1px Orange Border) */}
+                <motion.div
+                  key={`pill-wrap-${currTrade.id}`}
+                  initial={{ scale: 0.96 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 22 }}
+                  style={{
+                    background: "linear-gradient(180deg, rgba(14,21,38,0.96) 0%, rgba(10,15,28,0.98) 100%)",
+                    backdropFilter: "blur(20px)",
+                    WebkitBackdropFilter: "blur(20px)",
+                    color: "#FFFFFF",
+                    borderRadius: 999,
+                    padding: "10px 18px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 9,
+                    boxShadow: "0 14px 30px rgba(0, 0, 0, 0.5), 0 0 16px rgba(249, 122, 53, 0.2)",
+                    border: "1px solid rgba(249, 122, 53, 0.55)",
+                    width: "fit-content",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <div style={{ color: C.accentOrange, display: "flex", alignItems: "center" }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="20" x2="18" y2="10" />
+                      <line x1="12" y1="20" x2="12" y2="4" />
+                      <line x1="6" y1="20" x2="6" y2="14" />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF", letterSpacing: "-0.01em" }}>
+                    {currTrade.metric}
+                  </span>
+                </motion.div>
+
+                {/* Bottom Active Metric */}
+                <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.45)", fontWeight: 500, paddingLeft: 6 }}>
+                  {currTrade.metricBottom}
+                </div>
+              </div>
+            </div>
+          </div>
         </Reveal>
       </div>
     </section>
@@ -1724,106 +2348,89 @@ const PROBLEM_COPY: Record<LandingMode, { eyebrow: string; headline: string; bod
 };
 
 function StatComparison({ mode = "main" }: { mode?: LandingMode }) {
-  const reducedMotion = useReducedMotion();
   const pCopy = PROBLEM_COPY[mode] || PROBLEM_COPY.main;
+  const reducedMotion = useReducedMotion();
 
   return (
-    <section className="fm-island" style={{ background: C.bgPrimary, padding: "28px 0", zIndex: 4, overflow: "hidden" }}>
+    <section className="fm-island" style={{ background: C.bgPrimary, padding: "56px 0 0", zIndex: 4, position: "relative", overflow: "hidden" }}>
+      {/* Subtle ambient background glow */}
+      <div style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)", width: 900, height: 500, background: "radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.06) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
-        <Reveal className="fm-sechead" style={{ marginBottom: 64, maxWidth: 900 }}>
-          <div className="fm-eyebrow">{pCopy.eyebrow}</div>
+        <Reveal className="fm-sechead" style={{ marginBottom: 48, maxWidth: 840, textAlign: "center", marginLeft: "auto", marginRight: "auto" }}>
+          <div style={{ color: C.accentOrange, letterSpacing: "0.14em", fontSize: 12.5, fontWeight: 800, textTransform: "uppercase", marginBottom: 20, fontFamily: "var(--font-outfit), sans-serif" }}>
+            {pCopy.eyebrow}
+          </div>
+
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
-            fontSize: "clamp(32px, 4.8vw, 56px)",
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 4.4vw, 54px)",
             lineHeight: 1.15,
             fontWeight: 400,
             letterSpacing: "-0.02em",
             color: C.textHeading,
-            marginBottom: 20
+            maxWidth: 780,
+            margin: "0 auto 20px"
           }}>
             <ScrollTextReveal text={pCopy.headline} as="span" />
           </h2>
-          <div className="fm-secsub" style={{ maxWidth: 700, margin: "0 auto" }}>
+
+          <div style={{ maxWidth: 720, margin: "0 auto", fontSize: "clamp(15px, 1.8vw, 16.5px)", lineHeight: 1.6, color: "rgba(255, 255, 255, 0.7)" }}>
             <ScrollTextReveal text={pCopy.body} as="p" />
           </div>
         </Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch", maxWidth: 1000, margin: "0 auto" }}>
+        {/* Comparison Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, alignItems: "stretch", maxWidth: 960, margin: "0 auto" }}>
           <Reveal style={{ position: "relative" }}>
-            <Interactive3DCard
-              style={{
-                background: C.bgCard,
-                border: `1px solid ${C.borderPrimary}`,
-                borderRadius: 28,
-                padding: 48,
-                boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 16, color: C.textBody, fontWeight: 600, marginBottom: 12, transform: "translateZ(20px)" }}>
-                Missed calls without Foreman:
-              </div>
-              <div className="fm-statnum" style={{ color: C.textBody, transform: "translateZ(40px)" }}>
-                40%
-              </div>
-            </Interactive3DCard>
+            <div className="fm-hoverlift" style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 28, padding: "48px 32px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", position: "relative", zIndex: 2 }}>
+              <div style={{ fontSize: 16, color: "rgba(255, 255, 255, 0.75)", fontWeight: 600, marginBottom: 16 }}>Missed calls without Foreman:</div>
+              <div className="fm-statnum" style={{ fontSize: "clamp(48px, 6vw, 68px)", fontWeight: 800, color: "#B8BFCC" }}>40%</div>
+            </div>
           </Reveal>
           <Reveal delay={0.1} style={{ position: "relative" }}>
-            <Interactive3DCard
-              style={{
-                background: C.accentOrange,
-                borderRadius: 28,
-                padding: 48,
-                boxShadow: "0 24px 48px rgba(249,122,53,0.35)",
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 600, marginBottom: 12, transform: "translateZ(20px)" }}>
-                Missed calls:
-              </div>
-              <div className="fm-statnum" style={{ color: C.bgPrimary, position: "relative", display: "inline-block", transform: "translateZ(40px)" }}>
+            <div className="fm-hoverlift" style={{ background: C.accentOrange, borderRadius: 28, padding: "48px 32px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", position: "relative", zIndex: 2, boxShadow: "0 20px 40px rgba(242, 105, 28, 0.25)" }}>
+              <div style={{ fontSize: 16, color: C.bgPrimary, fontWeight: 700, marginBottom: 16 }}>Missed calls:</div>
+              <div className="fm-statnum" style={{ fontSize: "clamp(48px, 6vw, 68px)", fontWeight: 800, color: C.bgPrimary, position: "relative", display: "inline-block" }}>
                 0%
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ delay: 0.5, type: "spring" }}
+                  transition={{ delay: 0.3, type: "spring" }}
                   style={{ position: "absolute", top: "55%", left: "50%", transform: "translate(-50%, -50%)", width: "170%", height: "170%", pointerEvents: "none" }}
                 >
                   <DoodleCircle style={{ width: "100%", height: "100%" }} />
                 </motion.div>
               </div>
-            </Interactive3DCard>
+            </div>
           </Reveal>
         </div>
-
-
       </div>
 
-      {/* Optional faint scrolling ribbon */}
-      <motion.div
-        aria-hidden
-        style={{
-          marginTop: 16,
-          whiteSpace: "nowrap", fontSize: "clamp(60px, 15vw, 160px)", fontWeight: 900,
-          color: "rgba(255,255,255,0.02)", pointerEvents: "none"
-        }}
-        animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-      >
-        ANSWERED QUALIFIED BOOKED ANSWERED QUALIFIED BOOKED
-      </motion.div>
+      {/* Animated Watermark Ribbon placed directly at the bottom of the cards */}
+      <div style={{ width: "100%", overflow: "hidden", pointerEvents: "none", userSelect: "none", marginTop: "50px", paddingBottom: "16px", position: "relative", zIndex: 0 }}>
+        <motion.div
+          aria-hidden
+          style={{
+            whiteSpace: "nowrap",
+            fontSize: "clamp(120px, 15vw, 175px)",
+            fontWeight: 900,
+            fontFamily: "var(--font-outfit), sans-serif",
+            lineHeight: 0.9,
+            letterSpacing: "0.02em",
+            textTransform: "uppercase",
+            color: "rgba(255, 255, 255, 0.038)",
+            display: "flex",
+            width: "max-content",
+          }}
+          animate={reducedMotion ? {} : { x: ["0%", "-50%"] }}
+          transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
+        >
+          <span>ANSWERED QUALIFIED BOOKED &nbsp; ANSWERED QUALIFIED BOOKED &nbsp; ANSWERED QUALIFIED BOOKED &nbsp;</span>
+          <span>ANSWERED QUALIFIED BOOKED &nbsp; ANSWERED QUALIFIED BOOKED &nbsp; ANSWERED QUALIFIED BOOKED &nbsp;</span>
+        </motion.div>
+      </div>
     </section>
   );
 }
@@ -1849,7 +2456,7 @@ function AnnotatedProof({ mode = "main" }: { mode?: LandingMode }) {
           <div className="fm-eyebrow">{pCopy.eyebrow}</div>
           <div style={{ margin: "24px 0", position: "relative", display: "inline-block" }}>
             <h2 style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
               fontSize: "clamp(32px, 5vw, 48px)",
               lineHeight: 1.1,
               fontWeight: 400,
@@ -2025,7 +2632,7 @@ function IntegrationsRow() {
 
           <div style={{ marginBottom: 64, position: "relative" }}>
             <h2 style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
               fontSize: "clamp(40px, 6vw, 64px)",
               lineHeight: 1.1,
               fontWeight: 400,
@@ -2163,477 +2770,480 @@ const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; fe
   }
 };
 
-function FeatureGraphicWidget({ title }: { title: string }) {
-  const t = title.toLowerCase();
+function WidgetBilingual() {
   const reducedMotion = useReducedMotion();
+  const [langIndex, setLangIndex] = useState(0);
+  const phrases = [
+    { lang: "ES", text: "“Hola, mi aire acondicionado echa aire caliente. ¿Tienen servicio de emergencia hoy?”" },
+    { lang: "EN", text: "“Hello, my AC is blowing warm air. Do you have emergency repair technicians today?”" }
+  ];
 
-  // 1. Bilingual Support Animation
-  if (t.includes("english") || t.includes("spanish") || t.includes("bilingual")) {
-    const [langIndex, setLangIndex] = useState(0);
-    const phrases = [
-      { lang: "ES", text: "“Hola, mi aire acondicionado echa aire caliente. ¿Tienen servicio de emergencia hoy?”" },
-      { lang: "EN", text: "“Hello, my AC is blowing warm air. Do you have emergency repair technicians today?”" }
-    ];
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLangIndex((prev) => (prev + 1) % phrases.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [phrases.length]);
 
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setLangIndex((prev) => (prev + 1) % phrases.length);
-      }, 3000);
-      return () => clearInterval(interval);
-    }, [phrases.length]);
+  const current = phrases[langIndex];
 
-    const current = phrases[langIndex];
-
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 16,
-        background: "rgba(15, 23, 42, 0.85)",
-        border: `1px solid ${C.accentOrange}60`,
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        minHeight: 124,
-        justifyContent: "center",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.4)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span style={{
-              fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
-              background: current.lang === "EN" ? C.accentOrange : "rgba(255,255,255,0.08)",
-              color: "#FFFFFF", transition: "all 300ms ease"
-            }}>EN</span>
-            <span style={{
-              fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
-              background: current.lang === "ES" ? C.accentOrange : "rgba(255,255,255,0.08)",
-              color: "#FFFFFF", transition: "all 300ms ease"
-            }}>ES</span>
-          </div>
-          {/* Animated voice soundwave */}
-          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-            {[10, 18, 12, 22, 14, 8].map((h, idx) => (
-              <motion.span
-                key={idx}
-                animate={reducedMotion ? {} : { height: [6, h, 6] }}
-                transition={{ duration: 0.6, repeat: Infinity, delay: idx * 0.1, repeatType: "reverse" }}
-                style={{ width: 3, borderRadius: 3, background: C.accentOrange }}
-              />
-            ))}
-          </div>
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      minHeight: 124,
+      justifyContent: "center",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.4)"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{
+            fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
+            background: current.lang === "EN" ? C.accentOrange : "rgba(255,255,255,0.08)",
+            color: "#FFFFFF", transition: "all 300ms ease"
+          }}>EN</span>
+          <span style={{
+            fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
+            background: current.lang === "ES" ? C.accentOrange : "rgba(255,255,255,0.08)",
+            color: "#FFFFFF", transition: "all 300ms ease"
+          }}>ES</span>
         </div>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={current.lang}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.3 }}
-            style={{ fontSize: 13, fontStyle: "italic", color: "#F8FAFC", background: "rgba(255,255,255,0.06)", padding: "12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}
-          >
-            {current.text}
-          </motion.div>
-        </AnimatePresence>
+        {/* Animated voice soundwave */}
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          {[10, 18, 12, 22, 14, 8].map((h, idx) => (
+            <motion.span
+              key={idx}
+              animate={reducedMotion ? {} : { height: [6, h, 6] }}
+              transition={{ duration: 0.6, repeat: Infinity, delay: idx * 0.1, repeatType: "reverse" }}
+              style={{ width: 3, borderRadius: 3, background: C.accentOrange }}
+            />
+          ))}
+        </div>
       </div>
-    );
-  }
-
-  // 2. Emergency Detection Siren & Triage Animation
-  if (t.includes("emergenc") || t.includes("triage") || t.includes("first")) {
-    const [alertIndex, setAlertIndex] = useState(0);
-    const alerts = [
-      { label: "NO HEAT IN WINTER", status: "Priority #1 Dispatch", icon: "🔥", code: "CRIT-01", tag: "FREEZE RISK" },
-      { label: "GAS SMELL IN BASEMENT", status: "Priority #1 Dispatch", icon: "⚠️", code: "HAZ-99", tag: "HAZMAT LEAK" },
-      { label: "BURST PIPE / FLOODING", status: "Priority #1 Dispatch", icon: "🌊", code: "EMRG-04", tag: "WATER DAMAGE" }
-    ];
-
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setAlertIndex((prev) => (prev + 1) % alerts.length);
-      }, 2800);
-      return () => clearInterval(interval);
-    }, [alerts.length]);
-
-    const activeAlert = alerts[alertIndex];
-
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 18,
-        background: "linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(153, 27, 27, 0.12) 100%)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(239, 68, 68, 0.65)",
-        boxShadow: "0 12px 32px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        minHeight: 140,
-        justifyContent: "center",
-        position: "relative",
-        overflow: "hidden"
-      }}>
-        {/* Subtle animated laser sweep across top */}
+      <AnimatePresence mode="wait">
         <motion.div
-          animate={{ x: ["-100%", "200%"] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "50%",
-            height: 2,
-            background: "linear-gradient(90deg, transparent, #EF4444, transparent)",
-            opacity: 0.8
-          }}
-        />
+          key={current.lang}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.3 }}
+          style={{ fontSize: 13, fontStyle: "italic", color: "#F8FAFC", background: "rgba(255,255,255,0.06)", padding: "12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}
+        >
+          {current.text}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
 
-        {/* Header Bar with Pulsing Beacon & High-Tech Pill */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Multi-ring Siren Radar Pulse */}
-            <div style={{ position: "relative", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <motion.span
-                animate={reducedMotion ? {} : { scale: [1, 2.4], opacity: [0.8, 0] }}
-                transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "50%",
-                  border: "1px solid #EF4444",
-                  pointerEvents: "none"
-                }}
-              />
-              <motion.span
-                animate={reducedMotion ? {} : { scale: [1, 1.3, 1] }}
-                transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: "radial-gradient(circle, #FF6B6B 0%, #EF4444 100%)",
-                  boxShadow: "0 0 12px #EF4444, 0 0 4px #FCA5A5"
-                }}
-              />
-            </div>
+function WidgetEmergency() {
+  const reducedMotion = useReducedMotion();
+  const [alertIndex, setAlertIndex] = useState(0);
+  const alerts = [
+    {
+      code: "EMRG-04",
+      category: "WATER DAMAGE",
+      label: "Burst Pipe / Active Flooding",
+      severity: "CRITICAL",
+      dispatch: "Priority #1 Dispatch",
+      type: "water"
+    },
+    {
+      code: "CRIT-01",
+      category: "FREEZE RISK",
+      label: "No Heat / Sub-Zero Threat",
+      severity: "CRITICAL",
+      dispatch: "Priority #1 Dispatch",
+      type: "freeze"
+    },
+    {
+      code: "HAZ-99",
+      category: "HAZMAT RISK",
+      label: "Gas Smell / Furnace Leak",
+      severity: "HIGH HAZARD",
+      dispatch: "Priority #1 Dispatch",
+      type: "gas"
+    }
+  ];
 
-            <span className="fm-mono" style={{ fontSize: 11, fontWeight: 900, color: "#FCA5A5", letterSpacing: 1.2, textTransform: "uppercase" }}>
-              EMERGENCY TRIAGE SIREN
-            </span>
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAlertIndex((prev) => (prev + 1) % alerts.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [alerts.length]);
+
+  const activeAlert = alerts[alertIndex];
+
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "14px 16px",
+      borderRadius: 14,
+      background: "rgba(10, 15, 28, 0.95)",
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      boxShadow: "0 12px 30px rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      minHeight: 140,
+      justifyContent: "center",
+      position: "relative",
+      overflow: "hidden"
+    }}>
+      {/* Subtle top laser scan line */}
+      <motion.div
+        animate={{ x: ["-100%", "200%"] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "40%",
+          height: 1.5,
+          background: "linear-gradient(90deg, transparent, #EF4444, transparent)",
+          opacity: 0.9
+        }}
+      />
+
+      {/* Telemetry Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <div style={{ position: "relative", width: 8, height: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <motion.span
+              animate={reducedMotion ? {} : { scale: [1, 2.2], opacity: [0.8, 0] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
+                border: "1px solid #EF4444",
+                pointerEvents: "none"
+              }}
+            />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#EF4444", boxShadow: "0 0 8px #EF4444" }} />
           </div>
-
-          <motion.div
-            animate={reducedMotion ? {} : { scale: [1, 1.05, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            style={{
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: 0.5,
-              color: "#FFFFFF",
-              background: "linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)",
-              padding: "4px 10px",
-              borderRadius: 20,
-              border: "1px solid rgba(254, 202, 202, 0.4)",
-              boxShadow: "0 4px 14px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
-              display: "flex",
-              alignItems: "center",
-              gap: 4
-            }}
-          >
-            <span style={{ fontSize: 10 }}>⚡</span> 0.1s INSTANT
-          </motion.div>
+          <span className="fm-mono" style={{ fontSize: 10, fontWeight: 800, color: "#FCA5A5", letterSpacing: 1.2, textTransform: "uppercase" }}>
+            EMERGENCY TRIAGE
+          </span>
         </div>
 
-        {/* Dynamic Alert Banner with 3D Glass Badge */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeAlert.code}
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            style={{
-              background: "rgba(15, 23, 42, 0.75)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(239, 68, 68, 0.45)",
-              boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {/* Glowing Alarm Icon Box */}
-                <motion.div
-                  animate={reducedMotion ? {} : { rotate: [-4, 4, -4], scale: [1, 1.08, 1] }}
-                  transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    background: "linear-gradient(135deg, rgba(239,68,68,0.4) 0%, rgba(185,28,28,0.2) 100%)",
-                    border: "1px solid rgba(239,68,68,0.7)",
-                    boxShadow: "0 0 14px rgba(239,68,68,0.5)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 16
-                  }}
-                >
-                  🚨
-                </motion.div>
+        <div style={{
+          fontSize: 9.5,
+          fontWeight: 700,
+          fontFamily: "monospace",
+          color: "#EF4444",
+          background: "rgba(239, 68, 68, 0.12)",
+          padding: "2.5px 8px",
+          borderRadius: 6,
+          border: "1px solid rgba(239, 68, 68, 0.3)",
+          display: "flex",
+          alignItems: "center",
+          gap: 4
+        }}>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+          0.1s INSTANT
+        </div>
+      </div>
 
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="fm-mono" style={{ fontSize: 9, fontWeight: 900, color: "#EF4444", background: "rgba(239,68,68,0.2)", padding: "1px 5px", borderRadius: 4, border: "1px solid rgba(239,68,68,0.4)" }}>
-                      {activeAlert.code}
-                    </span>
-                    <span style={{ fontSize: 9, fontWeight: 800, color: "#FCA5A5", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                      {activeAlert.tag}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#FFFFFF", marginTop: 2, letterSpacing: "-0.01em" }}>
-                    {activeAlert.icon} {activeAlert.label}
-                  </div>
+      {/* Dynamic Alert Banner */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeAlert.code}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25 }}
+          style={{
+            background: "rgba(18, 24, 38, 0.85)",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid rgba(239, 68, 68, 0.25)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 7
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 28,
+                height: 28,
+                borderRadius: 7,
+                background: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid rgba(239, 68, 68, 0.35)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}>
+                {activeAlert.type === "water" ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" /></svg>
+                ) : activeAlert.type === "freeze" ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" strokeWidth="2.2"><line x1="12" y1="2" x2="12" y2="22" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M20 16l-4-4 4-4" /><path d="M4 8l4 4-4 4" /><path d="M16 4l-4 4-4-4" /><path d="M8 20l4-4 4 4" /></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2.2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg>
+                )}
+              </div>
+
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontFamily: "monospace", fontSize: 9.5, fontWeight: 700, color: "#EF4444" }}>
+                    {activeAlert.code}
+                  </span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#94A3B8", letterSpacing: 0.5 }}>
+                    {activeAlert.category}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#FFFFFF", marginTop: 1 }}>
+                  {activeAlert.label}
                 </div>
               </div>
             </div>
 
-            {/* Action dispatch status footer */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontSize: 11,
-              background: "rgba(0, 0, 0, 0.4)",
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "1px solid rgba(255, 255, 255, 0.08)"
+            <span style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: "#EF4444",
+              background: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.35)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              fontFamily: "monospace"
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: "#F8FAFC" }}>
-                <span style={{ color: "#FCA5A5", fontWeight: 800 }}>Action:</span>
-                <span style={{ color: "#EF4444", fontWeight: 900 }}>{activeAlert.status}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#4ADE80", fontWeight: 800, fontSize: 10 }}>
-                <motion.span
-                  animate={{ opacity: [0.3, 1, 0.3], x: [0, 2, 0] }}
-                  transition={{ duration: 0.8, repeat: Infinity }}
-                  style={{ display: "inline-block" }}
-                >
-                  📲 ➔
-                </motion.span>
-                Owner Alerted
-              </div>
+              {activeAlert.severity}
+            </span>
+          </div>
+
+          {/* Action dispatch status footer */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: 10.5,
+            background: "rgba(0, 0, 0, 0.3)",
+            padding: "5px 8px",
+            borderRadius: 6,
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#E2E8F0" }}>
+              <span style={{ color: "rgba(255, 255, 255, 0.45)" }}>Action:</span>
+              <span style={{ color: "#F8FAFC", fontWeight: 600 }}>{activeAlert.dispatch}</span>
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#34D399", fontWeight: 700, fontSize: 10 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+              Owner Alerted
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function WidgetSMS() {
+  const [step, setStep] = useState<"CALL" | "TYPING" | "SENT">("CALL");
+
+  useEffect(() => {
+    const timer1 = setTimeout(() => setStep("TYPING"), 1000);
+    const timer2 = setTimeout(() => setStep("SENT"), 2500);
+    const timer3 = setTimeout(() => setStep("CALL"), 5500);
+    return () => { clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); };
+  }, [step]);
+
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      minHeight: 124,
+      justifyContent: "center"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: "#93C5FD" }}>💬 AUTO-SMS RECOVERY</span>
+        {step === "SENT" && <span style={{ fontSize: 10, color: "#4ADE80", fontWeight: 800 }}>Delivered ✓✓</span>}
+      </div>
+      <AnimatePresence mode="wait">
+        {step === "CALL" && (
+          <motion.div key="call" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#F8FAFC", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <motion.span animate={{ rotate: [0, -15, 15, 0] }} transition={{ repeat: Infinity, duration: 0.5 }}>📞</motion.span>
+            <span>Caller hung up before booking...</span>
           </motion.div>
-        </AnimatePresence>
+        )}
+        {step === "TYPING" && (
+          <motion.div key="typing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#93C5FD", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <span>Foreman SMS Bot typing</span>
+            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.6 }}>• • •</motion.span>
+          </motion.div>
+        )}
+        {step === "SENT" && (
+          <motion.div key="sent" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#FFFFFF", background: "rgba(15, 23, 42, 0.85)", padding: "10px 12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}>
+            📲 “Hi! Sorry we missed your call. Tap here to book emergency repair: foreman.app/b/hvac”
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function WidgetLiveAudio() {
+  const reducedMotion = useReducedMotion();
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      minHeight: 124,
+      justifyContent: "center"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: "#6EE7B7", display: "flex", alignItems: "center", gap: 6 }}>
+          <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
+          LIVE AUDIO STREAM
+        </span>
+        <span style={{ fontSize: 10, color: "#A7F3D0", fontWeight: 800 }}>01:42 LIVE</span>
       </div>
-    );
-  }
-
-  // 3. Texts back missed callers (Live SMS Typing & Delivery)
-  if (t.includes("text") || t.includes("missed") || t.includes("volume")) {
-    const [step, setStep] = useState<"CALL" | "TYPING" | "SENT">("CALL");
-
-    useEffect(() => {
-      const timer1 = setTimeout(() => setStep("TYPING"), 1000);
-      const timer2 = setTimeout(() => setStep("SENT"), 2500);
-      const timer3 = setTimeout(() => setStep("CALL"), 5500);
-      return () => { clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); };
-    }, [step]);
-
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 16,
-        background: "rgba(59, 130, 246, 0.15)",
-        border: "1px solid rgba(59, 130, 246, 0.4)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        minHeight: 124,
-        justifyContent: "center"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#93C5FD" }}>💬 AUTO-SMS RECOVERY</span>
-          {step === "SENT" && <span style={{ fontSize: 10, color: "#4ADE80", fontWeight: 800 }}>Delivered ✓✓</span>}
-        </div>
-        <AnimatePresence mode="wait">
-          {step === "CALL" && (
-            <motion.div key="call" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#F8FAFC", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
-              <motion.span animate={{ rotate: [0, -15, 15, 0] }} transition={{ repeat: Infinity, duration: 0.5 }}>📞</motion.span>
-              <span>Caller hung up before booking...</span>
-            </motion.div>
-          )}
-          {step === "TYPING" && (
-            <motion.div key="typing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#93C5FD", background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
-              <span>Foreman SMS Bot typing</span>
-              <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 0.6 }}>• • •</motion.span>
-            </motion.div>
-          )}
-          {step === "SENT" && (
-            <motion.div key="sent" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ fontSize: 12, color: "#FFFFFF", background: "rgba(15, 23, 42, 0.85)", padding: "10px 12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}>
-              📲 “Hi! Sorry we missed your call. Tap here to book emergency repair: foreman.app/b/hvac”
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Dancing 10-bar equalizer */}
+      <div style={{ display: "flex", gap: 4, alignItems: "center", justifyContent: "center", height: 28, background: "rgba(0,0,0,0.3)", padding: "4px 12px", borderRadius: 8 }}>
+        {[14, 24, 10, 28, 18, 22, 12, 26, 16, 20].map((h, idx) => (
+          <motion.span
+            key={idx}
+            animate={reducedMotion ? {} : { height: [4, h, 4] }}
+            transition={{ duration: 0.5, repeat: Infinity, delay: idx * 0.08, repeatType: "reverse" }}
+            style={{ width: 4, borderRadius: 4, background: "#10B981" }}
+          />
+        ))}
       </div>
-    );
-  }
-
-  // 4. Live Audio & Control (Dancing Equalizer & Call Waveform)
-  if (t.includes("listen") || t.includes("control") || t.includes("trained") || t.includes("details")) {
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 16,
-        background: "rgba(16, 185, 129, 0.15)",
-        border: "1px solid rgba(16, 185, 129, 0.4)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        minHeight: 124,
-        justifyContent: "center"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#6EE7B7", display: "flex", alignItems: "center", gap: 6 }}>
-            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
-            LIVE AUDIO STREAM
-          </span>
-          <span style={{ fontSize: 10, color: "#A7F3D0", fontWeight: 800 }}>01:42 LIVE</span>
+      <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+        <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: "rgba(16,185,129,0.3)", color: "#A7F3D0", padding: "6px", borderRadius: 8, textAlign: "center" }}>
+          🎧 Listening Live
         </div>
-        {/* Dancing 10-bar equalizer */}
-        <div style={{ display: "flex", gap: 4, alignItems: "center", justifyContent: "center", height: 28, background: "rgba(0,0,0,0.3)", padding: "4px 12px", borderRadius: 8 }}>
-          {[14, 24, 10, 28, 18, 22, 12, 26, 16, 20].map((h, idx) => (
-            <motion.span
-              key={idx}
-              animate={reducedMotion ? {} : { height: [4, h, 4] }}
-              transition={{ duration: 0.5, repeat: Infinity, delay: idx * 0.08, repeatType: "reverse" }}
-              style={{ width: 4, borderRadius: 4, background: "#10B981" }}
-            />
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
-          <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: "rgba(16,185,129,0.3)", color: "#A7F3D0", padding: "6px", borderRadius: 8, textAlign: "center" }}>
-            🎧 Listening Live
-          </div>
-          <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: C.accentOrange, color: "#FFFFFF", padding: "6px", borderRadius: 8, textAlign: "center", boxShadow: "0 4px 12px rgba(249,122,53,0.4)" }}>
-            ⚡ Take Over
-          </div>
+        <div style={{ flex: 1, fontSize: 11, fontWeight: 800, background: C.accentOrange, color: "#FFFFFF", padding: "6px", borderRadius: 8, textAlign: "center", boxShadow: "0 4px 12px rgba(249,122,53,0.4)" }}>
+          ⚡ Take Over
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  // 5. Dynamic Money Counter & Gradual Growth Bar Animation
-  if (t.includes("money") || t.includes("dashboard") || t.includes("price")) {
-    const [val, setVal] = useState(1400);
-    const [activeBarCount, setActiveBarCount] = useState(1);
+function WidgetRevenue() {
+  const [val, setVal] = useState(1400);
+  const [activeBarCount, setActiveBarCount] = useState(1);
 
-    useEffect(() => {
-      const interval = setInterval(() => {
-        setVal((prev) => {
-          if (prev >= 28400) {
-            setActiveBarCount(1);
-            return 1400;
-          }
-          const nextVal = prev + Math.floor(Math.random() * 2000 + 1500);
-          const nextBars = Math.min(7, Math.ceil((nextVal / 28400) * 7));
-          setActiveBarCount(nextBars);
-          return nextVal;
-        });
-      }, 1200); // Smooth gradual 1.2s growth pace
-      return () => clearInterval(interval);
-    }, []);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVal((prev) => {
+        if (prev >= 28400) {
+          setActiveBarCount(1);
+          return 1400;
+        }
+        const nextVal = prev + Math.floor(Math.random() * 2000 + 1500);
+        const nextBars = Math.min(7, Math.ceil((nextVal / 28400) * 7));
+        setActiveBarCount(nextBars);
+        return nextVal;
+      });
+    }, 1200);
+    return () => clearInterval(interval);
+  }, []);
 
-    const basePcts = [30, 42, 55, 68, 78, 90, 100];
+  const basePcts = [30, 42, 55, 68, 78, 90, 100];
 
-    return (
-      <div style={{
-        marginTop: 12,
-        padding: "16px 18px",
-        borderRadius: 16,
-        background: "rgba(249, 122, 53, 0.15)",
-        border: `1px solid ${C.accentOrange}60`,
-        boxShadow: `0 0 25px ${C.accentOrange}30`,
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        minHeight: 124,
-        justifyContent: "center"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 1, fontWeight: 800 }}>REVENUE CAPTURED</div>
-            <motion.div
-              key={val}
-              initial={{ opacity: 0.6, y: 3 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em" }}
-            >
-              +${val.toLocaleString()}
-            </motion.div>
-          </div>
+  return (
+    <div style={{
+      marginTop: 12,
+      padding: "16px 18px",
+      borderRadius: 16,
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      minHeight: 124,
+      justifyContent: "center"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 10, color: "#94A3B8", textTransform: "uppercase", letterSpacing: 1, fontWeight: 800 }}>REVENUE CAPTURED</div>
           <motion.div
-            key={`pill-${val}`}
-            animate={{ scale: [1, 1.08, 1] }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            style={{ fontSize: 11, fontWeight: 800, color: C.accentOrange, background: "rgba(249,122,53,0.25)", padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.accentOrange}60`, boxShadow: `0 0 12px ${C.accentOrange}30` }}
+            key={val}
+            initial={{ opacity: 0.6, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em" }}
           >
-            ▲ +{activeBarCount * 6}% Jobs
+            +${val.toLocaleString()}
           </motion.div>
         </div>
-
-        {/* Gradual Smooth Bar Growth */}
-        <div style={{ position: "relative", height: 36, display: "flex", alignItems: "flex-end", gap: 5, padding: "0 4px" }}>
-          {basePcts.map((pct, idx) => {
-            const isLit = idx < activeBarCount;
-            const isLeadingBar = idx === activeBarCount - 1;
-
-            return (
-              <div key={idx} style={{ flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}>
-                <motion.div
-                  animate={{
-                    height: isLit ? `${pct}%` : "12%",
-                    opacity: isLit ? 1 : 0.18
-                  }}
-                  transition={{
-                    height: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
-                    opacity: { duration: 0.6, ease: "easeInOut" }
-                  }}
-                  style={{
-                    width: "100%",
-                    borderRadius: 4,
-                    background: isLeadingBar
-                      ? `linear-gradient(180deg, #FF9D54 0%, ${C.accentOrange} 100%)`
-                      : isLit
-                        ? `linear-gradient(180deg, ${C.accentOrange} 0%, rgba(249,122,53,0.4) 100%)`
-                        : "rgba(255,255,255,0.08)",
-                    boxShadow: isLeadingBar
-                      ? `0 0 12px ${C.accentOrange}A0`
-                      : isLit
-                        ? `0 0 6px ${C.accentOrange}40`
-                        : "none"
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
+        <motion.div
+          key={`pill-${val}`}
+          animate={{ scale: [1, 1.08, 1] }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          style={{ fontSize: 11, fontWeight: 800, color: C.accentOrange, background: "rgba(249,122,53,0.25)", padding: "6px 12px", borderRadius: 20, border: `1px solid ${C.accentOrange}60`, boxShadow: `0 0 12px ${C.accentOrange}30` }}
+        >
+          ▲ +{activeBarCount * 6}% Jobs
+        </motion.div>
       </div>
-    );
-  }
 
-  // 6. Grows your reviews (Interactive 5-Star Engine & Review Pop-in)
+      {/* Gradual Smooth Bar Growth */}
+      <div style={{ position: "relative", height: 36, display: "flex", alignItems: "flex-end", gap: 5, padding: "0 4px" }}>
+        {basePcts.map((pct, idx) => {
+          const isLit = idx < activeBarCount;
+          const isLeadingBar = idx === activeBarCount - 1;
+
+          return (
+            <div key={idx} style={{ flex: 1, height: "100%", display: "flex", alignItems: "flex-end" }}>
+              <motion.div
+                animate={{
+                  height: isLit ? `${pct}%` : "12%",
+                  opacity: isLit ? 1 : 0.18
+                }}
+                transition={{
+                  height: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+                  opacity: { duration: 0.6, ease: "easeInOut" }
+                }}
+                style={{
+                  width: "100%",
+                  borderRadius: 4,
+                  background: isLeadingBar
+                    ? `linear-gradient(180deg, #FF9D54 0%, ${C.accentOrange} 100%)`
+                    : isLit
+                      ? `linear-gradient(180deg, ${C.accentOrange} 0%, rgba(249,122,53,0.4) 100%)`
+                      : "rgba(255,255,255,0.08)",
+                  boxShadow: isLeadingBar
+                    ? `0 0 12px ${C.accentOrange}A0`
+                    : isLit
+                      ? `0 0 6px ${C.accentOrange}40`
+                      : "none"
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WidgetReviews() {
   const [starsCount, setStarsCount] = useState(1);
 
   useEffect(() => {
@@ -2648,9 +3258,9 @@ function FeatureGraphicWidget({ title }: { title: string }) {
       marginTop: 12,
       padding: "16px 18px",
       borderRadius: 16,
-      background: "rgba(250, 204, 21, 0.12)",
-      border: "1px solid rgba(250, 204, 21, 0.5)",
-      boxShadow: "0 8px 24px rgba(250, 204, 21, 0.15)",
+      background: "rgba(15, 23, 42, 0.85)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
       display: "flex",
       flexDirection: "column",
       gap: 10,
@@ -2691,11 +3301,12 @@ function FeatureGraphicWidget({ title }: { title: string }) {
       <AnimatePresence mode="wait">
         {starsCount === 5 ? (
           <motion.div
-            key="review-full"
-            initial={{ opacity: 0, y: 5 }}
+            key="review-quote"
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            style={{ fontSize: 12, color: "#FFFFFF", background: "rgba(0,0,0,0.35)", padding: "10px 12px", borderRadius: 10, borderLeft: "3px solid #FACC15" }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            style={{ fontSize: 12, color: "#FFFFFF", fontStyle: "italic", background: "rgba(255,255,255,0.06)", padding: "8px 10px", borderRadius: 8, borderLeft: "3px solid #FACC15" }}
           >
             “Foreman sent a review text right after the job. Captured 18 new 5-star reviews this week!”
           </motion.div>
@@ -2713,6 +3324,26 @@ function FeatureGraphicWidget({ title }: { title: string }) {
       </AnimatePresence>
     </div>
   );
+}
+
+function FeatureGraphicWidget({ title }: { title: string }) {
+  const t = title.toLowerCase();
+  if (t.includes("english") || t.includes("spanish") || t.includes("bilingual")) {
+    return <WidgetBilingual />;
+  }
+  if (t.includes("emergenc") || t.includes("triage") || t.includes("first")) {
+    return <WidgetEmergency />;
+  }
+  if (t.includes("text") || t.includes("missed") || t.includes("volume")) {
+    return <WidgetSMS />;
+  }
+  if (t.includes("listen") || t.includes("control") || t.includes("trained") || t.includes("details")) {
+    return <WidgetLiveAudio />;
+  }
+  if (t.includes("money") || t.includes("dashboard") || t.includes("price")) {
+    return <WidgetRevenue />;
+  }
+  return <WidgetReviews />;
 }
 
 function FlipFeatureCard({
@@ -2760,7 +3391,7 @@ function FlipFeatureCard({
         }}
       >
         {/* FRONT FACE OF CARD (FRAMELESS GLASS) */}
-        <div style={{
+        <div className="fm-featcard-face" style={{
           position: "absolute",
           inset: 0,
           backfaceVisibility: "hidden",
@@ -2772,7 +3403,7 @@ function FlipFeatureCard({
           borderRadius: 24,
           border: `1px solid rgba(249, 122, 53, 0.35)`,
           boxShadow: isFlipped
-            ? "0 24px 60px rgba(0,0,0,0.6), 0 0 30px rgba(249,122,53,0.3)"
+            ? "0 24px 60px rgba(0,0,0,0.6), 0 0 30px rgba(255,255,255,0.08)"
             : "0 16px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)",
           display: "flex",
           flexDirection: "column",
@@ -2780,17 +3411,10 @@ function FlipFeatureCard({
           overflow: "hidden",
           transition: "border-color 300ms ease, box-shadow 300ms ease"
         }}>
-          {/* Top Neon Accent Line */}
+          {/* Top Subtle Accent Line */}
           <div style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 3,
-            background: `linear-gradient(90deg, transparent, ${C.accentOrange}, transparent)`
-          }} />
-
-          {/* Glowing Ambient Light Sphere */}
-          <div style={{
-            position: "absolute", top: "-25%", right: "-25%", width: "200px", height: "200px",
-            background: `radial-gradient(circle, ${C.accentOrange}25 0%, transparent 70%)`,
-            pointerEvents: "none", borderRadius: "50%", filter: "blur(10px)"
+            position: "absolute", top: 0, left: 0, right: 0, height: 2,
+            background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)`
           }} />
 
           <div>
@@ -2800,19 +3424,19 @@ function FlipFeatureCard({
                 transition={{ duration: 3.2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: index * 0.15 }}
                 style={{
                   width: 64, height: 64, borderRadius: 20,
-                  background: `linear-gradient(135deg, ${C.accentOrange}35 0%, ${C.accentOrange}10 100%)`,
-                  border: `1px solid ${C.accentOrange}70`,
-                  boxShadow: `0 10px 24px -4px ${C.accentOrange}50, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  boxShadow: "0 10px 24px -4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)",
                   color: C.accentOrange, display: "flex", alignItems: "center", justifyContent: "center"
                 }}
               >
-                <div style={{ filter: `drop-shadow(0 4px 12px ${C.accentOrange}80)` }}>{feat.icon}</div>
+                <div style={{ filter: `drop-shadow(0 4px 12px ${C.accentOrange}60)` }}>{feat.icon}</div>
               </motion.div>
 
               <span className="fm-mono" style={{
-                fontSize: 12, fontWeight: 900, letterSpacing: 1.5, color: C.accentOrange,
-                background: "rgba(249,122,53,0.15)", border: `1px solid ${C.accentOrange}40`,
-                padding: "5px 12px", borderRadius: 999, boxShadow: `0 4px 12px ${C.accentOrange}20`
+                fontSize: 12, fontWeight: 900, letterSpacing: 1.5, color: "#E2E8F0",
+                background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.12)",
+                padding: "5px 12px", borderRadius: 999, boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
               }}>
                 0{index + 1}
               </span>
@@ -2828,8 +3452,8 @@ function FlipFeatureCard({
           </div>
         </div>
 
-        {/* BACK FACE OF CARD (HIGH-CONTRAST NEON DEMO) */}
-        <div style={{
+        {/* BACK FACE OF CARD */}
+        <div className="fm-featcard-face" style={{
           position: "absolute",
           inset: 0,
           transform: "rotateY(180deg)",
@@ -2840,17 +3464,17 @@ function FlipFeatureCard({
           WebkitBackdropFilter: "blur(20px)",
           padding: "24px",
           borderRadius: 24,
-          border: `1px solid ${C.accentOrange}`,
-          boxShadow: `0 24px 60px rgba(0,0,0,0.7), 0 0 35px ${C.accentOrange}45`,
+          border: `1px solid rgba(249, 122, 53, 0.4)`,
+          boxShadow: "0 24px 60px rgba(0,0,0,0.7), 0 0 25px rgba(255,255,255,0.06)",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           overflow: "hidden"
         }}>
-          {/* Top Neon Accent Line */}
+          {/* Top Subtle Accent Line */}
           <div style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 3,
-            background: C.accentOrange, boxShadow: `0 0 10px ${C.accentOrange}`
+            position: "absolute", top: 0, left: 0, right: 0, height: 2,
+            background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)"
           }} />
 
           {/* Minimalist Live Functional Animation Component */}
@@ -2915,7 +3539,7 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
           width: 500,
           height: 500,
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${C.accentOrange}18 0%, transparent 70%)`,
+          background: `radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)`,
           pointerEvents: "none",
           zIndex: 1,
           opacity: isSectionHovered ? 1 : 0,
@@ -3003,7 +3627,7 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
         <Reveal className="fm-sechead" style={{ marginBottom: 40, textAlign: "center", maxWidth: "100%" }}>
           <div className="fm-eyebrow" style={{ display: "inline-block" }}>{fCopy.eyebrow}</div>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(36px, 5vw, 52px)",
             lineHeight: 1.1,
             fontWeight: 400,
@@ -3011,7 +3635,7 @@ function AdvancedFeatures({ mode = "main" }: { mode?: LandingMode }) {
             color: C.textHeading,
             marginTop: 16
           }}>
-            <ScrollTextReveal text={fCopy.headline} as="span" />
+            {fCopy.headline}
           </h2>
         </Reveal>
 
@@ -3078,32 +3702,363 @@ const CTA_COPY: Record<LandingMode, { headline: string; sub: string; button: str
   }
 };
 
+function WaterWavesBackground() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { amount: 0.1, once: false });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const reducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
+  const mousePos = useRef({ x: -1000, y: -1000 });
+  const aiSparkle = useRef({
+    x: -200,
+    y: -200,
+    vx: 0,
+    vy: 0,
+    rotation: 0,
+    trail: [] as { x: number; y: number; alpha: number; size: number }[],
+  });
+
+  useEffect(() => {
+    if (isMobile || reducedMotion || !isInView) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    // Cap DPR at 1 — was Math.min(devicePixelRatio, 2) which on phones means 2×
+    // the canvas pixels to fill, doubling fill-rate cost.
+    const dpr = 1;
+    let width = 0;
+    let height = 0;
+
+    let resizeTicking = false;
+    const handleResize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      width = canvas.parentElement.offsetWidth;
+      height = canvas.parentElement.offsetHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+    };
+    const onResize = () => {
+      if (!resizeTicking) {
+        resizeTicking = true;
+        window.requestAnimationFrame(() => {
+          handleResize();
+          resizeTicking = false;
+        });
+      }
+    };
+
+    handleResize();
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      mousePos.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+    };
+
+    const handleMouseLeave = () => {
+      mousePos.current = { x: -1000, y: -1000 };
+    };
+
+    window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mouseleave", handleMouseLeave, { passive: true });
+
+    let time = 0;
+    let lastTs = 0;
+    // Throttle to ~30 fps on desktop too — the waves look identical at 30fps
+    const FRAME_INTERVAL = 1000 / 30;
+
+    const render = (ts: number) => {
+      animationFrameId = requestAnimationFrame(render);
+      if (ts - lastTs < FRAME_INTERVAL) return;
+      lastTs = ts;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+      // Step doubled vs original since we run at half the frame rate
+      time += 0.005;
+
+      // Coarser grid — fewer sin/cos calls per frame, same visual character
+      const stepX = 32;
+      const stepY = 26;
+      const cols = Math.ceil(width / stepX) + 1;
+      const rows = Math.ceil(height / stepY) + 1;
+
+      const mx = mousePos.current.x;
+      const my = mousePos.current.y;
+
+      const strokeGrad = ctx.createLinearGradient(0, 0, width, 0);
+      strokeGrad.addColorStop(0, "rgba(56, 189, 248, 0.35)");
+      strokeGrad.addColorStop(0.5, "rgba(14, 165, 233, 0.55)");
+      strokeGrad.addColorStop(1, "rgba(168, 85, 247, 0.45)");
+      ctx.strokeStyle = strokeGrad;
+
+      for (let r = 0; r < rows; r++) {
+        ctx.beginPath();
+        for (let c = 0; c < cols; c++) {
+          const x = c * stepX;
+          const y = r * stepY;
+
+          const wave1 = Math.sin(x * 0.01 + time * 2.2) * Math.cos(y * 0.008 + time * 1.8);
+          const wave2 = Math.sin((x + y) * 0.007 - time * 1.9) * 0.7;
+          const wave3 = Math.cos(x * 0.015 - y * 0.01 + time * 2.8) * 0.4;
+
+          const dx = x - mx;
+          const dy = y - my;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          let mouseRipple = 0;
+          if (dist < 180) {
+            mouseRipple = Math.sin(dist * 0.08 - time * 6) * ((180 - dist) / 180) * 26;
+          }
+
+          const elevation = (wave1 + wave2 + wave3) * 36 + mouseRipple;
+          const depthRatio = y / height;
+          const projX = x + Math.sin(time * 1.5 + y * 0.012) * (1 - depthRatio) * 10;
+          const projY = y + elevation;
+
+          if (c === 0) {
+            ctx.moveTo(projX, projY);
+          } else {
+            ctx.lineTo(projX, projY);
+          }
+        }
+
+        const normY = r / rows;
+        ctx.globalAlpha = Math.min(0.45, Math.max(0.08, (1 - normY * 0.7) * 0.4 + 0.08));
+        ctx.lineWidth = normY > 0.4 ? 1.8 : 1.2;
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1;
+
+      // Sparkles: no per-particle shadowBlur (shadowBlur is GPU-expensive)
+      ctx.fillStyle = "#FFFFFF";
+      for (let i = 0; i < 12; i++) {
+        const sx = (Math.sin(i * 77 + time * 1.2) * 0.5 + 0.5) * width;
+        const sy = (Math.cos(i * 44 + time * 1.4) * 0.5 + 0.5) * height;
+        ctx.globalAlpha = (Math.sin(time * 4 + i) * 0.5 + 0.5) * 0.55;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      const isHovering = mx > 0 && mx < width && my > 0 && my < height;
+
+      if (isHovering) {
+        const star = aiSparkle.current;
+        if (star.x < 0 || star.y < 0) {
+          star.x = mx;
+          star.y = my;
+        }
+
+        const fdx = mx - star.x;
+        const fdy = my - star.y;
+        const fdist = Math.sqrt(fdx * fdx + fdy * fdy);
+
+        if (fdist > 4) {
+          const targetSpeed = Math.min(26, fdist * 0.28);
+          const angle = Math.atan2(fdy, fdx);
+          star.vx += (Math.cos(angle) * targetSpeed - star.vx) * 0.35;
+          star.vy += (Math.sin(angle) * targetSpeed - star.vy) * 0.35;
+        } else {
+          star.vx *= 0.75;
+          star.vy *= 0.75;
+        }
+
+        star.x += star.vx;
+        star.y += star.vy;
+        star.rotation += 0.12;
+
+        if (Math.hypot(star.vx, star.vy) > 0.5) {
+          star.trail.push({
+            x: star.x + (Math.random() - 0.5) * 10,
+            y: star.y + (Math.random() - 0.5) * 10,
+            alpha: 0.9,
+            size: Math.random() * 3 + 1.5,
+          });
+        }
+        if (star.trail.length > 12) star.trail.shift();
+
+        star.trail.forEach((p) => {
+          p.alpha -= 0.05;
+          if (p.alpha > 0) {
+            ctx.save();
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = "#38BDF8";
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "#38BDF8";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        });
+
+        ctx.save();
+        ctx.translate(star.x, star.y);
+        ctx.rotate(star.rotation);
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "#38BDF8";
+        ctx.globalAlpha = 0.98;
+
+        const outerR = 18;
+        const innerR = 4.5;
+
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const r = i % 2 === 0 ? outerR : innerR;
+          const a = (i * Math.PI) / 4;
+          const px = Math.cos(a) * r;
+          const py = Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+
+        const starGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, outerR);
+        starGrad.addColorStop(0, "#FFFFFF");
+        starGrad.addColorStop(0.4, "#38BDF8");
+        starGrad.addColorStop(1, "#A855F7");
+
+        ctx.fillStyle = starGrad;
+        ctx.fill();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#FFFFFF";
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      } else {
+        aiSparkle.current.x = -200;
+        aiSparkle.current.y = -200;
+        aiSparkle.current.trail = [];
+      }
+
+      ctx.restore();
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseleave", handleMouseLeave);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isInView, isMobile, reducedMotion]);
+
+  if (isMobile || reducedMotion) {
+    return (
+      <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.22) 0%, rgba(15, 23, 42, 0.98) 65%, rgba(5, 8, 18, 1) 100%)"
+        }} />
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+      {/* Deep Ocean Liquid Radial Gradient (Full Height) */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 1 }}
+        style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.28) 0%, rgba(15, 23, 42, 0.98) 65%, rgba(5, 8, 18, 1) 100%)"
+        }}
+      />
+
+      {/* Floating 3D Caustics Glow Orbs */}
+      <motion.div
+        animate={{
+          scale: [1, 1.4, 1],
+          opacity: [0.3, 0.65, 0.3],
+          x: [0, 60, 0],
+          y: [0, -40, 0]
+        }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: "absolute",
+          top: "10%",
+          left: "20%",
+          width: 550,
+          height: 550,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(56, 189, 248, 0.3) 0%, rgba(14, 165, 233, 0.1) 55%, transparent 75%)",
+          filter: "blur(65px)"
+        }}
+      />
+
+      <motion.div
+        animate={{
+          scale: [1.25, 0.95, 1.3],
+          opacity: [0.25, 0.6, 0.25],
+          x: [0, -60, 0],
+          y: [0, 50, 0]
+        }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: "absolute",
+          bottom: "10%",
+          right: "15%",
+          width: 600,
+          height: 600,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, rgba(124, 58, 237, 0.08) 55%, transparent 75%)",
+          filter: "blur(75px)"
+        }}
+      />
+
+      {/* 3D Water Waves Liquid Tide Flowing Up on Scroll Down & Receding Down on Scroll Up */}
+      <motion.div
+        initial={{ clipPath: "inset(98% 0% 0% 0%)", opacity: 0 }}
+        animate={isInView ? { clipPath: "inset(0% 0% 0% 0%)", opacity: 1 } : { clipPath: "inset(98% 0% 0% 0%)", opacity: 0 }}
+        transition={{ duration: 4.5, ease: [0.16, 1, 0.3, 1] }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      >
+        <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+      </motion.div>
+    </div>
+  );
+}
+
 function FinalCTA({ mode = "main" }: { mode?: LandingMode }) {
   const content = CTA_COPY[mode] || CTA_COPY.main;
 
   return (
-    <section id="pilot" style={{ background: C.bgPrimary, padding: "48px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
-      <div style={{
-        position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        width: "100%", maxWidth: 1000, height: 600,
-        background: `radial-gradient(circle, ${C.accentOrange}25, transparent 70%)`,
-        pointerEvents: "none", zIndex: 0
-      }} />
+    <section id="pilot" style={{ background: "#050812", padding: "80px 0", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <WaterWavesBackground />
       <div className="fm-wrap" style={{ position: "relative", zIndex: 1 }}>
         <Reveal>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(36px, 5.5vw, 64px)",
             lineHeight: 1.12,
             fontWeight: 400,
             letterSpacing: "-0.02em",
             color: C.textHeading
           }}>
-            <ScrollTextReveal text={content.headline} as="span" />
+            {content.headline}
           </h2>
-          <div className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto", marginTop: 16 }}>
-            <ScrollTextReveal text={content.sub} as="p" />
-          </div>
+          <p className="fm-secsub" style={{ maxWidth: 600, margin: "0 auto", marginTop: 16 }}>
+            {content.sub}
+          </p>
           <div className="fm-hero-cta" style={{ justifyContent: "center", marginTop: 40 }}>
             <MagneticButton href={CALENDLY_LINK} target="_blank" rel="noopener noreferrer" className="fm-btn fm-btn-primary">
               {content.button}
@@ -3132,7 +4087,7 @@ const TESTIMONIALS = [
     metric: "+$18,400",
     metricLabel: "1st Weekend Revenue",
     initials: "DM",
-    avatarUrl: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/32.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3147,7 +4102,7 @@ const TESTIMONIALS = [
     metric: "0 Missed",
     metricLabel: "Emergency Dispatches",
     initials: "MV",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/45.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3162,7 +4117,7 @@ const TESTIMONIALS = [
     metric: "100%",
     metricLabel: "Call Answer Rate",
     initials: "CR",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/76.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3177,7 +4132,7 @@ const TESTIMONIALS = [
     metric: "+$24,000",
     metricLabel: "First 48 Hours",
     initials: "SJ",
-    avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/women/44.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3192,7 +4147,7 @@ const TESTIMONIALS = [
     metric: "< 10 sec",
     metricLabel: "Emergency Dispatch",
     initials: "JR",
-    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/86.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3207,7 +4162,7 @@ const TESTIMONIALS = [
     metric: "34 Jobs",
     metricLabel: "Inspections Scheduled",
     initials: "BC",
-    avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    avatarUrl: "https://randomuser.me/api/portraits/men/52.jpg",
     rating: 5,
     bgGradient: "linear-gradient(135deg, rgba(249,122,53,0.25), rgba(20,28,48,0.8))",
     glow: "249,122,53",
@@ -3314,6 +4269,202 @@ function InfiniteDraggableMarquee({ items, baseSpeed = -0.5, style }: { items: t
 /* ================================================================== */
 /*  3D TESTIMONIAL FAN CAROUSEL (Fanned 3D Deck with Ambient Glow)    */
 /* ================================================================== */
+const Testimonial3DCard = memo(function Testimonial3DCard({
+  item,
+  isCenter,
+  xOffset,
+  yOffset,
+  scale,
+  rotateY,
+  rotateZ,
+  opacity,
+  zIndex,
+  isPaused,
+  onClick,
+}: {
+  item: typeof TESTIMONIALS[0];
+  isCenter: boolean;
+  xOffset: number;
+  yOffset: number | number[];
+  scale: number;
+  rotateY: number;
+  rotateZ: number;
+  opacity: number;
+  zIndex: number;
+  isPaused: boolean;
+  onClick: () => void;
+}) {
+  const spotlightX = useMotionValue(0);
+  const spotlightY = useMotionValue(0);
+  const spotlightBg = useMotionTemplate`radial-gradient(350px circle at ${spotlightX}px ${spotlightY}px, rgba(255, 255, 255, 0.08), transparent 80%)`;
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isCenter) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    spotlightX.set(e.clientX - rect.left);
+    spotlightY.set(e.clientY - rect.top);
+  };
+
+  return (
+    <motion.div
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      initial={false}
+      animate={{
+        x: xOffset,
+        y: yOffset,
+        scale: scale,
+        rotateY: rotateY,
+        rotateZ: rotateZ,
+        opacity: opacity,
+        zIndex: zIndex,
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 240,
+        damping: 22,
+        mass: 0.8,
+      }}
+      whileHover={isCenter ? { scale: 1.02, y: -6 } : { scale: scale * 1.03 }}
+      style={{
+        position: "absolute",
+        width: "100%",
+        maxWidth: 350,
+        minHeight: 270,
+        padding: "24px 22px 20px",
+        borderRadius: 18,
+        background: `linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 15, 28, 0.98) 100%)`,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: `1px solid ${isCenter ? "rgba(249, 122, 53, 0.45)" : "rgba(249, 122, 53, 0.16)"}`,
+        boxShadow: "none",
+        cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        gap: 16,
+        filter: isCenter ? "none" : "blur(0.5px)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Sleek Top Progress Bar Pill */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 15,
+          width: 120,
+          height: 1.5,
+          background: "rgba(255, 255, 255, 0.1)",
+          borderRadius: 999,
+          overflow: "hidden",
+          margin: "0 auto",
+        }}
+      >
+        {isCenter && (
+          <motion.div
+            key={item.author}
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{
+              duration: 3.5,
+              ease: "linear",
+            }}
+            style={{
+              height: "100%",
+              borderRadius: 999,
+              background: `linear-gradient(90deg, ${C.accentOrange}, #FFA466)`,
+              boxShadow: "none",
+            }}
+          />
+        )}
+      </div>
+
+      {/* Dynamic Cursor Spotlight Glow Effect */}
+      {isCenter && (
+        <motion.div
+          style={{
+            pointerEvents: "none",
+            position: "absolute",
+            inset: -1,
+            opacity: isHovered ? 1 : 0,
+            transition: "opacity 300ms ease",
+            background: spotlightBg,
+            zIndex: 1,
+          }}
+        />
+      )}
+
+      {/* Quote Body */}
+      <div style={{ position: "relative", zIndex: 2, flex: 1, display: "flex", alignItems: "center" }}>
+        <p
+          style={{
+            color: "#E2E8F0",
+            fontSize: 14.5,
+            lineHeight: 1.55,
+            fontWeight: 400,
+            margin: 0,
+            fontFamily: "var(--font-outfit), sans-serif",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          &ldquo;{item.quote} {item.highlight}&rdquo;
+        </p>
+      </div>
+
+      {/* Author & Role Footer */}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 12 }}>
+        <img
+          src={item.avatarUrl}
+          alt={item.author}
+          width={44}
+          height={44}
+          loading="lazy"
+          decoding="async"
+          style={{
+            width: 44,
+            height: 44,
+            aspectRatio: "1 / 1",
+            borderRadius: "50%",
+            objectFit: "cover",
+            border: "2px solid rgba(255, 255, 255, 0.2)",
+            boxShadow: "none",
+            flexShrink: 0,
+          }}
+        />
+        <div>
+          <h4
+            style={{
+              fontFamily: "var(--font-outfit), sans-serif",
+              fontWeight: 700,
+              color: "#FFFFFF",
+              fontSize: 15,
+              lineHeight: 1.2,
+              margin: 0,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {item.author}
+          </h4>
+          <p
+            style={{
+              fontFamily: "var(--font-outfit), sans-serif",
+              fontWeight: 400,
+              color: "#94A3B8",
+              fontSize: 11.5,
+              margin: "2px 0 0",
+            }}
+          >
+            {item.title} &bull; {item.location}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 function Testimonials3DFanDeck() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -3326,12 +4477,14 @@ function Testimonials3DFanDeck() {
     return () => clearInterval(timer);
   }, [isPaused]);
 
-  const handleNext = () => {
-    setActiveIndex((prev) => (prev + 1) % TESTIMONIALS.length);
+  const handleDotClick = (index: number) => {
+    setActiveIndex(index);
+    setIsPaused(false);
   };
 
-  const handlePrev = () => {
-    setActiveIndex((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
+  const handleCardClick = (index: number) => {
+    setActiveIndex(index);
+    setIsPaused(false);
   };
 
   return (
@@ -3344,7 +4497,7 @@ function Testimonials3DFanDeck() {
       <div
         style={{
           position: "relative",
-          height: 480,
+          height: 360,
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
@@ -3363,182 +4516,75 @@ function Testimonials3DFanDeck() {
 
           if (!isVisible) return null;
 
-          // Compute 3D Card Physics based on distance from center
-          const xOffset = offset * 290;
+          const xOffset = offset * 280;
           const scale = isCenter ? 1 : 0.85 - Math.abs(offset) * 0.05;
-          const rotateY = isCenter ? 0 : offset > 0 ? -26 : 26;
-          const rotateZ = isCenter ? 0 : offset > 0 ? 5 : -5;
+          const rotateY = 0;
+          const rotateZ = 0;
           const opacity = isCenter ? 1 : Math.max(0.3, 0.65 - (Math.abs(offset) - 1) * 0.35);
           const zIndex = 30 - Math.abs(offset) * 10;
-
-          // Ambient bottom mesh gradient colors
-          const glowColors = [
-            "rgba(56, 189, 248, 0.35)",  // Sky blue
-            "rgba(52, 211, 153, 0.35)",  // Emerald
-            "rgba(249, 122, 53, 0.35)",  // Orange
-            "rgba(168, 85, 247, 0.35)",  // Purple
-            "rgba(236, 72, 153, 0.35)",  // Pink
-            "rgba(34, 211, 238, 0.35)",  // Cyan
-          ];
-          const bottomGlowColor = glowColors[i % glowColors.length];
+          const yOffset = isCenter ? [-25, 0] : 15;
 
           return (
-            <motion.div
+            <Testimonial3DCard
               key={i}
-              onClick={() => setActiveIndex(i)}
-              initial={false}
-              animate={{
-                x: xOffset,
-                scale: scale,
-                rotateY: rotateY,
-                rotateZ: rotateZ,
-                opacity: opacity,
-                zIndex: zIndex,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 260,
-                damping: 24,
-              }}
-              whileHover={isCenter ? { scale: 1.03, y: -8 } : { scale: scale * 1.05 }}
-              style={{
-                position: "absolute",
-                width: "100%",
-                maxWidth: 410,
-                minHeight: 400,
-                padding: "36px 32px",
-                borderRadius: 24,
-                background: `linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(30,41,59,0.98) 60%, ${bottomGlowColor} 100%)`,
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                border: `1px solid ${isCenter ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"}`,
-                boxShadow: isCenter
-                  ? "0 30px 70px rgba(0,0,0,0.85), 0 0 40px rgba(255,255,255,0.08)"
-                  : "0 15px 35px rgba(0,0,0,0.6)",
-                cursor: "pointer",
-                transformStyle: "preserve-3d",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                filter: isCenter ? "none" : "blur(0.5px)",
-              }}
-            >
-              {/* Quote Body matching reference text typography */}
-              <div>
-                <p
-                  style={{
-                    color: "#E2E8F0",
-                    fontSize: 16,
-                    lineHeight: 1.65,
-                    fontWeight: 400,
-                    margin: "0 0 24px",
-                    fontFamily: "var(--font-outfit), sans-serif",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  &ldquo;{item.quote} {item.highlight}&rdquo;
-                </p>
-              </div>
-
-              {/* Author & Role Footer matching reference layout */}
-              <div style={{ marginTop: "auto" }}>
-                <h4
-                  style={{
-                    fontFamily: "var(--font-outfit), sans-serif",
-                    fontWeight: 800,
-                    color: "#FFFFFF",
-                    fontSize: 24,
-                    lineHeight: 1.2,
-                    margin: "0 0 4px",
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  {item.author}
-                </h4>
-                <p
-                  style={{
-                    fontFamily: "var(--font-outfit), sans-serif",
-                    fontWeight: 500,
-                    color: "#94A3B8",
-                    fontSize: 14,
-                    margin: 0,
-                  }}
-                >
-                  {item.title} &bull; {item.location}
-                </p>
-              </div>
-            </motion.div>
+              item={item}
+              isCenter={isCenter}
+              xOffset={xOffset}
+              yOffset={yOffset}
+              scale={scale}
+              rotateY={rotateY}
+              rotateZ={rotateZ}
+              opacity={opacity}
+              zIndex={zIndex}
+              isPaused={isPaused}
+              onClick={() => handleCardClick(i)}
+            />
           );
         })}
       </div>
 
-      {/* Navigation Controls & Pagination Dots */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 10 }}>
-        <button
-          onClick={handlePrev}
-          aria-label="Previous Testimonial"
-          style={{
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            color: "#FFFFFF",
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = C.accentOrange)}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          {TESTIMONIALS.map((_, dotIdx) => (
+      {/* Sleek Thin Numbered Bar Controls: 01 ── 02 ─ 03 ─ 04 ─ 05 ─ 06 ─ */}
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, marginTop: 24 }}>
+        {TESTIMONIALS.map((_, idx) => {
+          const isActive = activeIndex === idx;
+          return (
             <button
-              key={dotIdx}
-              onClick={() => setActiveIndex(dotIdx)}
+              key={idx}
+              onClick={() => handleDotClick(idx)}
+              aria-label={`Go to testimonial ${idx + 1}`}
               style={{
-                width: activeIndex === dotIdx ? 24 : 8,
-                height: 8,
-                borderRadius: 999,
-                background: activeIndex === dotIdx ? C.accentOrange : "rgba(255,255,255,0.2)",
+                background: "none",
                 border: "none",
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
                 cursor: "pointer",
-                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
               }}
-            />
-          ))}
-        </div>
-
-        <button
-          onClick={handleNext}
-          aria-label="Next Testimonial"
-          style={{
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            color: "#FFFFFF",
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = C.accentOrange)}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? C.textHeading : "rgba(255, 255, 255, 0.4)",
+                  fontFamily: "var(--font-outfit), sans-serif",
+                  transition: "color 0.3s ease",
+                }}
+              >
+                {String(idx + 1).padStart(2, "0")}
+              </span>
+              <div
+                style={{
+                  width: isActive ? 36 : 14,
+                  height: 2,
+                  borderRadius: 999,
+                  background: isActive ? C.accentOrange : "rgba(255, 255, 255, 0.15)",
+                  transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
+              />
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -3551,13 +4597,13 @@ export function TestimonialsSection() {
   return (
     <section id="testimonials" className="fm-island" style={{ background: C.bgCard, padding: "72px 0 88px", zIndex: 7, overflow: "hidden", position: "relative" }}>
       {/* Background glow ambiance */}
-      <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 800, height: 400, background: `radial-gradient(ellipse, ${C.accentOrange}12 0%, transparent 70%)`, filter: "blur(60px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 800, height: 400, background: `radial-gradient(ellipse, rgba(255,255,255,0.02) 0%, transparent 70%)`, filter: "blur(60px)", pointerEvents: "none" }} />
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <Reveal className="fm-sechead" style={{ marginBottom: 48, maxWidth: "100%", textAlign: "center" }}>
           <div className="fm-eyebrow">REAL CONTRACTOR RESULTS</div>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 5vw, 56px)",
             lineHeight: 1.15,
             fontWeight: 400,
@@ -3565,27 +4611,26 @@ export function TestimonialsSection() {
             color: C.textHeading,
             marginBottom: 16
           }}>
-            <ScrollTextReveal text="Trusted by trade owners who build America." as="span" />
+            Trusted by trade owners who build America.
           </h2>
-          <div style={{ color: C.textBody, fontSize: 18, maxWidth: 640, margin: "0 auto", lineHeight: 1.6 }}>
-            <ScrollTextReveal text="See how HVAC, plumbing, electrical, and restoration contractors turn missed calls into booked revenue every single day." as="p" />
-          </div>
+          <p style={{ color: C.textBody, fontSize: 18, maxWidth: 640, margin: "0 auto", lineHeight: 1.6 }}>
+            See how HVAC, plumbing, electrical, and restoration contractors turn missed calls into booked revenue every single day.
+          </p>
         </Reveal>
 
         {/* 3D Fanned Testimonial Card Stack */}
         <Testimonials3DFanDeck />
       </div>
 
-      {/* Marquee Track 1 (Infinite Draggable Loop) */}
+      {/* 
       <InfiniteDraggableMarquee items={row1} baseSpeed={-0.6} style={{ marginBottom: 20 }} />
-
-      {/* Marquee Track 2 (Reverse Infinite Draggable Loop) */}
       <InfiniteDraggableMarquee items={row2} baseSpeed={0.6} />
+      */}
     </section>
   );
 }
 
-function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
+const TestimonialCard = memo(function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, mx: 50, my: 50 });
   const [hovering, setHovering] = useState(false);
@@ -3693,7 +4738,7 @@ function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
           <div className="tcard-avatar" style={{ background: item.bgGradient, width: 34, height: 34, borderRadius: "50%", border: `1.5px solid rgba(${item.glow}, 0.5)` }}>
             <div className="tcard-avatar-ring" />
             {item.avatarUrl ? (
-              <img src={item.avatarUrl} alt={item.author} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={item.avatarUrl} alt={item.author} width={34} height={34} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
             ) : (
               item.initials
             )}
@@ -3713,7 +4758,7 @@ function TestimonialCard({ item }: { item: typeof TESTIMONIALS[0] }) {
       </div>
     </motion.div>
   );
-}
+});
 
 function InteractiveEyeballs({
   isHovered,
@@ -3863,10 +4908,17 @@ function ForemanWordmarkSection({ yText, opacityText, scaleText }: { yText: any;
   const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (containerRef.current) {
+      setContainerRect(containerRef.current.getBoundingClientRect());
+    }
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setContainerRect(rect);
+    const rect = containerRect || containerRef.current.getBoundingClientRect();
+    if (!containerRect) setContainerRect(rect);
     setMousePos({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
@@ -3876,7 +4928,7 @@ function ForemanWordmarkSection({ yText, opacityText, scaleText }: { yText: any;
   return (
     <div
       ref={containerRef}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setIsHovered(false)}
       style={{
@@ -3948,8 +5000,10 @@ function ForemanWordmarkSection({ yText, opacityText, scaleText }: { yText: any;
 /* ================================================================== */
 /*  FOOTER                                                             */
 /* ================================================================== */
-export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolean }) {
+export function Footer({ hideIntegrations = false, mode }: { hideIntegrations?: boolean; mode?: LandingMode | "industry" }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isNiche = mode ? mode !== "main" : (pathname && pathname !== "/" && pathname !== "");
   const footerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: footerRef,
@@ -3994,25 +5048,58 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
     >
 
       {/* Background glow effects */}
-      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, ${C.accentOrange}15, transparent 70%)`, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1000, height: 400, background: `radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 70%)`, pointerEvents: "none" }} />
+
+      {/* Massive FOREMAN Background Text Watermark — Positioned at Bottom */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 30,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          textAlign: "center",
+          pointerEvents: "none",
+          userSelect: "none",
+          zIndex: 1,
+          overflow: "hidden",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-outfit), sans-serif",
+            fontWeight: 900,
+            fontSize: "clamp(80px, 21vw, 360px)",
+            lineHeight: 0.8,
+            letterSpacing: "-0.045em",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.015) 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            display: "block",
+            whiteSpace: "nowrap",
+          }}
+        >
+          FOREMAN
+        </span>
+      </div>
 
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 60, marginBottom: 80, justifyContent: "space-between" }}>
 
           {/* Brand Column */}
           <div style={{ flex: "2 1 300px", paddingRight: 40 }}>
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, textDecoration: "none" }}>
-              <Logo size={36} />
-              <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 26, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
+            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, textDecoration: "none" }}>
+              <Logo size={32} />
+              <span style={{ fontFamily: "var(--font-outfit), sans-serif", fontWeight: 800, fontSize: 20, color: C.textHeading, letterSpacing: "-0.5px" }}>Foreman</span>
             </Link>
             <p style={{ fontSize: 15, lineHeight: 1.6, color: C.textBody, marginBottom: 32, maxWidth: 360 }}>
               The AI front office built exclusively for the trades. We answer the phone, qualify the lead, and book the job directly into your calendar so you can focus on the work.
             </p>
             <div style={{ display: "flex", gap: 16 }}>
               {[
-                { id: "x", url: "https://x.com" },
-                { id: "linkedin", url: "https://linkedin.com" },
-                { id: "instagram", url: "https://www.instagram.com/foreman.ai_?igsh=c2J0M2pxcWNlbjM2" }
+                { id: "x", url: "https://x.com/foremanai_?s=11" },
+                { id: "linkedin", url: "https://www.linkedin.com/company/foremanaii/?viewAsMember=true" },
+                { id: "instagram", url: "https://www.instagram.com/foreman.ai_?igsh=MTVyampxZHo1OTJqNQ==" }
               ].map((social, i) => (
                 <motion.a
                   key={i}
@@ -4038,7 +5125,7 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
             {[
               { label: "Features", href: "#features" },
               { label: "How it works", href: "#how" },
-              { label: "Pricing", href: "#pricing" },
+              { label: isNiche ? "Pricing" : "Pay as you go", href: isNiche ? "#pricing" : CALENDLY_LINK },
               { label: "Integrations", href: "#integrations" },
               { label: "Book a Pilot", href: CALENDLY_LINK }
             ].filter(link => !(hideIntegrations && link.label === "Integrations")).map((link) => (
@@ -4092,22 +5179,12 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
         </div>
       </div>
 
-      {/* 100% FULL SCREEN WIDTH Edge-to-Edge Slit Reveal Container with Custom Eyes Cursor Tracker */}
-      <ForemanWordmarkSection yText={yText} opacityText={opacityText} scaleText={scaleText} />
-
       {/* Bottom Bar inside fm-wrap */}
       <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
         <div style={{ paddingTop: 12, paddingBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24 }}>
           <div style={{ fontSize: 14, color: C.textBody, fontWeight: 500 }}>
             &copy; {new Date().getFullYear()} Foreman Inc. All rights reserved.
           </div>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: C.accentGreenText, background: `${C.accentGreenBg}40`, padding: "6px 12px", borderRadius: 999, border: `1px solid ${C.accentGreenText}40`, cursor: "pointer" }}
-          >
-            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.accentGreenText, boxShadow: `0 0 8px ${C.accentGreenText}` }} />
-            All systems operational
-          </motion.div>
         </div>
       </div>
     </footer>
@@ -4118,25 +5195,7 @@ export function Footer({ hideIntegrations = false }: { hideIntegrations?: boolea
 /*  PERSISTENT WIDGET                                                  */
 /* ================================================================== */
 function PersistentWidget() {
-  return (
-    <div style={{ position: "fixed", bottom: 24, left: 24, zIndex: 90 }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        whileHover={{ scale: 1.05, y: -2 }}
-        transition={{ delay: 1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        style={{ background: C.bgCard, border: `1px solid ${C.borderPrimary}`, borderRadius: 999, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 10px 25px rgba(0,0,0,0.3)", cursor: "pointer" }}
-      >
-        <motion.div
-          animate={{ y: [-2, 2] }}
-          transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-        >
-          <DoodleSignalBars style={{ width: 24, height: 18 }} />
-        </motion.div>
-        <span style={{ fontSize: 13, fontWeight: 700, color: C.textHeading, letterSpacing: 0.5 }}>Foreman Live</span>
-      </motion.div>
-    </div>
-  );
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -4149,13 +5208,15 @@ export function Check({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function PhoneIcon({ o }: { o?: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3-8.6A2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.4-1.2a2 2 0 012.1-.5c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z" stroke={C.accentGreenText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3-8.6A2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.4-1.2a2 2 0 012.1-.5c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z" stroke={o ? C.accentOrange : C.accentGreenText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
+
 function PhoneOff() {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4163,6 +5224,7 @@ function PhoneOff() {
     </svg>
   );
 }
+
 function Clock({ o }: { o?: boolean }) {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4171,6 +5233,7 @@ function Clock({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function Dollar({ o }: { o?: boolean }) {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4178,6 +5241,7 @@ function Dollar({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function Calendar({ o }: { o?: boolean }) {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4187,6 +5251,7 @@ function Calendar({ o }: { o?: boolean }) {
     </svg>
   );
 }
+
 function Star() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4194,6 +5259,7 @@ function Star() {
     </svg>
   );
 }
+
 function Bolt() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4201,6 +5267,7 @@ function Bolt() {
     </svg>
   );
 }
+
 function Globe() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4210,6 +5277,7 @@ function Globe() {
     </svg>
   );
 }
+
 function MessageSquare() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4217,6 +5285,7 @@ function MessageSquare() {
     </svg>
   );
 }
+
 function Headphones() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -4304,7 +5373,7 @@ export function Pricing() {
   return (
     <section id="pricing" className="py-16 relative" style={{ background: C.bgPrimary }}>
       {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: `radial-gradient(ellipse at 50% -50%, ${C.accentOrange}, transparent 70%)` }} />
+      <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: `radial-gradient(ellipse at 50% -50%, rgba(255,255,255,0.05), transparent 70%)` }} />
 
       <div className="max-w-[1000px] mx-auto px-6" ref={ref}>
         <motion.div
@@ -4315,11 +5384,11 @@ export function Pricing() {
           style={{ background: C.bgCard, borderColor: C.borderPrimary }}
         >
           {/* Subtle noise texture or inner glow */}
-          <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(circle at 50% 50%, ${C.accentOrange}, transparent 60%)` }} />
+          <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04), transparent 60%)` }} />
 
           <div className="relative z-10">
             <h2 style={{
-              fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+              fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
               fontSize: "clamp(32px, 4.8vw, 56px)",
               lineHeight: 1.15,
               fontWeight: 400,
@@ -4327,10 +5396,10 @@ export function Pricing() {
               color: "#FFFFFF",
               marginBottom: "1.5rem"
             }}>
-              <ScrollTextReveal text="Pricing that only wins when you do." as="span" />
+              Pricing that only wins when you do.
             </h2>
             <div className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto mb-12">
-              <ScrollTextReveal text="Foreman is priced to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit. You only pay when Foreman books you real work." as="p" />
+              Foreman is priced to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit. You only pay when Foreman books you real work.
             </div>
 
             <div className="flex flex-col items-center justify-center">
@@ -4359,10 +5428,6 @@ const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
   main: [
     { q: "Is it a robot talking to my customers?", a: "It sounds like your best front-desk person, calm, clear, and to the point. It never wastes a caller's time, and it never sends anyone to voicemail. You can also give it your shop's name and tone so it sounds like your team." },
     { q: "Can I listen to calls or step in?", a: "Yes. Listen to any call live from your phone and take over instantly. You are always in control." },
-    { q: "Does it really speak Spanish?", a: "Fluently. It handles calls in English and Spanish automatically, so you never lose a caller to a language barrier." },
-    { q: "How much does it cost?", a: "Foreman is priced custom to your business and only charges when it delivers. Most clients start with a pilot, so you can see exactly what it captures before you commit." },
-    { q: "I already have voicemail or an answering service.", a: "Voicemail loses about 80% of callers. Answering services take a message and hand it back to you. Foreman qualifies the job and books it into your calendar. That is the difference between a note and a booked job." },
-    { q: "How long does setup take?", a: "You're live in about 24 hours. No new hardware, we connect to your existing number." },
     { q: "What happens after hours?", a: "That's when Foreman shines. Nights, weekends, and holidays are prime emergency hours, and it answers all of them." }
   ],
   hvac: [
@@ -4394,14 +5459,14 @@ const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
 
 export function FAQ({ mode = "main" }: { mode?: LandingMode }) {
   const qa = FAQ_COPY[mode] || FAQ_COPY.main;
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<number | null>(null);
   return (
     <section id="faq" className="fm-island" style={{ background: C.bgCard, padding: "32px 0", zIndex: 8 }}>
       <div className="fm-wrap">
         <Reveal className="fm-sechead">
           <div className="fm-eyebrow">STRAIGHT ANSWERS</div>
           <h2 style={{
-            fontFamily: '"Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
             fontSize: "clamp(32px, 4.8vw, 56px)",
             lineHeight: 1.15,
             fontWeight: 400,
@@ -4409,7 +5474,7 @@ export function FAQ({ mode = "main" }: { mode?: LandingMode }) {
             color: C.textHeading,
             marginBottom: "18px"
           }}>
-            <ScrollTextReveal text="Questions, answered" as="span" />
+            <ScrollTextReveal text="Questions, Answered" as="span" />
           </h2>
         </Reveal>
         <div className="fm-faqlist">
@@ -4509,10 +5574,158 @@ function ScrollToTopButton() {
   );
 }
 
+// ------------------------------------------------------------------
+// CINEMATIC WORKFLOW TRADE CONFIGURATION
+// ------------------------------------------------------------------
+interface WorkflowTradeItem {
+  service: string;
+  issue: string;
+  caller: string;
+  avatar: string;
+  phone: string;
+  location: string;
+  tech: string;
+  techInitial: string;
+  smsConfirm: string;
+  smsTracking: string;
+  crmApp: string;
+  revenue: string;
+}
+
+const WORKFLOW_TRADE_DATA: Record<string, WorkflowTradeItem> = {
+  hvac: {
+    service: "HVAC Repair",
+    issue: "No Cooling",
+    caller: "Mike Johnson",
+    avatar: "https://randomuser.me/api/portraits/men/33.jpg",
+    phone: "+1 (512) 849-2041",
+    location: "Austin TX",
+    tech: "Mike (Tech)",
+    techInitial: "M",
+    smsConfirm: "Hi Mike! Your HVAC repair is confirmed for today between 2-4 PM. Your tech is Mike.",
+    smsTracking: "Great! Tech Mike will send live tracking when en route.",
+    crmApp: "Housecall Pro",
+    revenue: "+$650",
+  },
+  plumbing: {
+    service: "Emergency Plumbing",
+    issue: "Basement Pipe Leak",
+    caller: "Sarah Miller",
+    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
+    phone: "+1 (512) 692-4118",
+    location: "Austin TX",
+    tech: "Dave (Plumber)",
+    techInitial: "D",
+    smsConfirm: "Hi Sarah! Your plumbing visit is confirmed for today between 2-4 PM. Your tech is Dave.",
+    smsTracking: "Great! Tech Dave is dispatched with leak repair kit.",
+    crmApp: "ServiceTitan",
+    revenue: "+$520",
+  },
+  electrical: {
+    service: "Electrical Repair",
+    issue: "Breaker Tripping",
+    caller: "Robert Davis",
+    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
+    phone: "+1 (512) 731-9032",
+    location: "Austin TX",
+    tech: "Alex (Electrician)",
+    techInitial: "A",
+    smsConfirm: "Hi Robert! Your electrical inspection is confirmed for today between 2-4 PM. Your electrician is Alex.",
+    smsTracking: "Great! Tech Alex will arrive with panel diagnostics equipment.",
+    crmApp: "Jobber",
+    revenue: "+$480",
+  },
+  roofing: {
+    service: "Roof Inspection",
+    issue: "Storm Shingle Damage",
+    caller: "Emily Clark",
+    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
+    phone: "+1 (512) 554-1290",
+    location: "Austin TX",
+    tech: "Carlos (Roofer)",
+    techInitial: "C",
+    smsConfirm: "Hi Emily! Your roof inspection is confirmed for today between 2-4 PM. Your inspector is Carlos.",
+    smsTracking: "Great! Inspector Carlos will provide a drone roof damage report.",
+    crmApp: "AccuLynx",
+    revenue: "+$1,850",
+  },
+  pest: {
+    service: "Pest Treatment",
+    issue: "Termite Activity",
+    caller: "Brian Kelly",
+    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
+    phone: "+1 (512) 388-7612",
+    location: "Austin TX",
+    tech: "Sam (Exterminator)",
+    techInitial: "S",
+    smsConfirm: "Hi Brian! Your pest treatment is confirmed for today between 2-4 PM. Your specialist is Sam.",
+    smsTracking: "Great! Specialist Sam is en route with perimeter treatment gear.",
+    crmApp: "FieldRoutes",
+    revenue: "+$420",
+  },
+  garage: {
+    service: "Garage Door Repair",
+    issue: "Broken Torsion Spring",
+    caller: "Karen White",
+    avatar: "https://randomuser.me/api/portraits/women/29.jpg",
+    phone: "+1 (512) 419-8803",
+    location: "Austin TX",
+    tech: "Jason (Tech)",
+    techInitial: "J",
+    smsConfirm: "Hi Karen! Your garage door repair is confirmed for today between 2-4 PM. Your tech is Jason.",
+    smsTracking: "Great! Tech Jason is bringing high-cycle replacement springs.",
+    crmApp: "Housecall Pro",
+    revenue: "+$390",
+  },
+  restoration: {
+    service: "Water Restoration",
+    issue: "Flooded Crawlspace",
+    caller: "David Wilson",
+    avatar: "https://randomuser.me/api/portraits/men/52.jpg",
+    phone: "+1 (512) 902-3341",
+    location: "Austin TX",
+    tech: "Chris (Lead Tech)",
+    techInitial: "C",
+    smsConfirm: "Hi David! Emergency restoration crew is dispatched for 2:00 PM. Crew lead is Chris.",
+    smsTracking: "Great! Crew lead Chris is on the way with industrial extractors.",
+    crmApp: "Encircle",
+    revenue: "+$2,400",
+  },
+  "property-management": {
+    service: "Maintenance Dispatch",
+    issue: "Tenant AC Failure",
+    caller: "Jennifer Taylor",
+    avatar: "https://randomuser.me/api/portraits/women/65.jpg",
+    phone: "+1 (512) 670-2294",
+    location: "Austin TX",
+    tech: "Mark (Maintenance)",
+    techInitial: "M",
+    smsConfirm: "Hi Jennifer! Maintenance dispatch confirmed for Unit 4B at 2:00 PM. Tech is Mark.",
+    smsTracking: "Great! Tech Mark is en route with work order #4819.",
+    crmApp: "AppFolio",
+    revenue: "+$350",
+  },
+  "law-firm": {
+    service: "Legal Intake",
+    issue: "Auto Accident Consultation",
+    caller: "Marcus Evans",
+    avatar: "https://randomuser.me/api/portraits/men/75.jpg",
+    phone: "+1 (512) 819-4502",
+    location: "Austin TX",
+    tech: "Sarah (Attorney)",
+    techInitial: "S",
+    smsConfirm: "Hi Marcus! Consultation confirmed for today at 2:00 PM with Attorney Sarah.",
+    smsTracking: "Great! Attorney Sarah is preparing your case evaluation file.",
+    crmApp: "Clio",
+    revenue: "+$1,500",
+  },
+};
+
 /* ================================================================== */
 /*  CINEMATIC WORKFLOW (S-CURVE)                                      */
 /* ================================================================== */
-function CinematicWorkflow() {
+export function CinematicWorkflow({ tradeId = "hvac" }: { tradeId?: string }) {
+  const data = WORKFLOW_TRADE_DATA[tradeId] || WORKFLOW_TRADE_DATA.hvac;
   const reducedMotion = useReducedMotion();
   const [step, setStep] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
@@ -4595,8 +5808,7 @@ function CinematicWorkflow() {
   return (
     <section ref={containerRef} className="fm-island" style={{ background: C.bgPrimary, padding: "48px 0", position: "relative", overflow: "hidden", display: "flex", justifyContent: "center" }}>
       {/* Background Ambience */}
-      <div style={{ position: "absolute", top: "20%", left: "30%", width: "40%", height: 600, background: "radial-gradient(ellipse, rgba(167,139,250,0.08) 0%, transparent 60%)", filter: "blur(80px)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: "20%", right: "20%", width: "40%", height: 600, background: `radial-gradient(circle, ${C.accentOrange}0A 0%, transparent 60%)`, filter: "blur(80px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: "20%", left: "30%", width: "40%", height: 600, background: "radial-gradient(ellipse, rgba(167,139,250,0.04) 0%, transparent 60%)", filter: "blur(80px)", pointerEvents: "none" }} />
 
       <div className="fm-cinematic-container">
 
@@ -4611,30 +5823,30 @@ function CinematicWorkflow() {
           <motion.path
             d="M 140 210 L 860 210 A 80 80 0 0 1 940 290 L 940 650 A 80 80 0 0 1 860 730 L 140 730 A 80 80 0 0 0 60 810 L 60 1170 A 80 80 0 0 0 140 1250 L 860 1250"
             fill="none" stroke={C.accentOrange} strokeWidth="4"
-            style={{ pathLength: activeProgress, filter: "drop-shadow(0 0 8px rgba(249,122,53,0.8))" }}
+            style={{ pathLength: activeProgress }}
           />
         </svg>
 
         {/* Mobile Vertical Pipeline */}
         <div className="fm-cinematic-line-mobile">
           <motion.div
-            style={{ width: "100%", height: "100%", background: C.accentOrange, transformOrigin: "top", scaleY: activeProgress, filter: "drop-shadow(0 0 8px rgba(249,122,53,0.8))" }}
+            style={{ width: "100%", height: "100%", background: C.accentOrange, transformOrigin: "top", scaleY: activeProgress }}
           />
         </div>
 
         {/* 3x3 Grid Layout */}
         <div className="fm-cinematic-grid">
-          <div className="fm-cinematic-step step1"><StepPhone active={step >= 1} /></div>
+          <div className="fm-cinematic-step step1"><StepPhone active={step >= 1} data={data} /></div>
           <div className="fm-cinematic-step step2"><StepAI active={step >= 2} listens={step >= 3} /></div>
-          <div className="fm-cinematic-step step4"><StepQualification active={step >= 4} /></div>
+          <div className="fm-cinematic-step step4"><StepQualification active={step >= 4} data={data} /></div>
 
-          <div ref={row2Ref} className="fm-cinematic-step step5"><StepAppointment active={step >= 5} /></div>
+          <div ref={row2Ref} className="fm-cinematic-step step5"><StepAppointment active={step >= 5} data={data} /></div>
           <div className="fm-cinematic-step step6"><StepCalendar active={step >= 6} /></div>
-          <div className="fm-cinematic-step step7"><StepDispatch active={step >= 7} /></div>
+          <div className="fm-cinematic-step step7"><StepDispatch active={step >= 7} data={data} /></div>
 
-          <div ref={row3Ref} className="fm-cinematic-step step8"><StepSMS active={step >= 8} /></div>
-          <div className="fm-cinematic-step step9"><StepCRM active={step >= 9} /></div>
-          <div className="fm-cinematic-step step10"><StepRevenue active={step >= 10} /></div>
+          <div ref={row3Ref} className="fm-cinematic-step step8"><StepSMS active={step >= 8} data={data} /></div>
+          <div className="fm-cinematic-step step9"><StepCRM active={step >= 9} data={data} /></div>
+          <div className="fm-cinematic-step step10"><StepRevenue active={step >= 10} data={data} /></div>
         </div>
 
       </div>
@@ -4646,11 +5858,11 @@ function CinematicWorkflow() {
 // STEP COMPONENTS (Strict 8px Grid System & Alignment)
 // ------------------------------------------------------------------
 
-function StepPhone({ active }: { active: boolean }) {
+function StepPhone({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: C.accentOrange }}>1 INCOMING CALL</motion.div>
-      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: `1px solid ${active ? "rgba(249,122,53,0.35)" : "rgba(255,255,255,0.08)"}`, padding: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 20px 40px rgba(0,0,0,0.45)", position: "relative" }}>
+      <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: `1px solid ${active ? "rgba(249,122,53,0.35)" : "rgba(255,255,255,0.08)"}`, padding: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "none", position: "relative" }}>
 
         {/* Status Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "rgba(249,122,53,0.1)", border: "1px solid rgba(249,122,53,0.25)", padding: "4px 10px", borderRadius: 999, marginBottom: 2 }}>
@@ -4659,17 +5871,17 @@ function StepPhone({ active }: { active: boolean }) {
         </div>
 
         {/* Caller Avatar */}
-        <motion.div animate={active ? { scale: [1, 1.05, 1] } : {}} transition={{ duration: 2, repeat: Infinity }} style={{ width: 52, height: 52, borderRadius: "50%", border: "2px solid rgba(96,165,250,0.5)", boxShadow: active ? "0 0 20px rgba(96,165,250,0.3)" : "none", overflow: "hidden", background: "#1E293B", alignSelf: "center", margin: "12px auto" }}>
-          <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80" alt="Mike Johnson" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <motion.div animate={active ? { scale: [1, 1.05, 1] } : {}} transition={{ duration: 2, repeat: Infinity }} style={{ width: 52, height: 52, borderRadius: "50%", border: "2px solid rgba(96,165,250,0.5)", overflow: "hidden", background: "#1E293B", alignSelf: "center", margin: "12px auto" }}>
+          <img src={data.avatar} alt={data.caller} width={52} height={52} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", aspectRatio: "1 / 1", objectFit: "cover" }} />
         </motion.div>
 
         {/* Caller Information */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-          <h3 style={{ fontSize: 16, color: "#fff", marginBottom: 2, fontWeight: 700, fontFamily: "var(--font-outfit), sans-serif" }}>Mike Johnson</h3>
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginBottom: 8, fontFamily: "monospace" }}>+1 (512) 849-2041</p>
+          <h3 style={{ fontSize: 16, color: "#fff", marginBottom: 2, fontWeight: 700, fontFamily: "var(--font-outfit), sans-serif" }}>{data.caller}</h3>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginBottom: 8, fontFamily: "monospace" }}>{data.phone}</p>
           <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", padding: "3.5px 12px", borderRadius: 999, marginTop: 4, marginBottom: 8 }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="2.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
-            <span style={{ color: "#60A5FA", fontSize: 11, fontWeight: 600 }}>HVAC Repair</span>
+            <span style={{ color: "#60A5FA", fontSize: 11, fontWeight: 600 }}>{data.service}</span>
           </div>
         </div>
 
@@ -4686,10 +5898,10 @@ function StepPhone({ active }: { active: boolean }) {
 
         {/* Action Buttons */}
         <div style={{ display: "flex", justifyContent: "center", gap: 20, opacity: active ? 1 : 0.5, transition: "opacity 0.3s", marginTop: 8 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 14px rgba(239,68,68,0.4)" }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M10.68 13.31a16 16 0 0 0 3.41 3.41l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" /><line x1="23" y1="1" x2="1" y2="23" /></svg>
           </div>
-          <motion.div animate={active ? { scale: [1, 1.08, 1] } : {}} transition={{ duration: 1.2, repeat: Infinity }} style={{ width: 40, height: 40, borderRadius: "50%", background: C.accentGreenText, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 14px rgba(31,170,89,0.45)" }}>
+          <motion.div animate={active ? { scale: [1, 1.08, 1] } : {}} transition={{ duration: 1.2, repeat: Infinity }} style={{ width: 40, height: 40, borderRadius: "50%", background: C.accentGreenText, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
           </motion.div>
         </div>
@@ -4750,13 +5962,13 @@ function StepAI({ active, listens }: { active: boolean, listens: boolean }) {
   );
 }
 
-function StepQualification({ active }: { active: boolean }) {
+function StepQualification({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   const fields = [
     { label: "Customer", value: "Verified" },
-    { label: "Service", value: "HVAC Repair" },
-    { label: "Issue", value: "No Cooling" },
+    { label: "Service", value: data.service },
+    { label: "Issue", value: data.issue },
     { label: "Priority", value: "Emergency" },
-    { label: "Location", value: "Austin TX" }
+    { label: "Location", value: data.location }
   ];
 
   return (
@@ -4789,7 +6001,7 @@ function StepQualification({ active }: { active: boolean }) {
   );
 }
 
-function StepAppointment({ active }: { active: boolean }) {
+function StepAppointment({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#FBBF24" }}>5 SUGGESTION</motion.div>
@@ -4800,7 +6012,7 @@ function StepAppointment({ active }: { active: boolean }) {
         </motion.div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "0 8px" }}>
           <h3 style={{ color: "#fff", fontSize: 16, fontWeight: 600, marginBottom: 6, fontFamily: "var(--font-outfit), sans-serif", textAlign: "center" }}>Suggesting Time</h3>
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.4, margin: 0, textAlign: "center" }}>Cross-referencing availability for Austin, TX.</p>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.4, margin: 0, textAlign: "center" }}>Cross-referencing availability for {data.location}.</p>
         </div>
         {active && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ width: "100%", background: "#151928", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", marginTop: 12, marginBottom: 4, textAlign: "center" }}>
@@ -4841,7 +6053,7 @@ function StepCalendar({ active }: { active: boolean }) {
   );
 }
 
-function StepDispatch({ active }: { active: boolean }) {
+function StepDispatch({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#38BDF8" }}>7 DISPATCH</motion.div>
@@ -4862,9 +6074,9 @@ function StepDispatch({ active }: { active: boolean }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(15,23,42,0.85)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {/* 24px Avatar Badge */}
-              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#38BDF8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11 }}>M</div>
+              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#38BDF8", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 11 }}>{data.techInitial}</div>
               <div>
-                <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Mike (Tech)</div>
+                <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{data.tech}</div>
                 <div style={{ color: "#38BDF8", fontSize: 10, fontWeight: 500 }}>Assigned</div>
               </div>
             </div>
@@ -4881,7 +6093,7 @@ function StepDispatch({ active }: { active: boolean }) {
   );
 }
 
-function StepSMS({ active }: { active: boolean }) {
+function StepSMS({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#34D399" }}>8 SMS SENT</motion.div>
@@ -4889,7 +6101,7 @@ function StepSMS({ active }: { active: boolean }) {
         {active && (
           <motion.div initial={{ opacity: 0, y: 12, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#151928", padding: 10, borderRadius: 14, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 6px 16px rgba(0,0,0,0.3)" }}>
             <p style={{ color: "#fff", fontSize: 11, lineHeight: 1.35, margin: 0 }}>
-              &quot;Hi Mike! Your HVAC repair is confirmed for today between 2-4 PM. Your tech is Mike.&quot;
+              &quot;{data.smsConfirm}&quot;
             </p>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 4 }}>
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 9.5 }}>Delivered</span>
@@ -4905,7 +6117,7 @@ function StepSMS({ active }: { active: boolean }) {
         {active && (
           <motion.div initial={{ opacity: 0, y: 12, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 1.1, type: "spring", stiffness: 200, damping: 20 }} style={{ background: "#151928", padding: 10, borderRadius: 14, borderBottomLeftRadius: 4, border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 6px 16px rgba(0,0,0,0.3)", marginTop: 8 }}>
             <p style={{ color: "#fff", fontSize: 11, lineHeight: 1.35, margin: 0 }}>
-              &quot;Great! Tech Mike will send live tracking when en route.&quot;
+              &quot;{data.smsTracking}&quot;
             </p>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: 4 }}>
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 9.5 }}>Delivered</span>
@@ -4918,7 +6130,7 @@ function StepSMS({ active }: { active: boolean }) {
   );
 }
 
-function StepCRM({ active }: { active: boolean }) {
+function StepCRM({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   const steps = ["Customer Saved", "Estimate Generated", "Job Created"];
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
@@ -4926,7 +6138,7 @@ function StepCRM({ active }: { active: boolean }) {
       <TiltCard style={{ width: 240, height: 320, background: "rgba(10,15,28,0.92)", backdropFilter: "blur(20px)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", padding: 16, display: "flex", flexDirection: "column", justifyContent: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.45)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 10 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C084FC" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-          <span style={{ color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "var(--font-outfit), sans-serif" }}>Housecall Pro</span>
+          <span style={{ color: "#fff", fontSize: 14, fontWeight: 600, fontFamily: "var(--font-outfit), sans-serif" }}>{data.crmApp}</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
           {steps.map((s, i) => (
@@ -4947,7 +6159,7 @@ function StepCRM({ active }: { active: boolean }) {
   );
 }
 
-function StepRevenue({ active }: { active: boolean }) {
+function StepRevenue({ active, data }: { active: boolean; data: WorkflowTradeItem }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
       <motion.div animate={{ opacity: active ? 1 : 0.4 }} style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#F97A35" }}>10 COMPLETED</motion.div>
@@ -4967,7 +6179,7 @@ function StepRevenue({ active }: { active: boolean }) {
 
         {active ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, type: "spring" }} style={{ fontSize: 32, color: "#fff", fontWeight: 700, marginBottom: 4, letterSpacing: -1.5, zIndex: 1, textAlign: "center" }}>
-            +$650
+            {data.revenue}
           </motion.div>
         ) : (
           <div style={{ fontSize: 32, color: "rgba(255,255,255,0.1)", fontWeight: 700, marginBottom: 4, letterSpacing: -1.5, zIndex: 1, textAlign: "center" }}>$0</div>
@@ -4981,6 +6193,7 @@ function StepRevenue({ active }: { active: boolean }) {
 /*  PAGE                                                               */
 /* ================================================================== */
 export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
+  const isMobile = useIsMobile();
   useEffect(() => {
     if (window.location.hash) {
       setTimeout(() => {
@@ -4993,7 +6206,17 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
   }, []);
 
   return (
-    <ReactLenis root options={{ lerp: 0.08, duration: 1.2, wheelMultiplier: 1, touchMultiplier: 2, syncTouch: true, smoothWheel: true }}>
+    <ReactLenis
+      root
+      options={{
+        lerp: 0.08,
+        duration: 1.2,
+        wheelMultiplier: 1,
+        touchMultiplier: 2,
+        syncTouch: false,
+        smoothWheel: !isMobile,
+      }}
+    >
       <main
         className="fm-landing"
         style={{
@@ -5006,23 +6229,20 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
         <Nav />
         <Hero mode={mode} />
         <DashboardPreview />
-        <div id={mode === "main" ? "how" : undefined}>
-          <CinematicWorkflow />
-        </div>
-        {mode === "main" && <TradeSelector />}
-        <StatComparison mode={mode} />
-        <div id={mode !== "main" ? "how" : undefined}>
+        <div id="how">
           <AnnotatedProof mode={mode} />
         </div>
         <div id="integrations">
           <IntegrationsRow />
         </div>
+        {mode === "main" && <TradeSelector />}
+        <StatComparison mode={mode} />
         <div id="features">
           <AdvancedFeatures mode={mode} />
         </div>
         <TestimonialsSection />
-        <FinalCTA mode={mode} />
-        <Pricing />
+        {/* <FinalCTA mode={mode} /> */}
+        {/* <Pricing /> */}
         <FAQ mode={mode} />
         <Footer />
         <PersistentWidget />
