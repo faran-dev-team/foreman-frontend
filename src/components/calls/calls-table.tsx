@@ -2,7 +2,7 @@
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { IntentBadge, OutcomeBadge } from "@/components/calls/call-badges";
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
@@ -18,6 +18,7 @@ type ViewState = "loading" | "ready" | "error";
 
 const CALLS_POLL_INTERVAL_MS = 15_000;
 const CALLS_CACHE_TTL_MS = 60_000;
+const PAGE_SIZE = 15;
 
 type CallsCacheEntry = {
   calls: CallListItem[];
@@ -85,6 +86,331 @@ function formatCaller(call: CallListItem): {
   }
 
   return { primary: rawNumber };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Filter types & helpers                                            */
+/* ------------------------------------------------------------------ */
+
+type OutcomeFilter = "all" | "booked" | "not_booked" | "escalated" | "missed";
+type IntentFilter = "all" | "booking" | "quote" | "question" | "wrong_number" | "other";
+type DateFilter = "all" | "today" | "week" | "month";
+
+const OUTCOME_OPTIONS: { value: OutcomeFilter; label: string }[] = [
+  { value: "all", label: "All outcomes" },
+  { value: "booked", label: "Booked" },
+  { value: "not_booked", label: "Not booked" },
+  { value: "escalated", label: "Escalated" },
+  { value: "missed", label: "Missed" },
+];
+
+const INTENT_OPTIONS: { value: IntentFilter; label: string }[] = [
+  { value: "all", label: "All intents" },
+  { value: "booking", label: "Booking" },
+  { value: "quote", label: "Quote" },
+  { value: "question", label: "Question" },
+  { value: "wrong_number", label: "Wrong number" },
+  { value: "other", label: "Other" },
+];
+
+const DATE_OPTIONS: { value: DateFilter; label: string }[] = [
+  { value: "all", label: "All time" },
+  { value: "today", label: "Today" },
+  { value: "week", label: "This week" },
+  { value: "month", label: "This month" },
+];
+
+function startOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function startOfWeek(date: Date): Date {
+  const d = startOfDay(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
+function startOfMonth(date: Date): Date {
+  const d = startOfDay(date);
+  d.setDate(1);
+  return d;
+}
+
+function passesDateFilter(iso: string, filter: DateFilter): boolean {
+  if (filter === "all") return true;
+  const callDate = new Date(iso);
+  if (Number.isNaN(callDate.getTime())) return true;
+  const now = new Date();
+  if (filter === "today") return callDate >= startOfDay(now);
+  if (filter === "week") return callDate >= startOfWeek(now);
+  if (filter === "month") return callDate >= startOfMonth(now);
+  return true;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Filter bar component                                              */
+/* ------------------------------------------------------------------ */
+
+function FilterBar({
+  outcome,
+  intent,
+  dateRange,
+  onOutcomeChange,
+  onIntentChange,
+  onDateRangeChange,
+  onClear,
+  hasActiveFilters,
+  filteredCount,
+  totalCount,
+}: {
+  outcome: OutcomeFilter;
+  intent: IntentFilter;
+  dateRange: DateFilter;
+  onOutcomeChange: (v: OutcomeFilter) => void;
+  onIntentChange: (v: IntentFilter) => void;
+  onDateRangeChange: (v: DateFilter) => void;
+  onClear: () => void;
+  hasActiveFilters: boolean;
+  filteredCount: number;
+  totalCount: number;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <FilterSelect
+          label="Outcome"
+          value={outcome}
+          options={OUTCOME_OPTIONS}
+          onChange={(v) => onOutcomeChange(v as OutcomeFilter)}
+        />
+        <FilterSelect
+          label="Intent"
+          value={intent}
+          options={INTENT_OPTIONS}
+          onChange={(v) => onIntentChange(v as IntentFilter)}
+        />
+        <FilterSelect
+          label="Date"
+          value={dateRange}
+          options={DATE_OPTIONS}
+          onChange={(v) => onDateRangeChange(v as DateFilter)}
+        />
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className="h-3.5 w-3.5"
+            >
+              <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+            </svg>
+            Clear filters
+          </button>
+        )}
+
+        {hasActiveFilters && (
+          <span className="text-xs text-slate-500">
+            {filteredCount} of {totalCount} calls
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FilterSelect<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  const isActive = value !== "all";
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value as T)}
+      className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-foreman-navy/30 ${
+        isActive
+          ? "border-foreman-navy/30 bg-foreman-navy/5 text-foreman-navy"
+          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+      }`}
+    >
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Pagination controls                                               */
+/* ------------------------------------------------------------------ */
+
+function PaginationControls({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const pages = buildPageNumbers(currentPage, totalPages);
+
+  return (
+    <nav
+      aria-label="Pagination"
+      className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6"
+    >
+      {/* Mobile: simple prev/next */}
+      <div className="flex flex-1 justify-between sm:hidden">
+        <button
+          type="button"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+          className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Previous
+        </button>
+        <span className="inline-flex items-center text-sm text-slate-600">
+          {currentPage} / {totalPages}
+        </span>
+        <button
+          type="button"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+          className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+
+      {/* Desktop: full page numbers */}
+      <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <p className="text-sm text-slate-600">
+          Page{" "}
+          <span className="font-medium">{currentPage}</span>
+          {" "}of{" "}
+          <span className="font-medium">{totalPages}</span>
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Previous page"
+          >
+            <ChevronLeftIcon />
+          </button>
+
+          {pages.map((p, i) =>
+            p === "..." ? (
+              <span
+                key={`ellipsis-${i}`}
+                className="inline-flex h-9 w-9 items-center justify-center text-sm text-slate-400"
+              >
+                …
+              </span>
+            ) : (
+              <button
+                key={p}
+                type="button"
+                onClick={() => onPageChange(p as number)}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition ${
+                  p === currentPage
+                    ? "bg-foreman-navy text-white shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {p}
+              </button>
+            ),
+          )}
+
+          <button
+            type="button"
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Next page"
+          >
+            <ChevronRightIcon />
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function buildPageNumbers(
+  current: number,
+  total: number,
+): (number | "...")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: (number | "...")[] = [1];
+  if (current > 3) pages.push("...");
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (current < total - 2) pages.push("...");
+  pages.push(total);
+  return pages;
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-4 w-4"
+    >
+      <path
+        fillRule="evenodd"
+        d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-4 w-4"
+    >
+      <path
+        fillRule="evenodd"
+        d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
 }
 
 function CallsTableSkeleton() {
@@ -237,10 +563,68 @@ export function CallsTable() {
     };
   }, [loadCalls, shopId, isLoaded, isSignedIn, shopLoading]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const tableTopRef = useRef<HTMLDivElement>(null);
+
+  // Filter state
+  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>("all");
+  const [intentFilter, setIntentFilter] = useState<IntentFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+
+  const hasActiveFilters =
+    outcomeFilter !== "all" || intentFilter !== "all" || dateFilter !== "all";
+
+  const clearFilters = useCallback(() => {
+    setOutcomeFilter("all");
+    setIntentFilter("all");
+    setDateFilter("all");
+    setCurrentPage(1);
+  }, []);
+
   const displayCalls = useMemo(
     () =>
       enrichCallsWithJobOutcomes(calls, jobsQuery.data?.jobs ?? []),
     [calls, jobsQuery.data?.jobs],
+  );
+
+  // Apply filters
+  const filteredCalls = useMemo(() => {
+    return displayCalls.filter((call) => {
+      if (outcomeFilter !== "all") {
+        const key = (call.outcome || "").toLowerCase();
+        if (key !== outcomeFilter) return false;
+      }
+      if (intentFilter !== "all") {
+        const key = (call.intent || "").toLowerCase();
+        if (key !== intentFilter) return false;
+      }
+      if (!passesDateFilter(call.started_at, dateFilter)) return false;
+      return true;
+    });
+  }, [displayCalls, outcomeFilter, intentFilter, dateFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCalls.length / PAGE_SIZE));
+
+  // Reset to page 1 when filters or data change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [outcomeFilter, intentFilter, dateFilter]);
+
+  useEffect(() => {
+    setCurrentPage((prev) => (prev > totalPages ? 1 : prev));
+  }, [totalPages]);
+
+  const paginatedCalls = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredCalls.slice(start, start + PAGE_SIZE);
+  }, [filteredCalls, currentPage]);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page);
+      tableTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [],
   );
 
   const outcomeCounts = useMemo(() => {
@@ -332,6 +716,21 @@ export function CallsTable() {
         </button>
       </div>
 
+      {viewState === "ready" && calls.length > 0 && (
+        <FilterBar
+          outcome={outcomeFilter}
+          intent={intentFilter}
+          dateRange={dateFilter}
+          onOutcomeChange={setOutcomeFilter}
+          onIntentChange={setIntentFilter}
+          onDateRangeChange={setDateFilter}
+          onClear={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+          filteredCount={filteredCalls.length}
+          totalCount={displayCalls.length}
+        />
+      )}
+
       {viewState === "loading" && <CallsTableSkeleton />}
 
       {viewState === "error" && (
@@ -354,11 +753,30 @@ export function CallsTable() {
         <DashboardGettingStarted variant="calls" />
       )}
 
-      {viewState === "ready" && calls.length > 0 && (
+      {viewState === "ready" && calls.length > 0 && filteredCalls.length === 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center">
+          <p className="text-sm font-medium text-slate-700">No calls match your filters</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Try adjusting or clearing the filters above.
+          </p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-4 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
+
+      {viewState === "ready" && filteredCalls.length > 0 && (
         <>
+          {/* Scroll anchor for page changes */}
+          <div ref={tableTopRef} />
+
           {/* Mobile card list */}
           <ul className="space-y-3 sm:hidden">
-            {displayCalls.map((call) => {
+            {paginatedCalls.map((call) => {
               const caller = formatCaller(call);
               return (
                 <li key={call.id}>
@@ -394,6 +812,15 @@ export function CallsTable() {
             })}
           </ul>
 
+          {/* Mobile pagination */}
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm sm:hidden">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          </div>
+
           {/* Desktop / tablet table */}
           <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm sm:block">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -417,7 +844,7 @@ export function CallsTable() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {displayCalls.map((call) => {
+                {paginatedCalls.map((call) => {
                   const caller = formatCaller(call);
                   return (
                     <tr
@@ -470,6 +897,11 @@ export function CallsTable() {
                 })}
               </tbody>
             </table>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
             <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-400 sm:px-6">
               Click a call to open details, recording, intake, and transcript.
               Intent and value fill in when intake is saved or a job is booked.
