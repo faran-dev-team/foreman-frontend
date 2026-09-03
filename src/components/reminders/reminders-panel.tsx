@@ -2,9 +2,19 @@
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  LIST_PAGE_SIZE,
+  ListFilterBar,
+  PaginationControls,
+} from "@/components/dashboard/list-table-controls";
 import { useShop } from "@/components/dashboard/shop-provider";
+import {
+  DATE_FILTER_OPTIONS,
+  passesDateFilter,
+  type DateFilter,
+} from "@/lib/list/date-filter";
 import { ApiError } from "@/lib/api/client";
 import {
   fetchAppointmentReminders,
@@ -18,8 +28,8 @@ import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 
 type ViewState = "loading" | "ready" | "error";
 
-const STATUS_FILTERS = [
-  { value: "", label: "All" },
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All statuses" },
   { value: "PENDING", label: "Pending" },
   { value: "SCHEDULED", label: "Scheduled" },
   { value: "SENT", label: "Sent" },
@@ -27,7 +37,7 @@ const STATUS_FILTERS = [
   { value: "FAILED", label: "Failed" },
   { value: "RETRYING", label: "Retrying" },
   { value: "FAILED_PERMANENT", label: "Failed permanent" },
-] as const;
+];
 
 function formatWhen(iso?: string | null): string {
   if (!iso) return "—";
@@ -53,7 +63,24 @@ function formatReminderType(type: string): string {
   const key = type.toUpperCase();
   if (key === "24_HOUR") return "24-hour";
   if (key === "1_HOUR") return "1-hour";
-  return type;
+  if (key === "AT_TIME") return "At time";
+  if (key.startsWith("MINUTES_")) {
+    return `${key.replace("MINUTES_", "")} min`;
+  }
+  return type.replace(/[_-]+/g, " ");
+}
+
+function buildTypeFilterOptions(items: ReminderSummary[]) {
+  const seen = new Map<string, string>();
+  for (const item of items) {
+    const key = (item.reminder_type || "").toUpperCase();
+    if (!key || seen.has(key)) continue;
+    seen.set(key, formatReminderType(item.reminder_type));
+  }
+  const options = Array.from(seen.entries())
+    .sort(([, a], [, b]) => a.localeCompare(b))
+    .map(([value, label]) => ({ value, label }));
+  return [{ value: "all", label: "All types" }, ...options];
 }
 
 function statusBadgeClass(status: string): string {
@@ -120,12 +147,16 @@ function RemindersSkeleton() {
 export function RemindersPanel() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const { shopId, loading: shopLoading, resolvingMe } = useShop();
+  const tableTopRef = useRef<HTMLDivElement>(null);
 
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [items, setItems] = useState<ReminderSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState<ReminderStatusSummary | null>(null);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
@@ -160,7 +191,6 @@ export function RemindersPanel() {
       const [list, statusSummary] = await Promise.all([
         withClerkAuthRetry(getToken, (token) =>
           fetchAppointmentReminders(shopId, token, {
-            status: statusFilter || undefined,
             limit: 100,
           }),
         ),
@@ -193,7 +223,6 @@ export function RemindersPanel() {
     shopId,
     shopLoading,
     resolvingMe,
-    statusFilter,
   ]);
 
   useEffect(() => {
@@ -256,12 +285,72 @@ export function RemindersPanel() {
     }
   }, [appointmentIdInput, getToken, shopId, loadReminders]);
 
-  const emptyHint = useMemo(() => {
-    if (statusFilter) {
-      return `No reminders with status “${statusFilter}”.`;
+  const hasActiveFilters =
+    statusFilter !== "all" || typeFilter !== "all" || dateFilter !== "all";
+
+  const clearFilters = useCallback(() => {
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setDateFilter("all");
+    setCurrentPage(1);
+  }, []);
+
+  const typeFilterOptions = useMemo(
+    () => buildTypeFilterOptions(items),
+    [items],
+  );
+
+  const filteredItems = useMemo(() => {
+    return items.filter((row) => {
+      if (statusFilter !== "all") {
+        if ((row.status || "").toUpperCase() !== statusFilter) return false;
+      }
+      if (typeFilter !== "all") {
+        if ((row.reminder_type || "").toUpperCase() !== typeFilter) {
+          return false;
+        }
+      }
+      if (!passesDateFilter(row.scheduled_at || row.next_attempt_at, dateFilter)) {
+        return false;
+      }
+      return true;
+    });
+  }, [items, statusFilter, typeFilter, dateFilter]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredItems.length / LIST_PAGE_SIZE),
+  );
+
+  useEffect(() => {
+    if (
+      typeFilter !== "all" &&
+      !typeFilterOptions.some((option) => option.value === typeFilter)
+    ) {
+      setTypeFilter("all");
     }
-    return "No appointment reminders yet. When a job is booked, Foreman schedules 24-hour and 1-hour reminder emails automatically.";
-  }, [statusFilter]);
+  }, [typeFilter, typeFilterOptions]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, typeFilter, dateFilter]);
+
+  useEffect(() => {
+    setCurrentPage((prev) => (prev > totalPages ? 1 : prev));
+  }, [totalPages]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * LIST_PAGE_SIZE;
+    return filteredItems.slice(start, start + LIST_PAGE_SIZE);
+  }, [filteredItems, currentPage]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    tableTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const emptyHint =
+    "No appointment reminders yet. When a job is booked, Foreman schedules reminder emails automatically.";
 
   if (
     !isLoaded ||
@@ -315,24 +404,6 @@ export function RemindersPanel() {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label
-            className="text-xs font-medium text-slate-500"
-            htmlFor="reminder-status"
-          >
-            Status
-          </label>
-          <select
-            id="reminder-status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800"
-          >
-            {STATUS_FILTERS.map((opt) => (
-              <option key={opt.value || "all"} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
           <button
             type="button"
             onClick={() => void loadReminders()}
@@ -343,6 +414,36 @@ export function RemindersPanel() {
         </div>
       </div>
 
+      {items.length > 0 && (
+        <ListFilterBar
+          filters={[
+            {
+              label: "Status",
+              value: statusFilter,
+              options: STATUS_FILTER_OPTIONS,
+              onChange: setStatusFilter,
+            },
+            {
+              label: "Type",
+              value: typeFilter,
+              options: typeFilterOptions,
+              onChange: setTypeFilter,
+            },
+            {
+              label: "Scheduled",
+              value: dateFilter,
+              options: DATE_FILTER_OPTIONS,
+              onChange: (value) => setDateFilter(value as DateFilter),
+            },
+          ]}
+          onClear={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+          filteredCount={filteredItems.length}
+          totalCount={items.length}
+          itemLabel="reminders"
+        />
+      )}
+
       {items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
           <p className="text-sm text-slate-600">{emptyHint}</p>
@@ -351,8 +452,26 @@ export function RemindersPanel() {
             (process_appointment_reminders.py).
           </p>
         </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center">
+          <p className="text-sm font-medium text-slate-700">
+            No reminders match your filters
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Try adjusting or clearing the filters above.
+          </p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-4 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Clear all filters
+          </button>
+        </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <>
+          <div ref={tableTopRef} />
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -368,7 +487,7 @@ export function RemindersPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {items.map((row) => (
+                {paginatedItems.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/80">
                     <td className="px-4 py-3">
                       <Link
@@ -433,7 +552,13 @@ export function RemindersPanel() {
               </tbody>
             </table>
           </div>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
+        </>
       )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
