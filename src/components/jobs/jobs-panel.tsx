@@ -1,13 +1,82 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
+import {
+  LIST_PAGE_SIZE,
+  ListFilterBar,
+  PaginationControls,
+} from "@/components/dashboard/list-table-controls";
 import { JobStatusBadge } from "@/components/jobs/job-badges";
 import { RevenueCapturedCard } from "@/components/jobs/revenue-captured-card";
 import { useJobsListQuery } from "@/hooks/use-dashboard-queries";
 import { ApiError } from "@/lib/api/client";
 import type { JobListItem } from "@/lib/api/types";
+import {
+  DATE_FILTER_OPTIONS,
+  passesDateFilter,
+  type DateFilter,
+} from "@/lib/list/date-filter";
+
+type StatusFilter =
+  | "all"
+  | "booked"
+  | "confirmed"
+  | "completed"
+  | "in_progress"
+  | "pending"
+  | "cancelled"
+  | "no_show";
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All statuses" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "booked", label: "Booked" },
+  { value: "completed", label: "Completed" },
+  { value: "in_progress", label: "In progress" },
+  { value: "pending", label: "Pending" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "no_show", label: "No show" },
+];
+
+function formatServiceLabel(service: string): string {
+  const trimmed = service.trim();
+  if (!trimmed) {
+    return "—";
+  }
+
+  return trimmed
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\bAc\b/g, "AC");
+}
+
+function normalizeServiceKey(service: string): string {
+  return service.trim().toLowerCase();
+}
+
+function buildServiceFilterOptions(jobs: JobListItem[]) {
+  const seen = new Map<string, string>();
+
+  for (const job of jobs) {
+    const raw = job.service?.trim();
+    if (!raw) continue;
+    const key = normalizeServiceKey(raw);
+    if (!seen.has(key)) {
+      seen.set(key, raw);
+    }
+  }
+
+  const options = Array.from(seen.entries())
+    .sort(([, a], [, b]) => a.localeCompare(b))
+    .map(([value, label]) => ({
+      value,
+      label: formatServiceLabel(label),
+    }));
+
+  return [{ value: "all", label: "All services" }, ...options];
+}
 
 function formatScheduledTime(iso?: string | null): string {
   if (!iso) {
@@ -38,18 +107,6 @@ function formatCurrency(value?: number | null): string {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function formatServiceLabel(service: string): string {
-  const trimmed = service.trim();
-  if (!trimmed) {
-    return "—";
-  }
-
-  return trimmed
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .replace(/\bAc\b/g, "AC");
 }
 
 function formatCustomer(job: JobListItem): {
@@ -111,6 +168,12 @@ function resolveErrorMessage(error: unknown): string {
 
 export function JobsPanel() {
   const jobsQuery = useJobsListQuery({ poll: true });
+  const tableTopRef = useRef<HTMLDivElement>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [serviceFilter, setServiceFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
   const jobs = jobsQuery.data?.jobs ?? [];
   const total = jobsQuery.data?.total ?? jobs.length;
@@ -121,6 +184,73 @@ export function JobsPanel() {
     }
     return jobs.reduce((sum, job) => sum + (job.est_value_usd ?? 0), 0);
   }, [jobs, jobsQuery.data?.revenue_captured_usd]);
+
+  const serviceFilterOptions = useMemo(
+    () => buildServiceFilterOptions(jobs),
+    [jobs],
+  );
+
+  const hasActiveFilters =
+    statusFilter !== "all" ||
+    serviceFilter !== "all" ||
+    dateFilter !== "all";
+
+  const clearFilters = useCallback(() => {
+    setStatusFilter("all");
+    setServiceFilter("all");
+    setDateFilter("all");
+    setCurrentPage(1);
+  }, []);
+
+  const filteredJobs = useMemo(() => {
+    return jobs.filter((job) => {
+      if (statusFilter !== "all") {
+        const key = (job.status || "").toLowerCase();
+        if (key !== statusFilter) return false;
+      }
+
+      if (serviceFilter !== "all") {
+        const key = normalizeServiceKey(job.service || "");
+        if (key !== serviceFilter) return false;
+      }
+
+      if (!passesDateFilter(job.scheduled_at, dateFilter)) return false;
+
+      return true;
+    });
+  }, [jobs, statusFilter, serviceFilter, dateFilter]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredJobs.length / LIST_PAGE_SIZE),
+  );
+
+  useEffect(() => {
+    if (
+      serviceFilter !== "all" &&
+      !serviceFilterOptions.some((option) => option.value === serviceFilter)
+    ) {
+      setServiceFilter("all");
+    }
+  }, [serviceFilter, serviceFilterOptions]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, serviceFilter, dateFilter]);
+
+  useEffect(() => {
+    setCurrentPage((prev) => (prev > totalPages ? 1 : prev));
+  }, [totalPages]);
+
+  const paginatedJobs = useMemo(() => {
+    const start = (currentPage - 1) * LIST_PAGE_SIZE;
+    return filteredJobs.slice(start, start + LIST_PAGE_SIZE);
+  }, [filteredJobs, currentPage]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    tableTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const showInitialSkeleton = jobsQuery.isPending && !jobsQuery.data;
   const isRefreshing = jobsQuery.isFetching && !jobsQuery.isPending;
@@ -190,12 +320,62 @@ export function JobsPanel() {
           </div>
         </div>
 
+        {jobs.length > 0 && (
+          <ListFilterBar
+            filters={[
+              {
+                label: "Status",
+                value: statusFilter,
+                options: STATUS_FILTER_OPTIONS,
+                onChange: (value) => setStatusFilter(value as StatusFilter),
+              },
+              {
+                label: "Service",
+                value: serviceFilter,
+                options: serviceFilterOptions,
+                onChange: setServiceFilter,
+              },
+              {
+                label: "Scheduled",
+                value: dateFilter,
+                options: DATE_FILTER_OPTIONS,
+                onChange: (value) => setDateFilter(value as DateFilter),
+              },
+            ]}
+            onClear={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+            filteredCount={filteredJobs.length}
+            totalCount={jobs.length}
+            itemLabel="jobs"
+          />
+        )}
+
         {jobs.length === 0 && <DashboardGettingStarted variant="jobs" />}
 
-        {jobs.length > 0 && (
+        {jobs.length > 0 && filteredJobs.length === 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center">
+            <p className="text-sm font-medium text-slate-700">
+              No jobs match your filters
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Try adjusting or clearing the filters above.
+            </p>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-4 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Clear all filters
+            </button>
+          </div>
+        )}
+
+        {filteredJobs.length > 0 && (
           <>
+            <div ref={tableTopRef} />
+
             <ul className="space-y-3 sm:hidden">
-              {jobs.map((job) => {
+              {paginatedJobs.map((job) => {
                 const customer = formatCustomer(job);
                 return (
                   <li
@@ -231,6 +411,14 @@ export function JobsPanel() {
               })}
             </ul>
 
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm sm:hidden">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
+
             <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm sm:block">
               <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                 <thead className="bg-slate-50">
@@ -253,7 +441,7 @@ export function JobsPanel() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {jobs.map((job) => {
+                  {paginatedJobs.map((job) => {
                     const customer = formatCustomer(job);
                     return (
                       <tr
@@ -289,6 +477,11 @@ export function JobsPanel() {
                   })}
                 </tbody>
               </table>
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
           </>
         )}
