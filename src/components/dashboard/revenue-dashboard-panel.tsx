@@ -460,7 +460,7 @@ function resolveErrorMessage(error: unknown): string {
 
 export function RevenueDashboardPanel() {
   const analyticsQuery = useDashboardAnalyticsQuery();
-  const jobsQuery = useJobsListQuery({ poll: true });
+  const jobsQuery = useJobsListQuery();
 
   const analytics = analyticsQuery.data;
   const recentJobs = jobsQuery.data?.jobs ?? [];

@@ -2,12 +2,13 @@
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useShop } from "@/components/dashboard/shop-provider";
+import { useActiveLiveCallsQuery } from "@/hooks/use-active-live-calls-query";
+import { resolveDashboardQueryError } from "@/hooks/use-dashboard-queries";
 import { ApiError } from "@/lib/api/client";
 import {
-  fetchActiveLiveCalls,
   pollLiveListenSession,
   startLiveListen,
   stopLiveListen,
@@ -16,8 +17,6 @@ import {
   type LiveListenTakeOverResponse,
 } from "@/lib/api/live-listen";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
-
-type ViewState = "loading" | "ready" | "error";
 
 type MonitorState = {
   call: ActiveLiveCallItem;
@@ -28,8 +27,6 @@ type MonitorState = {
   pollIntervalMs: number;
   audioUnavailableReason: string;
 };
-
-const ACTIVE_CALLS_POLL_INTERVAL_MS = 10_000;
 
 function formatWhen(iso?: string | null): string {
   if (!iso) return "—";
@@ -68,109 +65,35 @@ function LiveTranscriptSkeleton() {
 }
 
 export function LiveTranscriptPanel() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading, resolvingMe } = useShop();
+  const { getToken } = useAuth();
+  const { shopId } = useShop();
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
-  const [activeCalls, setActiveCalls] = useState<ActiveLiveCallItem[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [startingCallId, setStartingCallId] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const [takingOver, setTakingOver] = useState(false);
   const [monitor, setMonitor] = useState<MonitorState | null>(null);
   const [takeOverResult, setTakeOverResult] =
     useState<LiveListenTakeOverResponse | null>(null);
-  const [activeCallsRefreshing, setActiveCallsRefreshing] = useState(false);
   const [transcriptRefreshing, setTranscriptRefreshing] = useState(false);
+
+  const activeCallsQuery = useActiveLiveCallsQuery({ poll: !monitor });
+  const activeCalls = activeCallsQuery.data?.active_calls ?? [];
+  const lastUpdatedAt = activeCallsQuery.dataUpdatedAt
+    ? new Date(activeCallsQuery.dataUpdatedAt)
+    : null;
+  const activeCallsRefreshing =
+    activeCallsQuery.isFetching && !activeCallsQuery.isPending;
 
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
   const monitorRef = useRef<MonitorState | null>(null);
 
+  const refetchActiveCalls = activeCallsQuery.refetch;
+
   useEffect(() => {
     monitorRef.current = monitor;
   }, [monitor]);
-
-  const loadActiveCalls = useCallback(
-    async (options?: { silent?: boolean }) => {
-      const silent = options?.silent ?? false;
-
-      if (!isLoaded) {
-        if (!silent) {
-          setViewState("loading");
-        }
-        return;
-      }
-      if (!isSignedIn) {
-        if (!silent) {
-          setViewState("error");
-          setErrorMessage("Sign in required to monitor live conversations.");
-        }
-        return;
-      }
-      if (resolvingMe || shopLoading) {
-        if (!silent) {
-          setViewState("loading");
-        }
-        return;
-      }
-      if (!shopId) {
-        if (!silent) {
-          setViewState("error");
-          setErrorMessage("No shop resolved for this account.");
-        }
-        return;
-      }
-
-      if (!silent) {
-        setActiveCallsRefreshing(true);
-      }
-
-      try {
-        const data = await withClerkAuthRetry(getToken, (token) =>
-          fetchActiveLiveCalls(shopId, token),
-        );
-        setActiveCalls(data.active_calls);
-        setLastUpdatedAt(new Date());
-        setErrorMessage(null);
-        setViewState("ready");
-      } catch (err) {
-        if (silent) {
-          return;
-        }
-
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : "Failed to load active calls.";
-        setErrorMessage(message);
-        setViewState("error");
-      } finally {
-        if (!silent) {
-          setActiveCallsRefreshing(false);
-        }
-      }
-    },
-    [getToken, isLoaded, isSignedIn, resolvingMe, shopId, shopLoading],
-  );
-
-  useEffect(() => {
-    void loadActiveCalls();
-  }, [loadActiveCalls]);
-
-  // Refresh active list while not monitoring a session.
-  useEffect(() => {
-    if (monitor || viewState === "error") return;
-    const id = window.setInterval(() => {
-      if (document.visibilityState !== "visible") {
-        return;
-      }
-      void loadActiveCalls({ silent: true });
-    }, ACTIVE_CALLS_POLL_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [loadActiveCalls, monitor, viewState]);
 
   // Poll transcript while monitoring.
   useEffect(() => {
@@ -209,7 +132,7 @@ export function LiveTranscriptPanel() {
         );
 
         if (session.status !== "listening" || !session.is_active) {
-          void loadActiveCalls({ silent: true });
+          void refetchActiveCalls();
         }
       } catch {
         // Keep last transcript; next poll may recover.
@@ -231,7 +154,7 @@ export function LiveTranscriptPanel() {
     };
   }, [
     getToken,
-    loadActiveCalls,
+    refetchActiveCalls,
     monitor,
     monitor?.call.call_id,
     monitor?.pollIntervalMs,
@@ -290,7 +213,7 @@ export function LiveTranscriptPanel() {
       setMonitor((prev) =>
         prev ? { ...prev, sessionStatus: "stopped" } : prev,
       );
-      await loadActiveCalls();
+      await activeCallsQuery.refetch();
     } catch (err) {
       setActionError(
         err instanceof ApiError
@@ -323,7 +246,7 @@ export function LiveTranscriptPanel() {
       setMonitor((prev) =>
         prev ? { ...prev, sessionStatus: "stopped" } : prev,
       );
-      await loadActiveCalls();
+      await activeCallsQuery.refetch();
     } catch (err) {
       setActionError(
         err instanceof ApiError ? err.message : "Take over failed.",
@@ -337,21 +260,25 @@ export function LiveTranscriptPanel() {
     setMonitor(null);
     setTakeOverResult(null);
     setActionError(null);
-    void loadActiveCalls();
+    void activeCallsQuery.refetch();
   };
 
-  if (viewState === "loading" && !monitor) {
+  const showInitialSkeleton =
+    activeCallsQuery.isPending && !activeCallsQuery.data && !monitor;
+  if (showInitialSkeleton) {
     return <LiveTranscriptSkeleton />;
   }
 
-  if (viewState === "error" && !monitor) {
+  if (activeCallsQuery.isError && !activeCallsQuery.data && !monitor) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-800">
         <p className="font-medium">Could not load live conversations</p>
-        <p className="mt-1">{errorMessage}</p>
+        <p className="mt-1">
+          {resolveDashboardQueryError(activeCallsQuery.error)}
+        </p>
         <button
           type="button"
-          onClick={() => void loadActiveCalls()}
+          onClick={() => void activeCallsQuery.refetch()}
           className="mt-3 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-800"
         >
           Retry
@@ -559,7 +486,7 @@ export function LiveTranscriptPanel() {
         </p>
         <button
           type="button"
-          onClick={() => void loadActiveCalls()}
+          onClick={() => void activeCallsQuery.refetch()}
           className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
         >
           Refresh
@@ -630,6 +557,3 @@ export function LiveTranscriptPanel() {
   );
 }
 
-export function LiveTranscriptPanelFallback() {
-  return <LiveTranscriptSkeleton />;
-}

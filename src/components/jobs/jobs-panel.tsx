@@ -167,7 +167,7 @@ function resolveErrorMessage(error: unknown): string {
 }
 
 export function JobsPanel() {
-  const jobsQuery = useJobsListQuery({ poll: true });
+  const jobsQuery = useJobsListQuery();
   const tableTopRef = useRef<HTMLDivElement>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -296,8 +296,7 @@ export function JobsPanel() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <p className="text-sm text-slate-500">
-              {total} job{total === 1 ? "" : "s"} booked · auto-refresh every
-              15s
+              {total} job{total === 1 ? "" : "s"} booked
             </p>
             {lastUpdatedLabel ? (
               <p className="text-xs text-slate-400">

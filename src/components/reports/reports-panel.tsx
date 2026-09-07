@@ -2,24 +2,24 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useShop } from "@/components/dashboard/shop-provider";
+import {
+  resolveDashboardQueryError,
+} from "@/hooks/use-dashboard-queries";
+import { useReportQuery } from "@/hooks/use-report-query";
 import { ApiError } from "@/lib/api/client";
 import {
   downloadMonthlyCsv,
   downloadMonthlyPdf,
   downloadWeeklyCsv,
   downloadWeeklyPdf,
-  fetchMonthlyReport,
-  fetchWeeklyReport,
   type MonthlyReportPeriod,
-  type ReportResponse,
   type WeeklyReportPeriod,
 } from "@/lib/api/reports";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 
-type ViewState = "loading" | "ready" | "error";
 type ReportKind = "weekly" | "monthly";
 type ExportKind = "csv" | "pdf";
 
@@ -102,77 +102,25 @@ function ReportsSkeleton() {
 }
 
 export function ReportsPanel() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading, resolvingMe } = useShop();
+  const { getToken } = useAuth();
+  const { shopId } = useShop();
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
   const [reportType, setReportType] = useState<ReportKind>("weekly");
   const [weeklyPeriod, setWeeklyPeriod] =
     useState<WeeklyReportPeriod>("current_week");
   const [monthlyPeriod, setMonthlyPeriod] =
     useState<MonthlyReportPeriod>("current_month");
-  const [report, setReport] = useState<ReportResponse | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<ExportKind | null>(null);
 
   const selectedPeriod = reportType === "weekly" ? weeklyPeriod : monthlyPeriod;
-
-  const loadReport = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to view reports.");
-      return;
-    }
-    if (resolvingMe || shopLoading) {
-      setViewState("loading");
-      return;
-    }
-    if (!shopId) {
-      setViewState("error");
-      setErrorMessage("No shop resolved for this account.");
-      return;
-    }
-
-    setViewState("loading");
-    setErrorMessage(null);
-    try {
-      const next = await withClerkAuthRetry(getToken, (token) =>
-        reportType === "weekly"
-          ? fetchWeeklyReport(shopId, weeklyPeriod, token)
-          : fetchMonthlyReport(shopId, monthlyPeriod, token),
-      );
-      setReport(next);
-      setViewState("ready");
-    } catch (err) {
-      setViewState("error");
-      setErrorMessage(
-        err instanceof ApiError ? err.message : "Failed to load report data.",
-      );
-    }
-  }, [
-    getToken,
-    isLoaded,
-    isSignedIn,
-    monthlyPeriod,
-    reportType,
-    resolvingMe,
-    shopId,
-    shopLoading,
-    weeklyPeriod,
-  ]);
-
-  useEffect(() => {
-    void loadReport();
-  }, [loadReport]);
+  const reportQuery = useReportQuery(reportType, weeklyPeriod, monthlyPeriod);
+  const report = reportQuery.data ?? null;
 
   const handleExport = async (kind: ExportKind) => {
     if (!shopId) return;
     setExporting(kind);
-    setErrorMessage(null);
+    setExportError(null);
     try {
       await withClerkAuthRetry(getToken, (token) => {
         if (reportType === "weekly") {
@@ -185,7 +133,7 @@ export function ReportsPanel() {
           : downloadMonthlyPdf(shopId, monthlyPeriod, token);
       });
     } catch (err) {
-      setErrorMessage(
+      setExportError(
         err instanceof ApiError ? err.message : "Failed to download export.",
       );
     } finally {
@@ -198,24 +146,28 @@ export function ReportsPanel() {
     return `${formatWhen(report.metadata.start_utc)} → ${formatWhen(report.metadata.end_utc)}`;
   }, [report]);
 
-  if (viewState === "loading") {
+  if (reportQuery.isPending && !reportQuery.data) {
     return <ReportsSkeleton />;
   }
 
-  if (viewState === "error" || !report) {
+  if (reportQuery.isError && !report) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-800">
         <p className="font-medium">Could not load reports</p>
-        <p className="mt-1">{errorMessage}</p>
+        <p className="mt-1">{resolveDashboardQueryError(reportQuery.error)}</p>
         <button
           type="button"
-          onClick={() => void loadReport()}
+          onClick={() => void reportQuery.refetch()}
           className="mt-3 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-800"
         >
           Retry
         </button>
       </div>
     );
+  }
+
+  if (!report) {
+    return <ReportsSkeleton />;
   }
 
   return (
@@ -274,7 +226,7 @@ export function ReportsPanel() {
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <button
             type="button"
-            onClick={() => void loadReport()}
+            onClick={() => void reportQuery.refetch()}
             className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto"
           >
             <Download className="h-4 w-4" />
@@ -309,9 +261,9 @@ export function ReportsPanel() {
         </div>
       </div>
 
-      {errorMessage ? (
+      {exportError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-          {errorMessage}
+          {exportError}
         </div>
       ) : null}
 

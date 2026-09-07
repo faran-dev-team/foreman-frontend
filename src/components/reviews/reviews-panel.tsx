@@ -2,23 +2,19 @@
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useShop } from "@/components/dashboard/shop-provider";
-import { ApiError } from "@/lib/api/client";
 import {
-  fetchReviewRequests,
-  fetchReviewStatusSummary,
-  retryReviewRequest,
-  type ReviewStatusSummary,
-  type ReviewSummary,
-} from "@/lib/api/reviews";
+  resolveDashboardQueryError,
+  useReviewsQuery,
+} from "@/hooks/use-dashboard-queries";
+import { ApiError } from "@/lib/api/client";
+import { retryReviewRequest, type ReviewStatusSummary } from "@/lib/api/reviews";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 
-type ViewState = "loading" | "ready" | "error";
-
 const STATUS_FILTERS = [
-  { value: "", label: "All" },
+  { value: "all", label: "All statuses" },
   { value: "PENDING", label: "Pending" },
   { value: "SCHEDULED", label: "Scheduled" },
   { value: "SENT", label: "Sent" },
@@ -111,84 +107,20 @@ function ReviewsSkeleton() {
 }
 
 export function ReviewsPanel() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading, resolvingMe } = useShop();
+  const { getToken } = useAuth();
+  const { shopId } = useShop();
+  const reviewsQuery = useReviewsQuery();
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
-  const [items, setItems] = useState<ReviewSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState<ReviewStatusSummary | null>(null);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const items = reviewsQuery.data?.list.items ?? [];
+  const total = reviewsQuery.data?.list.total ?? items.length;
+  const summary = reviewsQuery.data?.summary ?? null;
+  const lastUpdatedAt = reviewsQuery.dataUpdatedAt
+    ? new Date(reviewsQuery.dataUpdatedAt)
+    : null;
+
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
-
-  const loadReviews = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to view review requests.");
-      return;
-    }
-    if (resolvingMe || shopLoading) {
-      setViewState("loading");
-      return;
-    }
-    if (!shopId) {
-      setViewState("error");
-      setErrorMessage("No shop resolved for this account.");
-      return;
-    }
-
-    setViewState("loading");
-    setErrorMessage(null);
-
-    try {
-      const [list, statusSummary] = await Promise.all([
-        withClerkAuthRetry(getToken, (token) =>
-          fetchReviewRequests(shopId, token, {
-            status: statusFilter || undefined,
-            limit: 100,
-          }),
-        ),
-        withClerkAuthRetry(getToken, (token) =>
-          fetchReviewStatusSummary(shopId, token),
-        ),
-      ]);
-
-      setItems(list.items ?? []);
-      setTotal(list.total ?? 0);
-      setSummary(statusSummary);
-      setLastUpdatedAt(new Date());
-      setViewState("ready");
-    } catch (error) {
-      setViewState("error");
-      if (error instanceof ApiError) {
-        setErrorMessage(error.message);
-      } else if (error instanceof TypeError) {
-        setErrorMessage(
-          "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
-        );
-      } else {
-        setErrorMessage("Failed to load review requests.");
-      }
-    }
-  }, [
-    getToken,
-    isLoaded,
-    isSignedIn,
-    shopId,
-    shopLoading,
-    resolvingMe,
-    statusFilter,
-  ]);
-
-  useEffect(() => {
-    void loadReviews();
-  }, [loadReviews]);
 
   const handleRetry = useCallback(
     async (reviewId: string) => {
@@ -198,47 +130,46 @@ export function ReviewsPanel() {
         await withClerkAuthRetry(getToken, (token) =>
           retryReviewRequest(shopId, reviewId, token, true),
         );
-        await loadReviews();
+        await reviewsQuery.refetch();
       } catch (error) {
         const message =
           error instanceof ApiError
             ? error.message
             : "Retry failed. Try again.";
-        setErrorMessage(message);
+        setActionError(message);
       } finally {
         setRetryingId(null);
       }
     },
-    [getToken, shopId, loadReviews],
+    [getToken, shopId, reviewsQuery],
   );
 
-  const emptyHint = useMemo(() => {
-    if (statusFilter) {
-      return `No review requests with status “${statusFilter}”.`;
-    }
-    return "No review requests yet. When a job is completed, Foreman schedules a Google review ask automatically.";
-  }, [statusFilter]);
+  const filteredItems = useMemo(() => {
+    if (statusFilter === "all") return items;
+    return items.filter(
+      (row) => (row.status || "").toUpperCase() === statusFilter,
+    );
+  }, [items, statusFilter]);
 
-  if (
-    !isLoaded ||
-    resolvingMe ||
-    shopLoading ||
-    viewState === "loading" ||
-    (!summary && viewState !== "error")
-  ) {
+  const emptyHint =
+    "No review requests yet. When a job is completed, Foreman schedules a Google review ask automatically.";
+
+  if (reviewsQuery.isPending && !reviewsQuery.data) {
     return <ReviewsSkeleton />;
   }
 
-  if (viewState === "error" && !summary) {
+  if (reviewsQuery.isError && !summary) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
         <p className="text-sm font-medium text-red-800">
           Unable to load reviews
         </p>
-        <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+        <p className="mt-1 text-sm text-red-700">
+          {resolveDashboardQueryError(reviewsQuery.error)}
+        </p>
         <button
           type="button"
-          onClick={() => void loadReviews()}
+          onClick={() => void reviewsQuery.refetch()}
           className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
         >
           Retry
@@ -266,8 +197,8 @@ export function ReviewsPanel() {
               }).format(lastUpdatedAt)}
             </p>
           ) : null}
-          {errorMessage ? (
-            <p className="mt-1 text-xs text-red-600">{errorMessage}</p>
+          {actionError ? (
+            <p className="mt-1 text-xs text-red-600">{actionError}</p>
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -281,15 +212,19 @@ export function ReviewsPanel() {
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800"
           >
             {STATUS_FILTERS.map((opt) => (
-              <option key={opt.value || "all"} value={opt.value}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
           </select>
+          {reviewsQuery.isFetching ? (
+            <span className="text-xs text-slate-400">Refreshing…</span>
+          ) : null}
           <button
             type="button"
-            onClick={() => void loadReviews()}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            onClick={() => void reviewsQuery.refetch()}
+            disabled={reviewsQuery.isFetching}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Refresh
           </button>
@@ -302,6 +237,22 @@ export function ReviewsPanel() {
           <p className="mt-2 text-xs text-slate-500">
             Review asks are created after job completion (backend automation).
           </p>
+        </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center">
+          <p className="text-sm font-medium text-slate-700">
+            No review requests match your filters
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Try adjusting or clearing the status filter.
+          </p>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className="mt-4 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Clear filters
+          </button>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -320,7 +271,7 @@ export function ReviewsPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {items.map((row) => (
+                {filteredItems.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/80">
                     <td className="px-4 py-3">
                       <Link

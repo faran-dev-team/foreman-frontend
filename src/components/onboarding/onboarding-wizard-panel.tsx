@@ -1,9 +1,10 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Loader2, Upload } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useShop } from "@/components/dashboard/shop-provider";
 import { BusinessHoursForm } from "@/components/settings/business-hours-form";
@@ -14,6 +15,10 @@ import {
   labelClassName,
   SettingsSection,
 } from "@/components/settings/settings-section";
+import {
+  resolveDashboardQueryError,
+} from "@/hooks/use-dashboard-queries";
+import { useOnboardingQuery, type OnboardingPageData } from "@/hooks/use-onboarding-query";
 import { ApiError } from "@/lib/api/client";
 import {
   fetchOnboardingStatus,
@@ -23,18 +28,15 @@ import {
   toApiServiceArea,
   toApiServices,
   type CatalogImportResponse,
-  type OnboardingStatus,
 } from "@/lib/api/onboarding";
-import { fetchShopSettings } from "@/lib/api/settings";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
+import { queryKeys } from "@/lib/query/keys";
 import { defaultShopSettings } from "@/lib/settings/defaults";
 import type {
   BusinessHours,
   ServiceArea,
   ServiceItem,
 } from "@/lib/settings/types";
-
-type ViewState = "loading" | "ready" | "error";
 
 const STEPS = [
   { id: 1, title: "Business info", description: "Shop name, phone, and greeting" },
@@ -56,11 +58,13 @@ function OnboardingSkeleton() {
 }
 
 export function OnboardingWizardPanel() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, shopName, loading: shopLoading, resolvingMe } = useShop();
+  const { getToken } = useAuth();
+  const { shopId, shopName } = useShop();
+  const queryClient = useQueryClient();
+  const onboardingQuery = useOnboardingQuery();
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
-  const [status, setStatus] = useState<OnboardingStatus | null>(null);
+  const status = onboardingQuery.data?.status ?? null;
+  const [hydratedAt, setHydratedAt] = useState(0);
   const [activeStep, setActiveStep] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -85,60 +89,29 @@ export function OnboardingWizardPanel() {
     defaultShopSettings.services,
   );
 
-  const load = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to configure onboarding.");
-      return;
-    }
-    if (resolvingMe || shopLoading) {
-      setViewState("loading");
-      return;
-    }
-    if (!shopId) {
-      setViewState("error");
-      setErrorMessage("No shop resolved for this account.");
-      return;
-    }
-
-    setViewState("loading");
-    setErrorMessage(null);
-    try {
-      const [nextStatus, settings] = await withClerkAuthRetry(getToken, async (token) => {
-        const statusRes = await fetchOnboardingStatus(shopId, token);
-        const settingsRes = await fetchShopSettings(shopId, token);
-        return [statusRes, settingsRes] as const;
-      });
-
-      setStatus(nextStatus);
-      setActiveStep(Math.min(Math.max(nextStatus.current_step || 1, 1), 5));
-      setName(nextStatus.shop_name || shopName || "");
-      setGreeting(settings.greeting || defaultShopSettings.greeting);
-      setBusinessHours(settings.businessHours);
-      setServiceArea(settings.serviceArea);
-      setServices(
-        settings.services.length > 0
-          ? settings.services
-          : defaultShopSettings.services,
-      );
-      setViewState("ready");
-    } catch (err) {
-      setViewState("error");
-      setErrorMessage(
-        err instanceof ApiError
-          ? err.message
-          : "Failed to load onboarding status.",
-      );
-    }
-  }, [getToken, isLoaded, isSignedIn, resolvingMe, shopId, shopLoading, shopName]);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    const data = onboardingQuery.data;
+    if (!data || onboardingQuery.dataUpdatedAt === hydratedAt) return;
+
+    const nextStatus = data.status;
+    const settings = data.settings;
+    setActiveStep(Math.min(Math.max(nextStatus.current_step || 1, 1), 5));
+    setName(nextStatus.shop_name || shopName || "");
+    setGreeting(settings.greeting || defaultShopSettings.greeting);
+    setBusinessHours(settings.businessHours);
+    setServiceArea(settings.serviceArea);
+    setServices(
+      settings.services.length > 0
+        ? settings.services
+        : defaultShopSettings.services,
+    );
+    setHydratedAt(onboardingQuery.dataUpdatedAt);
+  }, [
+    hydratedAt,
+    onboardingQuery.data,
+    onboardingQuery.dataUpdatedAt,
+    shopName,
+  ]);
 
   const checklist = useMemo(() => {
     if (!status) return [];
@@ -218,7 +191,13 @@ export function OnboardingWizardPanel() {
         const refreshed = await withClerkAuthRetry(getToken, (token) =>
           fetchOnboardingStatus(shopId, token),
         );
-        setStatus(refreshed);
+        if (shopId) {
+          queryClient.setQueryData(
+            queryKeys.onboarding(shopId),
+            (prev: OnboardingPageData | undefined) =>
+              prev ? { ...prev, status: refreshed } : prev,
+          );
+        }
         setSaving(false);
         return;
       }
@@ -226,7 +205,11 @@ export function OnboardingWizardPanel() {
       const next = await withClerkAuthRetry(getToken, (token) =>
         saveOnboardingStep(shopId, payload, token),
       );
-      setStatus(next);
+      queryClient.setQueryData(
+        queryKeys.onboarding(shopId),
+        (prev: OnboardingPageData | undefined) =>
+          prev ? { ...prev, status: next } : prev,
+      );
       if (activeStep < 5) {
         setActiveStep((step) => Math.min(step + 1, 5));
       }
@@ -254,16 +237,7 @@ export function OnboardingWizardPanel() {
       );
       setImportResult(result);
       if (result.success) {
-        const [nextStatus, settings] = await withClerkAuthRetry(
-          getToken,
-          async (token) => {
-            const statusRes = await fetchOnboardingStatus(shopId, token);
-            const settingsRes = await fetchShopSettings(shopId, token);
-            return [statusRes, settingsRes] as const;
-          },
-        );
-        setStatus(nextStatus);
-        setServices(settings.services);
+        await onboardingQuery.refetch();
       }
     } catch (err) {
       setErrorMessage(
@@ -276,18 +250,20 @@ export function OnboardingWizardPanel() {
     }
   };
 
-  if (viewState === "loading") {
+  if (onboardingQuery.isPending && !onboardingQuery.data) {
     return <OnboardingSkeleton />;
   }
 
-  if (viewState === "error" && !status) {
+  if (onboardingQuery.isError && !status) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-800">
         <p className="font-medium">Could not load onboarding</p>
-        <p className="mt-1">{errorMessage}</p>
+        <p className="mt-1">
+          {resolveDashboardQueryError(onboardingQuery.error)}
+        </p>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void onboardingQuery.refetch()}
           className="mt-3 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-800"
         >
           Retry
@@ -564,7 +540,7 @@ export function OnboardingWizardPanel() {
                 </Link>
                 <button
                   type="button"
-                  onClick={() => void load()}
+                  onClick={() => void onboardingQuery.refetch()}
                   className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   Refresh status

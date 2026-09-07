@@ -15,7 +15,7 @@ import {
 } from "@/lib/api/notifications";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 
-const UNREAD_POLL_MS = 30_000;
+const UNREAD_POLL_MS = 5 * 60_000;
 
 function formatWhen(iso: string): string {
   const date = new Date(iso);
@@ -79,6 +79,7 @@ export function NotificationBell() {
     void refreshUnread();
     if (!isSignedIn) return;
     const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void refreshUnread();
     }, UNREAD_POLL_MS);
     return () => window.clearInterval(id);

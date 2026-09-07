@@ -2,24 +2,19 @@
 
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useShop } from "@/components/dashboard/shop-provider";
-import { ApiError } from "@/lib/api/client";
 import {
-  fetchFollowUps,
-  fetchFollowUpStatusSummary,
-  retryFollowUp,
-  scheduleFollowUp,
-  type FollowUpStatusSummary,
-  type FollowUpSummary,
-} from "@/lib/api/follow-ups";
+  resolveDashboardQueryError,
+  useFollowUpsQuery,
+} from "@/hooks/use-dashboard-queries";
+import { ApiError } from "@/lib/api/client";
+import { retryFollowUp, scheduleFollowUp, type FollowUpStatusSummary } from "@/lib/api/follow-ups";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
 
-type ViewState = "loading" | "ready" | "error";
-
 const STATUS_FILTERS = [
-  { value: "", label: "All" },
+  { value: "all", label: "All statuses" },
   { value: "PENDING", label: "Pending" },
   { value: "SCHEDULED", label: "Scheduled" },
   { value: "SENT", label: "Sent" },
@@ -111,87 +106,23 @@ function FollowUpsSkeleton() {
 }
 
 export function FollowUpsPanel() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading, resolvingMe } = useShop();
+  const { getToken } = useAuth();
+  const { shopId } = useShop();
+  const followUpsQuery = useFollowUpsQuery();
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
-  const [items, setItems] = useState<FollowUpSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState<FollowUpStatusSummary | null>(null);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const items = followUpsQuery.data?.list.items ?? [];
+  const total = followUpsQuery.data?.list.total ?? items.length;
+  const summary = followUpsQuery.data?.summary ?? null;
+  const lastUpdatedAt = followUpsQuery.dataUpdatedAt
+    ? new Date(followUpsQuery.dataUpdatedAt)
+    : null;
+
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [actionError, setActionError] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [jobIdInput, setJobIdInput] = useState("");
   const [scheduling, setScheduling] = useState(false);
   const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
-
-  const loadFollowUps = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to view follow-ups.");
-      return;
-    }
-    if (resolvingMe || shopLoading) {
-      setViewState("loading");
-      return;
-    }
-    if (!shopId) {
-      setViewState("error");
-      setErrorMessage("No shop resolved for this account.");
-      return;
-    }
-
-    setViewState("loading");
-    setErrorMessage(null);
-
-    try {
-      const [list, statusSummary] = await Promise.all([
-        withClerkAuthRetry(getToken, (token) =>
-          fetchFollowUps(shopId, token, {
-            status: statusFilter || undefined,
-            limit: 100,
-          }),
-        ),
-        withClerkAuthRetry(getToken, (token) =>
-          fetchFollowUpStatusSummary(shopId, token),
-        ),
-      ]);
-
-      setItems(list.items ?? []);
-      setTotal(list.total ?? 0);
-      setSummary(statusSummary);
-      setLastUpdatedAt(new Date());
-      setViewState("ready");
-    } catch (error) {
-      setViewState("error");
-      if (error instanceof ApiError) {
-        setErrorMessage(error.message);
-      } else if (error instanceof TypeError) {
-        setErrorMessage(
-          "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
-        );
-      } else {
-        setErrorMessage("Failed to load follow-ups.");
-      }
-    }
-  }, [
-    getToken,
-    isLoaded,
-    isSignedIn,
-    shopId,
-    shopLoading,
-    resolvingMe,
-    statusFilter,
-  ]);
-
-  useEffect(() => {
-    void loadFollowUps();
-  }, [loadFollowUps]);
 
   const handleRetry = useCallback(
     async (followUpId: string) => {
@@ -201,9 +132,9 @@ export function FollowUpsPanel() {
         await withClerkAuthRetry(getToken, (token) =>
           retryFollowUp(shopId, followUpId, token, true),
         );
-        await loadFollowUps();
+        await followUpsQuery.refetch();
       } catch (error) {
-        setErrorMessage(
+        setActionError(
           error instanceof ApiError
             ? error.message
             : "Retry failed. Try again.",
@@ -212,7 +143,7 @@ export function FollowUpsPanel() {
         setRetryingId(null);
       }
     },
-    [getToken, shopId, loadFollowUps],
+    [getToken, shopId, followUpsQuery],
   );
 
   const handleSchedule = useCallback(async () => {
@@ -225,7 +156,7 @@ export function FollowUpsPanel() {
 
     setScheduling(true);
     setScheduleMessage(null);
-    setErrorMessage(null);
+    setActionError(null);
     try {
       const result = await withClerkAuthRetry(getToken, (token) =>
         scheduleFollowUp(shopId, jobId, token),
@@ -234,7 +165,7 @@ export function FollowUpsPanel() {
         `Follow-up ready (${result.status}) for this job. Open Details to track delivery and feedback.`,
       );
       setJobIdInput("");
-      await loadFollowUps();
+      await followUpsQuery.refetch();
     } catch (error) {
       setScheduleMessage(
         error instanceof ApiError
@@ -244,35 +175,34 @@ export function FollowUpsPanel() {
     } finally {
       setScheduling(false);
     }
-  }, [jobIdInput, getToken, shopId, loadFollowUps]);
+  }, [jobIdInput, getToken, shopId, followUpsQuery]);
 
-  const emptyHint = useMemo(() => {
-    if (statusFilter) {
-      return `No follow-ups with status “${statusFilter}”.`;
-    }
-    return "No follow-ups yet. After a job is completed (and follow-up automation is enabled), Foreman schedules a post-service feedback email.";
-  }, [statusFilter]);
+  const filteredItems = useMemo(() => {
+    if (statusFilter === "all") return items;
+    return items.filter(
+      (row) => (row.status || "").toUpperCase() === statusFilter,
+    );
+  }, [items, statusFilter]);
 
-  if (
-    !isLoaded ||
-    resolvingMe ||
-    shopLoading ||
-    viewState === "loading" ||
-    (!summary && viewState !== "error")
-  ) {
+  const emptyHint =
+    "No follow-ups yet. After a job is completed (and follow-up automation is enabled), Foreman schedules a post-service feedback email.";
+
+  if (followUpsQuery.isPending && !followUpsQuery.data) {
     return <FollowUpsSkeleton />;
   }
 
-  if (viewState === "error" && !summary) {
+  if (followUpsQuery.isError && !summary) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
         <p className="text-sm font-medium text-red-800">
           Unable to load follow-ups
         </p>
-        <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+        <p className="mt-1 text-sm text-red-700">
+          {resolveDashboardQueryError(followUpsQuery.error)}
+        </p>
         <button
           type="button"
-          onClick={() => void loadFollowUps()}
+          onClick={() => void followUpsQuery.refetch()}
           className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
         >
           Retry
@@ -300,8 +230,8 @@ export function FollowUpsPanel() {
               }).format(lastUpdatedAt)}
             </p>
           ) : null}
-          {errorMessage ? (
-            <p className="mt-1 text-xs text-red-600">{errorMessage}</p>
+          {actionError ? (
+            <p className="mt-1 text-xs text-red-600">{actionError}</p>
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -318,15 +248,19 @@ export function FollowUpsPanel() {
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800"
           >
             {STATUS_FILTERS.map((opt) => (
-              <option key={opt.value || "all"} value={opt.value}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
             ))}
           </select>
+          {followUpsQuery.isFetching ? (
+            <span className="text-xs text-slate-400">Refreshing…</span>
+          ) : null}
           <button
             type="button"
-            onClick={() => void loadFollowUps()}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            onClick={() => void followUpsQuery.refetch()}
+            disabled={followUpsQuery.isFetching}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Refresh
           </button>
@@ -340,6 +274,22 @@ export function FollowUpsPanel() {
             Emails are sent by the backend worker (process_service_follow_ups.py).
             Automation may be off by default in shop settings.
           </p>
+        </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center">
+          <p className="text-sm font-medium text-slate-700">
+            No follow-ups match your filters
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Try adjusting or clearing the status filter.
+          </p>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className="mt-4 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Clear filters
+          </button>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -358,7 +308,7 @@ export function FollowUpsPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {items.map((row) => (
+                {filteredItems.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/80">
                     <td className="px-4 py-3">
                       <Link

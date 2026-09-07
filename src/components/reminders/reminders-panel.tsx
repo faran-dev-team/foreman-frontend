@@ -11,22 +11,22 @@ import {
 } from "@/components/dashboard/list-table-controls";
 import { useShop } from "@/components/dashboard/shop-provider";
 import {
-  DATE_FILTER_OPTIONS,
-  passesDateFilter,
-  type DateFilter,
-} from "@/lib/list/date-filter";
+  resolveDashboardQueryError,
+  useRemindersQuery,
+} from "@/hooks/use-dashboard-queries";
 import { ApiError } from "@/lib/api/client";
 import {
-  fetchAppointmentReminders,
-  fetchReminderStatusSummary,
   retryAppointmentReminder,
   scheduleAppointmentReminders,
   type ReminderStatusSummary,
   type ReminderSummary,
 } from "@/lib/api/reminders";
 import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
-
-type ViewState = "loading" | "ready" | "error";
+import {
+  DATE_FILTER_OPTIONS,
+  passesDateFilter,
+  type DateFilter,
+} from "@/lib/list/date-filter";
 
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All statuses" },
@@ -145,89 +145,27 @@ function RemindersSkeleton() {
 }
 
 export function RemindersPanel() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading, resolvingMe } = useShop();
+  const { getToken } = useAuth();
+  const { shopId } = useShop();
+  const remindersQuery = useRemindersQuery();
   const tableTopRef = useRef<HTMLDivElement>(null);
 
-  const [viewState, setViewState] = useState<ViewState>("loading");
-  const [items, setItems] = useState<ReminderSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState<ReminderStatusSummary | null>(null);
+  const items = remindersQuery.data?.list.items ?? [];
+  const total = remindersQuery.data?.list.total ?? items.length;
+  const summary = remindersQuery.data?.summary ?? null;
+  const lastUpdatedAt = remindersQuery.dataUpdatedAt
+    ? new Date(remindersQuery.dataUpdatedAt)
+    : null;
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [appointmentIdInput, setAppointmentIdInput] = useState("");
   const [scheduling, setScheduling] = useState(false);
   const [scheduleMessage, setScheduleMessage] = useState<string | null>(null);
-
-  const loadReminders = useCallback(async () => {
-    if (!isLoaded) {
-      setViewState("loading");
-      return;
-    }
-    if (!isSignedIn) {
-      setViewState("error");
-      setErrorMessage("Sign in required to view appointment reminders.");
-      return;
-    }
-    if (resolvingMe || shopLoading) {
-      setViewState("loading");
-      return;
-    }
-    if (!shopId) {
-      setViewState("error");
-      setErrorMessage("No shop resolved for this account.");
-      return;
-    }
-
-    setViewState("loading");
-    setErrorMessage(null);
-
-    try {
-      const [list, statusSummary] = await Promise.all([
-        withClerkAuthRetry(getToken, (token) =>
-          fetchAppointmentReminders(shopId, token, {
-            limit: 100,
-          }),
-        ),
-        withClerkAuthRetry(getToken, (token) =>
-          fetchReminderStatusSummary(shopId, token),
-        ),
-      ]);
-
-      setItems(list.items ?? []);
-      setTotal(list.total ?? 0);
-      setSummary(statusSummary);
-      setLastUpdatedAt(new Date());
-      setViewState("ready");
-    } catch (error) {
-      setViewState("error");
-      if (error instanceof ApiError) {
-        setErrorMessage(error.message);
-      } else if (error instanceof TypeError) {
-        setErrorMessage(
-          "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
-        );
-      } else {
-        setErrorMessage("Failed to load appointment reminders.");
-      }
-    }
-  }, [
-    getToken,
-    isLoaded,
-    isSignedIn,
-    shopId,
-    shopLoading,
-    resolvingMe,
-  ]);
-
-  useEffect(() => {
-    void loadReminders();
-  }, [loadReminders]);
 
   const handleRetry = useCallback(
     async (reminderId: string) => {
@@ -237,18 +175,18 @@ export function RemindersPanel() {
         await withClerkAuthRetry(getToken, (token) =>
           retryAppointmentReminder(shopId, reminderId, token, true),
         );
-        await loadReminders();
+        await remindersQuery.refetch();
       } catch (error) {
         const message =
           error instanceof ApiError
             ? error.message
             : "Retry failed. Try again.";
-        setErrorMessage(message);
+        setActionError(message);
       } finally {
         setRetryingId(null);
       }
     },
-    [getToken, shopId, loadReminders],
+    [getToken, shopId, remindersQuery],
   );
 
   const handleSchedule = useCallback(async () => {
@@ -261,7 +199,7 @@ export function RemindersPanel() {
 
     setScheduling(true);
     setScheduleMessage(null);
-    setErrorMessage(null);
+    setActionError(null);
     try {
       const result = await withClerkAuthRetry(getToken, (token) =>
         scheduleAppointmentReminders(shopId, appointmentId, token),
@@ -273,7 +211,7 @@ export function RemindersPanel() {
           : "No reminders created (appointment may be ineligible or reminders already exist).",
       );
       setAppointmentIdInput("");
-      await loadReminders();
+      await remindersQuery.refetch();
     } catch (error) {
       setScheduleMessage(
         error instanceof ApiError
@@ -283,7 +221,7 @@ export function RemindersPanel() {
     } finally {
       setScheduling(false);
     }
-  }, [appointmentIdInput, getToken, shopId, loadReminders]);
+  }, [appointmentIdInput, getToken, shopId, remindersQuery]);
 
   const hasActiveFilters =
     statusFilter !== "all" || typeFilter !== "all" || dateFilter !== "all";
@@ -352,26 +290,22 @@ export function RemindersPanel() {
   const emptyHint =
     "No appointment reminders yet. When a job is booked, Foreman schedules reminder emails automatically.";
 
-  if (
-    !isLoaded ||
-    resolvingMe ||
-    shopLoading ||
-    viewState === "loading" ||
-    (!summary && viewState !== "error")
-  ) {
+  if (remindersQuery.isPending && !remindersQuery.data) {
     return <RemindersSkeleton />;
   }
 
-  if (viewState === "error" && !summary) {
+  if (remindersQuery.isError && !summary) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
         <p className="text-sm font-medium text-red-800">
           Unable to load reminders
         </p>
-        <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+        <p className="mt-1 text-sm text-red-700">
+          {resolveDashboardQueryError(remindersQuery.error)}
+        </p>
         <button
           type="button"
-          onClick={() => void loadReminders()}
+          onClick={() => void remindersQuery.refetch()}
           className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
         >
           Retry
@@ -399,15 +333,19 @@ export function RemindersPanel() {
               }).format(lastUpdatedAt)}
             </p>
           ) : null}
-          {errorMessage ? (
-            <p className="mt-1 text-xs text-red-600">{errorMessage}</p>
+          {actionError ? (
+            <p className="mt-1 text-xs text-red-600">{actionError}</p>
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {remindersQuery.isFetching ? (
+            <span className="text-xs text-slate-400">Refreshing…</span>
+          ) : null}
           <button
             type="button"
-            onClick={() => void loadReminders()}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            onClick={() => void remindersQuery.refetch()}
+            disabled={remindersQuery.isFetching}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Refresh
           </button>
