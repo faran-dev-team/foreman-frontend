@@ -1,44 +1,20 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { IntentBadge, OutcomeBadge } from "@/components/calls/call-badges";
 import { DashboardGettingStarted } from "@/components/dashboard/dashboard-getting-started";
 import { useShop } from "@/components/dashboard/shop-provider";
-import { useJobsListQuery } from "@/hooks/use-dashboard-queries";
-import { withClerkAuthRetry } from "@/lib/auth/clerk-token";
-import { fetchCalls } from "@/lib/api/calls";
-import { ApiError } from "@/lib/api/client";
+import {
+  resolveDashboardQueryError,
+  useCallsListQuery,
+  useJobsListQuery,
+} from "@/hooks/use-dashboard-queries";
 import { enrichCallsWithJobOutcomes } from "@/lib/calls/enrich-call-outcomes";
 import type { CallListItem } from "@/lib/api/types";
 
-type ViewState = "loading" | "ready" | "error";
-
-const CALLS_POLL_INTERVAL_MS = 15_000;
-const CALLS_CACHE_TTL_MS = 60_000;
 const PAGE_SIZE = 15;
-
-type CallsCacheEntry = {
-  calls: CallListItem[];
-  total: number;
-  lastUpdatedAt: Date;
-  cachedAtMs: number;
-};
-
-let callsCache: CallsCacheEntry | null = null;
-
-function getCallsCache(): CallsCacheEntry | null {
-  if (!callsCache) {
-    return null;
-  }
-  if (Date.now() - callsCache.cachedAtMs > CALLS_CACHE_TTL_MS) {
-    callsCache = null;
-    return null;
-  }
-  return callsCache;
-}
 
 function formatCallTime(iso: string): string {
   const date = new Date(iso);
@@ -436,132 +412,19 @@ function CallsTableSkeleton() {
 }
 
 export function CallsTable() {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading: shopLoading } = useShop();
+  const { loading: shopLoading } = useShop();
+  const callsQuery = useCallsListQuery();
   const jobsQuery = useJobsListQuery();
-  const cached = getCallsCache();
 
-  const [viewState, setViewState] = useState<ViewState>(
-    cached ? "ready" : "loading",
-  );
-  const [calls, setCalls] = useState<CallListItem[]>(cached?.calls ?? []);
-  const [total, setTotal] = useState(cached?.total ?? 0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(
-    cached?.lastUpdatedAt ?? null,
-  );
-
-  const loadCalls = useCallback(
-    async (options?: { silent?: boolean }) => {
-      const silent = options?.silent ?? false;
-
-      if (!isLoaded) {
-        if (!silent) {
-          setViewState("loading");
-        }
-        return;
-      }
-
-      if (!isSignedIn) {
-        if (!silent) {
-          setViewState("error");
-          setErrorMessage("Sign in required to load calls.");
-        }
-        return;
-      }
-
-      if (!shopId) {
-        if (shopLoading) {
-          if (!silent) {
-            setViewState("loading");
-          }
-          return;
-        }
-        if (!silent) {
-          setViewState("error");
-          setErrorMessage(
-            "No shop resolved for this account. Confirm Clerk sign-in and backend DEFAULT_SHOP_ID.",
-          );
-        }
-        return;
-      }
-
-      if (!silent) {
-        setViewState((prev) => (prev === "ready" ? prev : "loading"));
-        setErrorMessage(null);
-      }
-
-      try {
-        const response = await withClerkAuthRetry(getToken, (token) =>
-          fetchCalls(shopId, token),
-        );
-        const nextCalls = response.calls ?? [];
-        setCalls(nextCalls);
-        setTotal(response.total ?? nextCalls.length);
-        const now = new Date();
-        setLastUpdatedAt(now);
-        callsCache = {
-          calls: nextCalls,
-          total: response.total ?? nextCalls.length,
-          lastUpdatedAt: now,
-          cachedAtMs: Date.now(),
-        };
-        setViewState("ready");
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          setCalls([]);
-          setTotal(0);
-          const now = new Date();
-          setLastUpdatedAt(now);
-          callsCache = {
-            calls: [],
-            total: 0,
-            lastUpdatedAt: now,
-            cachedAtMs: Date.now(),
-          };
-          setViewState("ready");
-          return;
-        }
-
-        if (silent) {
-          return;
-        }
-
-        setViewState("error");
-        if (error instanceof ApiError) {
-          setErrorMessage(error.message);
-        } else if (error instanceof TypeError) {
-          setErrorMessage(
-            "Cannot reach the Foreman API. Is the backend running on NEXT_PUBLIC_API_URL?",
-          );
-        } else {
-          setErrorMessage("Failed to load calls.");
-        }
-      }
-    },
-    [getToken, shopId, shopLoading, isLoaded, isSignedIn],
-  );
-
-  useEffect(() => {
-    void loadCalls();
-  }, [loadCalls]);
-
-  useEffect(() => {
-    if (!shopId || !isLoaded || !isSignedIn || shopLoading) {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      if (document.visibilityState !== "visible") {
-        return;
-      }
-      void loadCalls({ silent: true });
-    }, CALLS_POLL_INTERVAL_MS);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [loadCalls, shopId, isLoaded, isSignedIn, shopLoading]);
+  const calls = callsQuery.data?.calls ?? [];
+  const total = callsQuery.data?.total ?? calls.length;
+  const lastUpdatedAt = callsQuery.dataUpdatedAt
+    ? new Date(callsQuery.dataUpdatedAt)
+    : null;
+  const isReady = Boolean(callsQuery.data);
+  const showInitialSkeleton =
+    (shopLoading || callsQuery.isPending) && !callsQuery.data;
+  const isRefreshing = callsQuery.isFetching && !callsQuery.isPending;
 
   const [currentPage, setCurrentPage] = useState(1);
   const tableTopRef = useRef<HTMLDivElement>(null);
@@ -648,11 +511,32 @@ export function CallsTable() {
     return counts;
   }, [displayCalls]);
 
-  // Keep skeleton while Clerk/shop settle — never flash auth error early.
-  if ((!isLoaded || (!shopId && shopLoading)) && viewState === "loading") {
+  if (showInitialSkeleton) {
     return (
       <div className="space-y-4">
         <CallsTableSkeleton />
+      </div>
+    );
+  }
+
+  if (callsQuery.isError && !callsQuery.data) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
+          <p className="text-sm font-medium text-red-800">
+            Unable to load calls
+          </p>
+          <p className="mt-1 text-sm text-red-700">
+            {resolveDashboardQueryError(callsQuery.error)}
+          </p>
+          <button
+            type="button"
+            onClick={() => void callsQuery.refetch()}
+            className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -662,11 +546,11 @@ export function CallsTable() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <p className="text-sm text-slate-500">
-            {viewState === "ready"
+            {isReady
               ? `${total} call${total === 1 ? "" : "s"}`
               : "Recent inbound calls"}
           </p>
-          {viewState === "ready" && calls.length > 0 && (
+          {isReady && calls.length > 0 && (
             <div className="flex flex-wrap gap-2 text-xs">
               {outcomeCounts.booked > 0 && (
                 <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800">
@@ -695,7 +579,7 @@ export function CallsTable() {
               )}
             </div>
           )}
-          {lastUpdatedAt && viewState === "ready" && (
+          {lastUpdatedAt && isReady && (
             <p className="text-xs text-slate-400">
               Updated{" "}
               {new Intl.DateTimeFormat(undefined, {
@@ -706,17 +590,22 @@ export function CallsTable() {
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => void loadCalls()}
-          disabled={viewState === "loading"}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {isRefreshing ? (
+            <span className="text-xs text-slate-400">Refreshing…</span>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void callsQuery.refetch()}
+            disabled={callsQuery.isFetching}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
-      {viewState === "ready" && calls.length > 0 && (
+      {isReady && calls.length > 0 && (
         <FilterBar
           outcome={outcomeFilter}
           intent={intentFilter}
@@ -731,29 +620,11 @@ export function CallsTable() {
         />
       )}
 
-      {viewState === "loading" && <CallsTableSkeleton />}
-
-      {viewState === "error" && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-8 text-center">
-          <p className="text-sm font-medium text-red-800">
-            Unable to load calls
-          </p>
-          <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
-          <button
-            type="button"
-            onClick={() => void loadCalls()}
-            className="mt-4 rounded-lg bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {viewState === "ready" && calls.length === 0 && (
+      {isReady && calls.length === 0 && (
         <DashboardGettingStarted variant="calls" />
       )}
 
-      {viewState === "ready" && calls.length > 0 && filteredCalls.length === 0 && (
+      {isReady && calls.length > 0 && filteredCalls.length === 0 && (
         <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center">
           <p className="text-sm font-medium text-slate-700">No calls match your filters</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -769,7 +640,7 @@ export function CallsTable() {
         </div>
       )}
 
-      {viewState === "ready" && filteredCalls.length > 0 && (
+      {isReady && filteredCalls.length > 0 && (
         <>
           {/* Scroll anchor for page changes */}
           <div ref={tableTopRef} />

@@ -11,7 +11,8 @@ function makeQueryClient() {
       queries: {
         staleTime: QUERY_STALE_MS,
         gcTime: QUERY_GC_MS,
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
         retry: 1,
       },
     },
