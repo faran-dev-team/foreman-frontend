@@ -16,6 +16,18 @@ type ApiFetchOptions = RequestInit & {
   token?: string | null;
 };
 
+function parseApiErrorDetail(body: unknown, status: number): string {
+  if (typeof body === "object" && body !== null && "detail" in body) {
+    const detail = (body as { detail: unknown }).detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first = detail[0] as { msg?: string };
+      if (typeof first?.msg === "string") return first.msg;
+    }
+  }
+  return `Request failed with status ${status}`;
+}
+
 /**
  * JSON fetch wrapper for Foreman backend APIs.
  */
@@ -51,13 +63,7 @@ export async function apiFetch<T>(
       body = undefined;
     }
 
-    const detail =
-      typeof body === "object" &&
-      body !== null &&
-      "detail" in body &&
-      typeof (body as { detail: unknown }).detail === "string"
-        ? (body as { detail: string }).detail
-        : `Request failed with status ${response.status}`;
+    const detail = parseApiErrorDetail(body, response.status);
 
     throw new ApiError(response.status, detail, body);
   }

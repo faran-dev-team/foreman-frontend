@@ -1,11 +1,13 @@
 import { apiFetch } from "@/lib/api/client";
 
 export type DashboardMe = {
-  shop_id: string;
-  shop_name: string;
+  shop_id?: string | null;
+  shop_name?: string | null;
   role: string;
   user_id: string;
   email: string;
+  account_status?: "pending" | "active" | "rejected" | string;
+  message?: string | null;
 };
 
 /** Resolve the authenticated owner's shop from Clerk JWT. */

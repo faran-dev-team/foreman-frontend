@@ -9,14 +9,16 @@ export function useShopQueryEnabled(): {
   shopId: string | undefined;
 } {
   const { isLoaded, isSignedIn } = useAuth();
-  const { shopId, loading, resolvingMe } = useShop();
+  const { shopId, loading, resolvingMe, accountStatus } = useShop();
 
   const enabled =
     isLoaded &&
     isSignedIn === true &&
     !loading &&
     !resolvingMe &&
-    Boolean(shopId);
+    Boolean(shopId) &&
+    accountStatus !== "pending" &&
+    accountStatus !== "rejected";
 
   return { enabled, shopId };
 }

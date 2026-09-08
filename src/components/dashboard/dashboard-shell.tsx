@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DashboardMain } from "@/components/dashboard/dashboard-main";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { DashboardQueryPrefetch } from "@/components/dashboard/dashboard-query-prefetch";
+import { OwnerAccessGate } from "@/components/dashboard/owner-access-gate";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ForemanLogo } from "@/lib/brand";
 
@@ -202,7 +203,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
           <NotificationBell />
         </header>
 
-        <DashboardMain>{children}</DashboardMain>
+        <DashboardMain>
+          <OwnerAccessGate>{children}</OwnerAccessGate>
+        </DashboardMain>
       </div>
     </div>
   );
