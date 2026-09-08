@@ -19,6 +19,8 @@ type ShopContextValue = {
   shopId: string | undefined;
   shopName: string | undefined;
   role: string | undefined;
+  accountStatus: string | undefined;
+  accountMessage: string | null;
   /** True while Clerk is loading or the first /dashboard/me resolve is in flight. */
   loading: boolean;
   /** True while /me is resolving — owner API calls should wait to avoid 403 flash. */
@@ -64,7 +66,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const result = await fetchDashboardMe(token);
       setMe(result);
     } catch (err) {
-      // Keep env shop fallback — don't wipe shopId on transient /me failures.
+      // Keep last known /me. Do not fall back to DEFAULT_SHOP_ID for pending users.
       if (err instanceof ApiError) {
         setError(err.message);
       } else if (err instanceof TypeError) {
@@ -81,13 +83,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const shopId = me?.shop_id || envShopId;
+  const blocked =
+    me?.account_status === "pending" || me?.account_status === "rejected";
+  const shopId = me?.shop_id || (blocked ? undefined : envShopId);
 
   const value = useMemo<ShopContextValue>(
     () => ({
       shopId,
-      shopName: me?.shop_name,
+      shopName: me?.shop_name ?? undefined,
       role: me?.role,
+      accountStatus: me?.account_status,
+      accountMessage: me?.message ?? null,
       // Block owner pages until Clerk is ready and first /me attempt finishes.
       loading: !isLoaded || (isSignedIn && resolvingMe),
       resolvingMe,
