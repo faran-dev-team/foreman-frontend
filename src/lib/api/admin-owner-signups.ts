@@ -28,7 +28,7 @@ export async function fetchOwnerSignups(
   token: string,
   status: string = "pending",
 ): Promise<OwnerSignupListResponse> {
-  const query = new URLSearchParams({ status });
+  const query = new URLSearchParams({ status, limit: "200" });
   return apiFetch<OwnerSignupListResponse>(
     `/api/v1/admin/owner-signups?${query.toString()}`,
     { token, cache: "no-store" },
@@ -52,5 +52,15 @@ export async function rejectOwnerSignup(
   return apiFetch<ActivateOwnerResponse>(
     `/api/v1/admin/owner-signups/${userId}/reject`,
     { method: "POST", token, body: JSON.stringify({}) },
+  );
+}
+
+export async function bulkRejectOwnerSignups(
+  token: string,
+  body: { user_ids?: string[]; reject_all_pending?: boolean },
+): Promise<{ rejected: number; message: string }> {
+  return apiFetch<{ rejected: number; message: string }>(
+    "/api/v1/admin/owner-signups/bulk-reject",
+    { method: "POST", token, body: JSON.stringify(body) },
   );
 }

@@ -17,8 +17,7 @@ export function useShopQueryEnabled(): {
     !loading &&
     !resolvingMe &&
     Boolean(shopId) &&
-    accountStatus !== "pending" &&
-    accountStatus !== "rejected";
+    accountStatus === "active";
 
   return { enabled, shopId };
 }

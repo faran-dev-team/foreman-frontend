@@ -18,8 +18,8 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * Fallback shop ID when /dashboard/me is unavailable.
- * Prefer ShopProvider + GET /api/v1/dashboard/me (Path B).
+ * Env shop UUID used only for local tooling. Owner dashboard shop comes from
+ * GET /api/v1/dashboard/me when account_status is active — never this fallback.
  */
 export function getDefaultShopId(): string | undefined {
   const shopId = process.env.NEXT_PUBLIC_DEFAULT_SHOP_ID?.trim();
