@@ -11,7 +11,6 @@ import {
 } from "react";
 
 import { ApiError } from "@/lib/api/client";
-import { getDefaultShopId } from "@/lib/api/config";
 import { fetchDashboardMe, type DashboardMe } from "@/lib/api/me";
 import { waitForClerkToken } from "@/lib/auth/clerk-token";
 
@@ -33,7 +32,6 @@ const ShopContext = createContext<ShopContextValue | null>(null);
 
 export function ShopProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isLoaded, isSignedIn } = useAuth();
-  const envShopId = getDefaultShopId();
 
   const [me, setMe] = useState<DashboardMe | null>(null);
   // Start true so dashboard APIs wait until the first /me attempt finishes.
@@ -83,9 +81,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const blocked =
-    me?.account_status === "pending" || me?.account_status === "rejected";
-  const shopId = me?.shop_id || (blocked ? undefined : envShopId);
+  const shopId =
+    me?.account_status === "active" && me.shop_id ? me.shop_id : undefined;
 
   const value = useMemo<ShopContextValue>(
     () => ({

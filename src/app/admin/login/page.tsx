@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
       setError(
         err instanceof ApiError
           ? err.message
-          : "Could not sign in. Check email, password, and API URL.",
+          : "Could not reach the Foreman API. Confirm the backend is healthy on port 8000.",
       );
     } finally {
       setSubmitting(false);
@@ -51,7 +51,8 @@ export default function AdminLoginPage() {
         <label className="block text-sm font-medium text-slate-700">
           Email
           <input
-            type="email"
+            type="text"
+            inputMode="email"
             autoComplete="username"
             required
             value={email}
