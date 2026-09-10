@@ -7,6 +7,10 @@ const ONBOARDING_BASE = "/api/v1/onboarding";
 export type OnboardingStatus = {
   shop_id: string;
   shop_name: string;
+  phone?: string | null;
+  address?: string | null;
+  timezone?: string | null;
+  appointment_duration?: number | null;
   is_business_info_set: boolean;
   is_hours_set: boolean;
   is_service_area_set: boolean;
