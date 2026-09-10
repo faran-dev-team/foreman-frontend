@@ -4,7 +4,15 @@ import { useAuth } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Loader2, Upload } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ElementType } from "react";
+import PhoneInput, {
+  getCountryCallingCode,
+  isSupportedCountry,
+  isValidPhoneNumber,
+  parsePhoneNumber,
+  type Country,
+  type PhoneNumber,
+} from "react-phone-number-input/max";
 
 import { useShop } from "@/components/dashboard/shop-provider";
 import { BusinessHoursForm } from "@/components/settings/business-hours-form";
@@ -38,8 +46,176 @@ import type {
   ServiceItem,
 } from "@/lib/settings/types";
 
+const DEFAULT_PHONE_COUNTRY: Country = "US";
+
+function asCountry(value?: string | null): Country | undefined {
+  if (!value || !isSupportedCountry(value)) return undefined;
+  return value;
+}
+
+function callingCodeFor(country?: string | null): string {
+  const supported = asCountry(country);
+  if (!supported) return "";
+  try {
+    return getCountryCallingCode(supported);
+  } catch {
+    return "";
+  }
+}
+
+function tryParsePhone(
+  input: string,
+  defaultCountry?: Country,
+): PhoneNumber | undefined {
+  if (!input.trim()) return undefined;
+  try {
+    return parsePhoneNumber(input, defaultCountry) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function countryFromParsed(
+  parsed: PhoneNumber | undefined,
+  fallbackCountry: Country,
+): Country {
+  const direct = asCountry(parsed?.country);
+  if (direct) return direct;
+  const possible = parsed?.getPossibleCountries?.() ?? [];
+  for (const code of possible) {
+    const country = asCountry(code);
+    if (country) return country;
+  }
+  return asCountry(fallbackCountry) ?? DEFAULT_PHONE_COUNTRY;
+}
+
+function parseStoredPhone(
+  value?: string | null,
+  fallbackCountry: Country = DEFAULT_PHONE_COUNTRY,
+): {
+  value: string;
+  country: Country;
+} {
+  const raw = value?.trim() ?? "";
+  if (!raw) {
+    return { value: "", country: fallbackCountry };
+  }
+
+  const compact = raw.replace(/[^\d+]/g, "");
+  const nationalDigits = compact.replace(/^\+/, "");
+  const looksInternational = compact.startsWith("+") || compact.startsWith("00");
+  const from00 = compact.startsWith("00") ? `+${compact.slice(2)}` : undefined;
+  const fallbackCallingCode = callingCodeFor(fallbackCountry);
+
+  const internationalParsed =
+    tryParsePhone(raw) ||
+    tryParsePhone(compact) ||
+    (from00 ? tryParsePhone(from00) : undefined);
+
+  const plusParsed = nationalDigits
+    ? tryParsePhone(`+${nationalDigits}`)
+    : undefined;
+  const plusIsValid = Boolean(
+    plusParsed?.number && isValidPhoneNumber(plusParsed.number),
+  );
+  const plusIsForeign = Boolean(
+    plusParsed?.number &&
+      plusParsed.countryCallingCode &&
+      plusParsed.countryCallingCode !== fallbackCallingCode,
+  );
+
+  const nationalParsed =
+    tryParsePhone(raw, fallbackCountry) ||
+    tryParsePhone(nationalDigits, fallbackCountry);
+  const nationalIsValid = Boolean(
+    nationalParsed?.number &&
+      (isValidPhoneNumber(nationalParsed.number) ||
+        isValidPhoneNumber(nationalParsed.number, fallbackCountry)),
+  );
+
+  let parsed = internationalParsed;
+  if (!parsed && looksInternational && plusParsed) {
+    parsed = plusParsed;
+  }
+  if (!parsed) {
+    if (nationalIsValid) {
+      parsed = nationalParsed;
+    } else if (plusIsForeign || plusIsValid) {
+      parsed = plusParsed;
+    } else {
+      parsed = nationalParsed || plusParsed;
+    }
+  }
+
+  return {
+    value: parsed?.number ?? "",
+    country: countryFromParsed(parsed, fallbackCountry),
+  };
+}
+
+type PhoneCountrySelectProps = {
+  value?: Country;
+  onChange: (value?: string) => void;
+  options: Array<{ value?: string; label: string; divider?: boolean }>;
+  disabled?: boolean;
+  readOnly?: boolean;
+  iconComponent: ElementType<{
+    country?: Country;
+    label?: string;
+    "aria-hidden"?: boolean;
+  }>;
+};
+
+function PhoneCountrySelect({
+  value,
+  onChange,
+  options,
+  disabled,
+  readOnly,
+  iconComponent: Icon,
+}: PhoneCountrySelectProps) {
+  const selectedCallingCode = callingCodeFor(value);
+
+  return (
+    <div className="PhoneInputCountry">
+      <select
+        aria-label="Country"
+        className="PhoneInputCountrySelect"
+        disabled={disabled || readOnly}
+        value={value ?? "ZZ"}
+        onChange={(event) => {
+          const next = event.target.value;
+          onChange(next === "ZZ" ? undefined : next);
+        }}
+      >
+        {options.map((option) => {
+          const optionValue = option.divider ? "|" : option.value ?? "ZZ";
+          const callingCode = callingCodeFor(option.value);
+          return (
+            <option
+              key={option.divider ? "|" : optionValue}
+              disabled={option.divider}
+              value={optionValue}
+            >
+              {option.label}
+              {callingCode ? ` +${callingCode}` : ""}
+            </option>
+          );
+        })}
+      </select>
+      <Icon aria-hidden country={value} label={value} />
+      {selectedCallingCode ? (
+        <span className="ml-1.5 whitespace-nowrap text-sm text-slate-700">
+          +{selectedCallingCode}
+        </span>
+      ) : null}
+      <div className="PhoneInputCountrySelectArrow" />
+    </div>
+  );
+}
+
 const STEPS = [
-  { id: 1, title: "Business info", description: "Shop name, phone, and greeting" },
+  { id: 1, title: "Business info", description: "Shop name, business number, and greeting" },
   { id: 2, title: "Hours", description: "When you're open for bookings" },
   { id: 3, title: "Service area", description: "ZIPs or radius you cover" },
   { id: 4, title: "Services & pricing", description: "Catalog entry or spreadsheet import" },
@@ -75,6 +251,7 @@ export function OnboardingWizardPanel() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<Country>(DEFAULT_PHONE_COUNTRY);
   const [address, setAddress] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
   const [appointmentDuration, setAppointmentDuration] = useState(60);
@@ -97,6 +274,20 @@ export function OnboardingWizardPanel() {
     const settings = data.settings;
     setActiveStep(Math.min(Math.max(nextStatus.current_step || 1, 1), 5));
     setName(nextStatus.shop_name || shopName || "");
+    if (typeof nextStatus.phone === "string") {
+      const parsedPhone = parseStoredPhone(nextStatus.phone);
+      setPhone(parsedPhone.value);
+      setPhoneCountry(parsedPhone.country);
+    }
+    if (typeof nextStatus.address === "string") {
+      setAddress(nextStatus.address.trim());
+    }
+    if (nextStatus.timezone?.trim()) {
+      setTimezone(nextStatus.timezone.trim());
+    }
+    if (nextStatus.appointment_duration) {
+      setAppointmentDuration(nextStatus.appointment_duration);
+    }
     setGreeting(settings.greeting || defaultShopSettings.greeting);
     setBusinessHours(settings.businessHours);
     setServiceArea(settings.serviceArea);
@@ -144,8 +335,15 @@ export function OnboardingWizardPanel() {
     try {
       let payload;
       if (activeStep === 1) {
-        if (!name.trim() || !phone.trim()) {
-          throw new Error("Shop name and phone are required.");
+        const storedPhone = parseStoredPhone(phone, phoneCountry);
+        if (!name.trim() || !storedPhone.value) {
+          throw new Error("Shop name and business number are required.");
+        }
+        if (
+          !isValidPhoneNumber(storedPhone.value) &&
+          !isValidPhoneNumber(storedPhone.value, storedPhone.country)
+        ) {
+          throw new Error("Enter a valid business number.");
         }
         if (greeting.trim().length < 10) {
           throw new Error("Greeting must be at least 10 characters.");
@@ -153,7 +351,7 @@ export function OnboardingWizardPanel() {
         payload = {
           step: 1,
           name: name.trim(),
-          phone: phone.trim(),
+          phone: storedPhone.value,
           address: address.trim() || undefined,
           timezone: timezone.trim() || undefined,
           appointment_duration: appointmentDuration,
@@ -377,17 +575,30 @@ export function OnboardingWizardPanel() {
               </div>
               <div>
                 <label className={labelClassName} htmlFor="ob-phone">
-                  Phone
+                  Business number
                 </label>
-                <input
+                <PhoneInput
+                  key={`ob-phone-${hydratedAt}`}
                   id="ob-phone"
-                  className={inputClassName}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm [--PhoneInput-color--focus:#0A0F1C] focus-within:border-foreman-navy focus-within:outline-none focus-within:ring-1 focus-within:ring-foreman-navy"
+                  numberInputProps={{
+                    className:
+                      "min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-slate-900 outline-none focus:ring-0",
+                  }}
+                  placeholder="(555) 123-4567"
+                  international={false}
+                  initialValueFormat="national"
+                  defaultCountry={phoneCountry}
+                  addInternationalOption={false}
+                  countrySelectComponent={PhoneCountrySelect}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+1..."
+                  onChange={(value) => setPhone(value ?? "")}
+                  onCountryChange={(country) =>
+                    setPhoneCountry(country ?? DEFAULT_PHONE_COUNTRY)
+                  }
                 />
                 <p className="mt-1 text-xs text-slate-500">
-                  Required to complete onboarding and support callbacks.
+                  Business number is required to complete onboarding and support callbacks.
                 </p>
               </div>
               <div>
