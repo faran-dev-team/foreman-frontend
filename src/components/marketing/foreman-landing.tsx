@@ -23,7 +23,7 @@ import {
   wrap,
 } from "framer-motion";
 import { ReactLenis } from "@studio-freight/react-lenis";
-import { Building2, Car, House, Languages, MapPin, Scissors, Stethoscope, Sun } from "lucide-react";
+import { Building2, Car, House, Languages, Scissors, Stethoscope, Sun } from "lucide-react";
 
 import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 import {
@@ -1304,10 +1304,6 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
           </motion.p>
           {mode === "main" && (
             <motion.div className="fm-hero-badges" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.56 }}>
-              <span className="fm-locale-pill">
-                <MapPin size={13} strokeWidth={2.2} aria-hidden />
-                Pakistan-ready
-              </span>
               <span className="fm-locale-pill">
                 <Languages size={13} strokeWidth={2.2} aria-hidden />
                 English + <UrduText>اردو</UrduText>
