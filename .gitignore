@@ -25,10 +25,10 @@ yarn-error.log*
 
 # local env files
 .env*.local
-.env
 
 # typescript
 *.tsbuildinfo
 
 # clerk
 .clerk/
+config.bat
