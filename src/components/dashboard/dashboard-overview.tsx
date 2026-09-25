@@ -15,6 +15,8 @@ import {
   YAxis,
 } from "recharts";
 
+import { urduFont } from "@/lib/fonts/urdu";
+
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const C = {
   navy: "#0A0F1C",
@@ -24,6 +26,15 @@ const C = {
   muted: "#B8BFCC",
   amber: "#FBBF24",
 } as const;
+
+// English words embedded in an Urdu (RTL) sentence: kept as an LTR unit in the dashboard face.
+function EnRun({ children }: { children: React.ReactNode }) {
+  return (
+    <span dir="ltr" style={{ fontFamily: "var(--font-outfit), sans-serif" }}>
+      {children}
+    </span>
+  );
+}
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 const revenueData = [
@@ -560,8 +571,13 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
               {/* Sleek Dialogue Messages */}
               <div className="my-2 space-y-1.5 text-xs">
                 <div className="rounded-md bg-white p-2 border border-slate-200/70 shadow-2xs transition hover:border-slate-300 cursor-pointer">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Caller</p>
-                  <p className="text-slate-700 text-[11px] leading-relaxed">&ldquo;AC unit stopped blowing cold air and making a humming sound.&rdquo;</p>
+                  <div className="mb-0.5 flex items-center justify-between gap-2">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Caller</p>
+                    <span className="rounded-full bg-orange-50 px-1.5 py-px text-[9px] font-semibold text-orange-700 border border-orange-200/90 whitespace-nowrap">
+                      English + <span lang="ur" dir="rtl" className={urduFont.className} style={{ fontSize: 10, lineHeight: 1 }}>اردو</span>
+                    </span>
+                  </div>
+                  <p lang="ur" dir="rtl" className={`${urduFont.className} text-slate-700 text-[12px] leading-[2]`}>میرا اے سی ٹھنڈی ہوا نہیں دے رہا۔</p>
                 </div>
                 <div
                   id="dashboard-tour-ai-bubble"
@@ -572,7 +588,10 @@ export function DashboardOverview({ preview = false }: { preview?: boolean }) {
                   }`}
                 >
                   <p className="text-[9px] font-bold text-orange-600 uppercase tracking-wider mb-0.5">Foreman AI</p>
-                  <p className="text-slate-900 text-[11px] font-medium leading-relaxed">&ldquo;I have tomorrow at 10:00 AM reserved with senior tech Brad.&rdquo;</p>
+                  <p className="text-slate-900 text-[11px] font-medium leading-relaxed">
+                    Understood —{" "}
+                    <span lang="ur" dir="rtl" className={`${urduFont.className} inline-block text-[12px] leading-[2]`}>میں نے آپ کے لیے کل <EnRun>10:00 AM</EnRun> کا <EnRun>slot reserve</EnRun> کر دیا ہے۔</span>
+                  </p>
                 </div>
               </div>
 

@@ -23,6 +23,7 @@ import {
   wrap,
 } from "framer-motion";
 import { ReactLenis } from "@studio-freight/react-lenis";
+import { Building2, Car, House, Languages, MapPin, Scissors, Stethoscope, Sun } from "lucide-react";
 
 import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 import {
@@ -34,6 +35,7 @@ import {
 } from "./foreman-illustrations";
 
 import { ForemanLogo, brand } from "@/lib/brand";
+import { urduFont } from "@/lib/fonts/urdu";
 
 import "./foreman-landing.css";
 
@@ -1297,9 +1299,21 @@ function Hero({ mode = "main" }: { mode?: LandingMode }) {
               )}
             </AnimatePresence>
           </a>
-          <motion.p className="fm-hero-sub" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          <motion.p className="fm-hero-sub" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} style={mode === "main" ? { marginBottom: 20 } : undefined}>
             {content.sub}
           </motion.p>
+          {mode === "main" && (
+            <motion.div className="fm-hero-badges" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.56 }}>
+              <span className="fm-locale-pill">
+                <MapPin size={13} strokeWidth={2.2} aria-hidden />
+                Pakistan-ready
+              </span>
+              <span className="fm-locale-pill">
+                <Languages size={13} strokeWidth={2.2} aria-hidden />
+                English + <UrduText>اردو</UrduText>
+              </span>
+            </motion.div>
+          )}
           <motion.div className="fm-hero-cta" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.62 }}>
             <MagneticButton href={CALENDLY_LINK} className="fm-btn fm-btn-primary">Book your free pilot</MagneticButton>
             <motion.a href="#how" className="fm-btn fm-btn-ghost" whileHover={reducedMotion ? {} : { scale: 1.04 }} whileTap={{ scale: 0.97 }}>See how it works</motion.a>
@@ -2696,13 +2710,149 @@ function IntegrationsRow() {
 
 
 /* ================================================================== */
+/*  LOCAL MARKET — PAKISTAN                                            */
+/* ================================================================== */
+
+/** Urdu run inside LTR copy: RTL + Nastaliq on this span only. */
+function UrduText({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <span lang="ur" dir="rtl" className="fm-urdu" style={style}>
+      {children}
+    </span>
+  );
+}
+
+const LOCAL_BUSINESSES = [
+  { title: "Auto Workshops", desc: "Capture calls, book service jobs, and follow up automatically.", Icon: Car },
+  { title: "Clinics", desc: "Handle inquiries, appointments, and reminders.", Icon: Stethoscope },
+  { title: "Salons", desc: "Manage bookings, confirmations, and follow-ups.", Icon: Scissors },
+  { title: "Home Services", desc: "Capture urgent leads and schedule service calls.", Icon: House },
+  { title: "Solar Companies", desc: "Qualify leads and organize callbacks.", Icon: Sun },
+  { title: "Real Estate", desc: "Capture inquiries and schedule property follow-ups.", Icon: Building2 },
+];
+
+function LocalBusinessesSection() {
+  return (
+    <section className="fm-island" style={{ background: "#050812", padding: "56px 0 64px", zIndex: 5, position: "relative", overflow: "hidden" }}>
+      <div aria-hidden style={{ position: "absolute", top: "40%", left: "50%", transform: "translate(-50%, -50%)", width: 800, height: 420, background: "radial-gradient(ellipse 60% 40% at 50% 50%, rgba(249,122,53,0.06) 0%, transparent 70%)", pointerEvents: "none", zIndex: 0 }} />
+      <div className="fm-wrap" style={{ position: "relative", zIndex: 2 }}>
+        <Reveal className="fm-sechead" style={{ marginBottom: 40 }}>
+          <div className="fm-eyebrow">LOCAL SERVICE BUSINESSES</div>
+          <h2 style={{
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 4.8vw, 52px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            marginBottom: 18
+          }} className="fm-balance">
+            Built for local businesses in Pakistan
+          </h2>
+          <p className="fm-secsub">
+            From workshops and clinics to salons and home-service teams, Foreman helps businesses handle calls, qualify leads, and book more customers.
+          </p>
+        </Reveal>
+
+        <div className="fm-localgrid">
+          {LOCAL_BUSINESSES.map(({ title, desc, Icon }, i) => (
+            <Reveal key={title} delay={i * 0.05} style={{ height: "100%" }}>
+              <div className="fm-localcard fm-hoverlift">
+                <div className="fm-localic">
+                  <Icon size={20} strokeWidth={2} aria-hidden />
+                </div>
+                <div>
+                  <h3 className="fm-localtitle">{title}</h3>
+                  <p className="fm-localdesc">{desc}</p>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const URDU_CONVERSATION: { from: "agent" | "caller"; lang: "en" | "ur"; text: string }[] = [
+  { from: "agent", lang: "en", text: "Hi, how can I help you today?" },
+  { from: "agent", lang: "ur", text: "السلام علیکم، میں آپ کی کس طرح مدد کر سکتا ہوں؟" },
+  { from: "caller", lang: "ur", text: "جی، مجھے کل اپنی گاڑی کی سروس کروانی ہے۔" },
+  { from: "agent", lang: "ur", text: "ضرور، کل صبح 10 بجے آپ کی اپوائنٹمنٹ بک ہو گئی ہے۔" },
+];
+
+function UrduSupportSection() {
+  return (
+    <section className="fm-island" style={{ background: "#050812", padding: "56px 0 64px", zIndex: 6, position: "relative", overflow: "hidden" }}>
+      <div className="fm-wrap fm-urdu-grid">
+        <Reveal className="fm-urdu-copy">
+          <div className="fm-eyebrow">LANGUAGE SUPPORT</div>
+          <h2 style={{
+            fontFamily: 'var(--font-playfair), "Playfair Display", "Libre Baskerville", "Georgia", serif',
+            fontSize: "clamp(32px, 4.4vw, 48px)",
+            lineHeight: 1.15,
+            fontWeight: 400,
+            letterSpacing: "-0.02em",
+            color: C.textHeading,
+            marginBottom: 18
+          }} className="fm-balance">
+            Speak to customers in English and Urdu
+          </h2>
+          <p className="fm-secsub" style={{ marginBottom: 28 }}>
+            Foreman helps your business communicate naturally with customers in the language they are most comfortable using.
+          </p>
+          <div className="fm-hero-trust fm-urdu-caps">
+            {["Answer calls", "Qualify leads", "Book appointments", "Follow up"].map((t) => (
+              <span key={t}><Check /> {t}</span>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.1}>
+          <div className="fm-callcard fm-urdu-chat" role="group" aria-label="Example call handled in English and Urdu">
+            <div className="fm-urdu-chathead">
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <PhoneIcon />
+                <span style={{ fontWeight: 600, color: C.textHeading, fontSize: 14 }}>Incoming call</span>
+              </span>
+              <CallCardWaveform />
+            </div>
+            {URDU_CONVERSATION.map((m, i) => (
+              <motion.div
+                key={i}
+                className={`fm-urdu-msg ${m.from === "caller" ? "fm-urdu-msg-caller" : ""}`}
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.25 + i * 0.35, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <span className="fm-urdu-msglabel">{m.from === "agent" ? "Foreman" : "Caller"}</span>
+                {m.lang === "ur" ? (
+                  <p lang="ur" dir="rtl" className="fm-urdu fm-urdu-bubble">{m.text}</p>
+                ) : (
+                  <p className="fm-urdu-bubble">{m.text}</p>
+                )}
+              </motion.div>
+            ))}
+            <div className="fm-urdu-status">
+              <span style={{ fontSize: 13, color: C.textBody }}>Service appointment · Tomorrow, 10:00 AM</span>
+              <span className="fm-badge fm-badge-booked">BOOKED</span>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ================================================================== */
 /*  ADVANCED FEATURES GRID                                             */
 /* ================================================================== */
 const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; feats: { title: string, desc: string, icon: any }[] }> = {
   main: {
     eyebrow: "NOT ANOTHER ANSWERING SERVICE", headline: "A full front office, not a voicemail box.",
     feats: [
-      { title: "Speaks English and Spanish", desc: "Serves your entire customer base automatically, no callers lost to a language barrier.", icon: <Globe /> },
+      { title: "English + Urdu Support", desc: "Communicate naturally with English- and Urdu-speaking customers. Spanish is supported too.", icon: <Globe /> },
       { title: "Detects emergencies", desc: "Flags 'no heat,' 'flooding,' 'gas smell' and prioritizes them with instant alerts.", icon: <Bolt /> },
       { title: "Texts back missed callers", desc: "If someone hangs up before booking, Foreman sends them a booking link in seconds.", icon: <MessageSquare /> },
       { title: "You listen live and take over", desc: "Jump into any call from your phone. You are always in control of your front desk.", icon: <Headphones /> },
@@ -2770,13 +2920,22 @@ const FEATURES_COPY: Record<LandingMode, { eyebrow: string; headline: string; fe
   }
 };
 
-function WidgetBilingual() {
+type BilingualPhrase = { lang: "EN" | "ES" | "UR"; text: string };
+
+const SPANISH_PHRASES: BilingualPhrase[] = [
+  { lang: "ES", text: "“Hola, mi aire acondicionado echa aire caliente. ¿Tienen servicio de emergencia hoy?”" },
+  { lang: "EN", text: "“Hello, my AC is blowing warm air. Do you have emergency repair technicians today?”" }
+];
+
+const URDU_PHRASES: BilingualPhrase[] = [
+  { lang: "UR", text: "السلام علیکم، میرا اے سی گرم ہوا دے رہا ہے۔ کیا آج کوئی ٹیکنیشن آ سکتا ہے؟" },
+  { lang: "EN", text: "“Hello, my AC is blowing warm air. Can a technician come today?”" }
+];
+
+function WidgetBilingual({ phrases = SPANISH_PHRASES }: { phrases?: BilingualPhrase[] }) {
   const reducedMotion = useReducedMotion();
   const [langIndex, setLangIndex] = useState(0);
-  const phrases = [
-    { lang: "ES", text: "“Hola, mi aire acondicionado echa aire caliente. ¿Tienen servicio de emergencia hoy?”" },
-    { lang: "EN", text: "“Hello, my AC is blowing warm air. Do you have emergency repair technicians today?”" }
-  ];
+  const langs = ["EN", ...phrases.map((p) => p.lang).filter((l) => l !== "EN")] as BilingualPhrase["lang"][];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -2803,16 +2962,13 @@ function WidgetBilingual() {
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <span style={{
-            fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
-            background: current.lang === "EN" ? C.accentOrange : "rgba(255,255,255,0.08)",
-            color: "#FFFFFF", transition: "all 300ms ease"
-          }}>EN</span>
-          <span style={{
-            fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
-            background: current.lang === "ES" ? C.accentOrange : "rgba(255,255,255,0.08)",
-            color: "#FFFFFF", transition: "all 300ms ease"
-          }}>ES</span>
+          {langs.map((lang) => (
+            <span key={lang} style={{
+              fontSize: 11, fontWeight: 800, padding: "4px 10px", borderRadius: 8,
+              background: current.lang === lang ? C.accentOrange : "rgba(255,255,255,0.08)",
+              color: "#FFFFFF", transition: "all 300ms ease"
+            }}>{lang === "UR" ? <UrduText style={{ fontSize: 12, lineHeight: 1 }}>اردو</UrduText> : lang}</span>
+          ))}
         </div>
         {/* Animated voice soundwave */}
         <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
@@ -2833,7 +2989,10 @@ function WidgetBilingual() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.3 }}
-          style={{ fontSize: 13, fontStyle: "italic", color: "#F8FAFC", background: "rgba(255,255,255,0.06)", padding: "12px", borderRadius: 10, borderLeft: `3px solid ${C.accentOrange}` }}
+          lang={current.lang === "UR" ? "ur" : undefined}
+          dir={current.lang === "UR" ? "rtl" : undefined}
+          className={current.lang === "UR" ? "fm-urdu" : undefined}
+          style={{ fontSize: current.lang === "UR" ? 15 : 13, fontStyle: current.lang === "UR" ? "normal" : "italic", color: "#F8FAFC", background: "rgba(255,255,255,0.06)", padding: "12px", borderRadius: 10, borderInlineStart: `3px solid ${C.accentOrange}` }}
         >
           {current.text}
         </motion.div>
@@ -3328,6 +3487,9 @@ function WidgetReviews() {
 
 function FeatureGraphicWidget({ title }: { title: string }) {
   const t = title.toLowerCase();
+  if (t.includes("urdu")) {
+    return <WidgetBilingual phrases={URDU_PHRASES} />;
+  }
   if (t.includes("english") || t.includes("spanish") || t.includes("bilingual")) {
     return <WidgetBilingual />;
   }
@@ -4611,10 +4773,10 @@ export function TestimonialsSection() {
             color: C.textHeading,
             marginBottom: 16
           }}>
-            Trusted by trade owners who build America.
+            Trusted by trade owners across the U.S.
           </h2>
-          <p style={{ color: C.textBody, fontSize: 18, maxWidth: 640, margin: "0 auto", lineHeight: 1.6 }}>
-            See how HVAC, plumbing, electrical, and restoration contractors turn missed calls into booked revenue every single day.
+          <p className="fm-balance" style={{ color: C.textBody, fontSize: 18, maxWidth: 640, margin: "0 auto", lineHeight: 1.6 }}>
+            See how HVAC, plumbing, electrical, and restoration contractors turn missed calls into booked revenue every single day. Now built for local businesses in Pakistan too.
           </p>
         </Reveal>
 
@@ -5185,6 +5347,11 @@ export function Footer({ hideIntegrations = false, mode }: { hideIntegrations?: 
           <div style={{ fontSize: 14, color: C.textBody, fontWeight: 500 }}>
             &copy; {new Date().getFullYear()} Foreman Inc. All rights reserved.
           </div>
+          {!isNiche && (
+            <div style={{ fontSize: 13, color: C.textBody, opacity: 0.75 }}>
+              Built for service businesses globally — including local businesses across Pakistan.
+            </div>
+          )}
         </div>
       </div>
     </footer>
@@ -5457,8 +5624,16 @@ const FAQ_COPY: Record<LandingMode, { q: string; a: string }[]> = {
   ]
 };
 
-export function FAQ({ mode = "main" }: { mode?: LandingMode }) {
-  const qa = FAQ_COPY[mode] || FAQ_COPY.main;
+// Home page only — industry pages reuse FAQ_COPY.main and stay trade-focused.
+const LOCAL_MARKET_FAQ: { q: string; a: string }[] = [
+  { q: "Does Foreman work for businesses in Pakistan?", a: "Yes. Foreman works for local service businesses across Pakistan, the same way it does everywhere else." },
+  { q: "Does Foreman support Urdu?", a: "Yes. Foreman handles customer conversations in both Urdu and English." },
+  { q: "What types of local businesses can use Foreman?", a: "Any business that runs on customer calls: auto workshops, clinics, salons, solar companies, home-service teams, and real-estate agencies." }
+];
+
+export function FAQ({ mode = "main", includeLocalMarket = false }: { mode?: LandingMode; includeLocalMarket?: boolean }) {
+  const baseQa = FAQ_COPY[mode] || FAQ_COPY.main;
+  const qa = includeLocalMarket ? [...baseQa, ...LOCAL_MARKET_FAQ] : baseQa;
   const [open, setOpen] = useState<number | null>(null);
   return (
     <section id="faq" className="fm-island" style={{ background: C.bgCard, padding: "32px 0", zIndex: 8 }}>
@@ -6218,7 +6393,7 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
       }}
     >
       <main
-        className="fm-landing"
+        className={`fm-landing ${urduFont.variable}`}
         style={{
           fontFamily: "var(--font-outfit), sans-serif",
           color: C.textHeading,
@@ -6232,9 +6407,11 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
         <div id="how">
           <AnnotatedProof mode={mode} />
         </div>
+        {mode === "main" && <LocalBusinessesSection />}
         <div id="integrations">
           <IntegrationsRow />
         </div>
+        {mode === "main" && <UrduSupportSection />}
         {mode === "main" && <TradeSelector />}
         <StatComparison mode={mode} />
         <div id="features">
@@ -6243,7 +6420,7 @@ export function ForemanLanding({ mode = "main" }: { mode?: LandingMode }) {
         <TestimonialsSection />
         {/* <FinalCTA mode={mode} /> */}
         {/* <Pricing /> */}
-        <FAQ mode={mode} />
+        <FAQ mode={mode} includeLocalMarket={mode === "main"} />
         <Footer />
         <PersistentWidget />
         <ScrollToTopButton />
