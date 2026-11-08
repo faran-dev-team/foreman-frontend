@@ -9,7 +9,7 @@ import { SAMPLE_CALL_AUDIO_URL } from "@/lib/marketing/sample-call";
 
 import { HERO, LANGUAGE_CHIPS } from "./content";
 import { LiveCallConsole } from "./live-call-console";
-import { Ar, CheckMark, EASE, GeoPattern, Hi, MagneticLink, Skyline, Ur } from "./primitives";
+import { Ar, CheckMark, EASE, INSTANT, GeoPattern, Hi, MagneticLink, Skyline, Ur } from "./primitives";
 
 export function LanguageChips({ includeSwitch = true }: { includeSwitch?: boolean }) {
   const reduced = useReducedMotion();
@@ -128,7 +128,11 @@ export function GccHero() {
   const reduced = useReducedMotion();
   const [replay, setReplay] = useState(0);
   const fade = (delay: number) =>
-    reduced ? {} : { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.8, delay, ease: EASE } };
+    ({
+      initial: { opacity: 0, y: 18 },
+      animate: { opacity: 1, y: 0 },
+      transition: reduced ? INSTANT : { duration: 0.8, delay, ease: EASE },
+    });
 
   return (
     <header id="top" className="gx-hero">
@@ -172,9 +176,9 @@ export function GccHero() {
 
         <motion.div
           className="gx-hero-visual"
-          initial={reduced ? false : { opacity: 0, y: 30, rotateX: 6 }}
+          initial={{ opacity: 0, y: 30, rotateX: 6 }}
           animate={{ opacity: 1, y: 0, rotateX: 0 }}
-          transition={{ duration: 1.1, delay: 0.3, ease: EASE }}
+          transition={reduced ? INSTANT : { duration: 1.1, delay: 0.3, ease: EASE }}
         >
           <div className="gx-hero-orbit" aria-hidden>
             <span className="gx-orbit-chip gx-orbit-a">

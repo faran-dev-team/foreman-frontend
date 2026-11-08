@@ -7,7 +7,7 @@ import { ArrowRight } from "lucide-react";
 import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 
 import { PRICING, type PricingPlan } from "./content";
-import { Accent, CheckMark, EASE, MagneticLink, Reveal, SectionHead } from "./primitives";
+import { Accent, CheckMark, EASE, INSTANT, MagneticLink, Reveal, SectionHead } from "./primitives";
 
 function PlanCard({ plan, i }: { plan: PricingPlan; i: number }) {
   const L = PRICING.rowLabels;
@@ -74,9 +74,9 @@ function CostComparison() {
           <div className="gx-compare-track">
             <motion.span
               className="gx-compare-fill is-grey"
-              initial={reduced ? false : { width: 0 }}
+              initial={{ width: 0 }}
               animate={inView ? { width: "100%" } : {}}
-              transition={{ duration: 1.2, ease: EASE }}
+              transition={reduced ? INSTANT : { duration: 1.2, ease: EASE }}
             />
           </div>
           <ul className="gx-compare-meta">
@@ -93,9 +93,9 @@ function CostComparison() {
           <div className="gx-compare-track">
             <motion.span
               className="gx-compare-fill"
-              initial={reduced ? false : { width: 0 }}
+              initial={{ width: 0 }}
               animate={inView ? { width: `${ratio * 100}%` } : {}}
-              transition={{ duration: 1.2, delay: 0.25, ease: EASE }}
+              transition={reduced ? INSTANT : { duration: 1.2, delay: 0.25, ease: EASE }}
             />
             <span className="gx-compare-callout" style={{ left: `${ratio * 100}%` }}>
               ≈ {Math.round(ratio * 100)}%

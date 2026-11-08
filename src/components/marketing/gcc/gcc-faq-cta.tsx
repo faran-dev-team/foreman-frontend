@@ -8,7 +8,7 @@ import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 import { HAS_WHATSAPP, WHATSAPP_PILOT_URL } from "@/lib/marketing/whatsapp";
 
 import { FAQ, FINAL_CTA } from "./content";
-import { Accent, EASE, GeoPattern, Kicker, MagneticLink, Reveal, WhatsAppIcon } from "./primitives";
+import { Accent, EASE, INSTANT, GeoPattern, Kicker, MagneticLink, Reveal, WhatsAppIcon } from "./primitives";
 
 export function GccFaq() {
   const [open, setOpen] = useState<number | null>(0);
@@ -88,10 +88,10 @@ function MissedStack() {
           key={m.t}
           className="gx-missed-card"
           style={{ zIndex: 10 - i, ["--i" as string]: i }}
-          initial={reduced ? false : { opacity: 0, y: 24, rotate: i % 2 ? 2 : -2 }}
+          initial={{ opacity: 0, y: 24, rotate: i % 2 ? 2 : -2 }}
           whileInView={{ opacity: 1, y: 0, rotate: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.7, delay: 0.1 + i * 0.12, ease: EASE }}
+          transition={reduced ? INSTANT : { duration: 0.7, delay: 0.1 + i * 0.12, ease: EASE }}
         >
           <div className="gx-missed-face gx-missed-front">
             <span className="gx-missed-ic">

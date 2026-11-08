@@ -6,7 +6,7 @@ import { ArrowRight, Cable, Database, History, Lock, Mic, Moon, PhoneOff, Receip
 import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 
 import { FM, TRUST } from "./content";
-import { CheckMark, EASE, Kicker, MagneticLink, Reveal, SectionHead } from "./primitives";
+import { CheckMark, EASE, INSTANT, Kicker, MagneticLink, Reveal, SectionHead } from "./primitives";
 
 const CAP_ICONS = [<Cable key="a" size={18} strokeWidth={2} />, <Lock key="b" size={18} strokeWidth={2} />, <Receipt key="c" size={18} strokeWidth={2} />];
 
@@ -30,10 +30,10 @@ function NightLog() {
         {FM.log.map((e, i) => (
           <motion.li
             key={e.t}
-            initial={reduced ? false : { opacity: 0, x: -10 }}
+            initial={{ opacity: 0, x: -10 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 + i * 0.35, ease: EASE }}
+            transition={reduced ? INSTANT : { duration: 0.6, delay: 0.2 + i * 0.35, ease: EASE }}
           >
             <span className="gx-nightlog-t">{e.t}</span>
             <span className="gx-nightlog-dot" aria-hidden>

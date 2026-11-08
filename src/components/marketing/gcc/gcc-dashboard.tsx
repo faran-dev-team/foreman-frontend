@@ -23,7 +23,9 @@ import { Accent, Ar, CheckMark, Reveal, SectionHead, WhatsAppIcon } from "./prim
 
 function useCount(to: number, run: boolean, duration = 1.6) {
   const reduced = useReducedMotion();
-  const [v, setV] = useState(reduced ? to : 0);
+  // Start at 0 on both server and client; the effect below sets the final
+  // number for reduced-motion visitors (doing it here breaks hydration).
+  const [v, setV] = useState(0);
   useEffect(() => {
     if (!run || reduced) {
       if (reduced) setV(to);

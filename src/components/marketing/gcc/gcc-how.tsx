@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { BellRing, CalendarCheck, MapPin, Siren, Star } from "lucide-react";
 
 import { HOW } from "./content";
-import { Ar, CheckMark, EASE, Kicker, Reveal, Ur, WhatsAppIcon } from "./primitives";
+import { Ar, CheckMark, EASE, INSTANT, Kicker, Reveal, Ur, WhatsAppIcon } from "./primitives";
 
 /* ------------------------------ step visuals ------------------------------ */
 function V1() {
@@ -150,10 +150,10 @@ export function GccHow() {
               <motion.li
                 key={s.n}
                 className={`gx-step${i === 1 ? " gx-step-alert" : ""}`}
-                initial={reduced ? false : { opacity: 0, y: 28 }}
+                initial={{ opacity: 0, y: 28 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.8, delay: (i % 3) * 0.08, ease: EASE }}
+                transition={reduced ? INSTANT : { duration: 0.8, delay: (i % 3) * 0.08, ease: EASE }}
               >
                 <div className="gx-step-top">
                   <span className="gx-step-n">{s.n}</span>

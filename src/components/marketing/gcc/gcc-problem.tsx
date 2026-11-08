@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, PhoneOff, ThermometerSun, X } from "lucide-react";
 
 import { PROBLEM } from "./content";
-import { Ar, CheckMark, EASE, Hi, Kicker, Reveal, Ur } from "./primitives";
+import { Ar, CheckMark, EASE, INSTANT, Hi, Kicker, Reveal, Ur } from "./primitives";
 
 function Greeting({ g, i }: { g: (typeof PROBLEM.greetings)[number]; i: number }) {
   const text =
@@ -85,10 +85,10 @@ function SummerVisual() {
             <motion.i
               key={i}
               className={`${after ? "is-after" : ""}${i === 21 ? " is-peak" : ""}`}
-              initial={reduced ? false : { scaleY: 0 }}
+              initial={{ scaleY: 0 }}
               whileInView={{ scaleY: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.9, delay: 0.15 + i * 0.025, ease: EASE }}
+              transition={reduced ? INSTANT : { duration: 0.9, delay: 0.15 + i * 0.025, ease: EASE }}
               style={{ height: `${h}%` }}
             />
           );
