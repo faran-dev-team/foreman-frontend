@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 
-import { AR_HERO, META } from "@/components/marketing/gcc/content";
+import { AR_HERO } from "@/components/marketing/gcc/content";
 import { GccArabicLanding } from "@/components/marketing/gcc/gcc-arabic-landing";
+import { getSiteUrl } from "@/lib/marketing/site-url";
 
 const title = `فورمان — ${AR_HERO.headline}`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL(META.siteUrl),
+  metadataBase: getSiteUrl(),
   title: { absolute: title },
   description: AR_HERO.body,
   alternates: {

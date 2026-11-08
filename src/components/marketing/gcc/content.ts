@@ -16,7 +16,6 @@ export const META = {
   title: "Foreman | AI Front Office for Gulf Maintenance Companies | Arabic, English & Urdu",
   description:
     "Foreman answers every call in Arabic, English, or Urdu, books the job, dispatches your technician in their language, and confirms appointments via WhatsApp. Pay only when a job is booked. Go live in the UAE within 24 hours.",
-  siteUrl: "https://foremanai.tech",
 } as const;
 
 export const NAV_LINKS = [

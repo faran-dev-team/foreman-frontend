@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 
 import { META } from "@/components/marketing/gcc/content";
 import { GccLanding } from "@/components/marketing/gcc/gcc-landing";
+import { getSiteUrl } from "@/lib/marketing/site-url";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(META.siteUrl),
+  metadataBase: getSiteUrl(),
   title: { absolute: META.title },
   description: META.description,
   alternates: {
