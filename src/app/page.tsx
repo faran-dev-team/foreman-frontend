@@ -1,22 +1,33 @@
 import type { Metadata } from "next";
 
-import { ForemanLanding } from "@/components/marketing/foreman-landing";
+import { META } from "@/components/marketing/gcc/content";
+import { GccLanding } from "@/components/marketing/gcc/gcc-landing";
 
 export const metadata: Metadata = {
-  title: {
-    absolute: "Foreman — Never Miss Another Job",
+  metadataBase: new URL(META.siteUrl),
+  title: { absolute: META.title },
+  description: META.description,
+  alternates: {
+    canonical: "/",
+    languages: { en: "/", ar: "/ar" },
   },
-  description:
-    "Foreman answers every missed call for HVAC and trades businesses, qualifies the job, and books it into your calendar automatically.",
   openGraph: {
-    title: "Foreman — Never Miss Another Job",
-    description:
-      "The AI front office for HVAC and trades. Every call answered, every job booked.",
+    title: META.title,
+    description: META.description,
     type: "website",
+    locale: "en_AE",
+    alternateLocale: ["ar_AE"],
+    url: "/",
+    siteName: "Foreman",
     images: [{ url: "/foreman-lockup-dark.png" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: META.title,
+    description: META.description,
   },
 };
 
 export default function HomePage() {
-  return <ForemanLanding mode="main" />;
+  return <GccLanding />;
 }
