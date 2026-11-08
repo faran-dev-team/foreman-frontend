@@ -6,6 +6,13 @@ import { useLenis } from "@studio-freight/react-lenis";
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
 
+/**
+ * Transition for visitors who ask for reduced motion: jump straight to the end
+ * state. Switch `transition` on useReducedMotion(), never `initial`: the server
+ * can't know the preference, so a different `initial` breaks hydration.
+ */
+export const INSTANT = { duration: 0 } as const;
+
 /* ------------------------------------------------------------------ */
 /*  Scroll reveal                                                      */
 /* ------------------------------------------------------------------ */
@@ -27,10 +34,10 @@ export function Reveal({
     <motion.div
       className={className}
       style={style}
-      initial={reduced ? false : { opacity: 0, y }}
+      initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.8, delay, ease: EASE }}
+      transition={reduced ? INSTANT : { duration: 0.8, delay, ease: EASE }}
     >
       {children}
     </motion.div>

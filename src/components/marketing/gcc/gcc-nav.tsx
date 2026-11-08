@@ -12,7 +12,7 @@ import { CALENDLY_PILOT_URL } from "@/lib/marketing/calendly";
 import { HAS_WHATSAPP, WHATSAPP_PILOT_URL } from "@/lib/marketing/whatsapp";
 
 import { NAV_LINKS, TOP_BAR } from "./content";
-import { Ar, EASE, useAnchorScroll, WhatsAppIcon } from "./primitives";
+import { Ar, EASE, INSTANT, useAnchorScroll, WhatsAppIcon } from "./primitives";
 
 const PILOT_URL = HAS_WHATSAPP ? WHATSAPP_PILOT_URL : CALENDLY_PILOT_URL;
 
@@ -109,9 +109,9 @@ export function GccNav() {
   return (
     <motion.nav
       className={`gx-nav${scrolled ? " is-scrolled" : ""}`}
-      initial={reduced ? false : { y: -40, opacity: 0 }}
+      initial={{ y: -40, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.7, ease: EASE }}
+      transition={reduced ? INSTANT : { duration: 0.7, ease: EASE }}
       aria-label="Main"
     >
       <div className="gx-wrap gx-nav-inner">

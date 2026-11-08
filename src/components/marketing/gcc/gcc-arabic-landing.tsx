@@ -11,7 +11,7 @@ import { AR_HERO, FOOTER } from "./content";
 import { GccShell } from "./gcc-landing";
 import { HeroBackdrop, LanguageChips, TrustLine } from "./gcc-hero";
 import { LiveCallConsole } from "./live-call-console";
-import { EASE, MagneticLink } from "./primitives";
+import { EASE, INSTANT, MagneticLink } from "./primitives";
 
 /**
  * Arabic landing — hero only, per the GCC copy doc (section 14).
@@ -21,7 +21,11 @@ import { EASE, MagneticLink } from "./primitives";
 export function GccArabicLanding() {
   const reduced = useReducedMotion();
   const fade = (delay: number) =>
-    reduced ? {} : { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.8, delay, ease: EASE } };
+    ({
+      initial: { opacity: 0, y: 18 },
+      animate: { opacity: 1, y: 0 },
+      transition: reduced ? INSTANT : { duration: 0.8, delay, ease: EASE },
+    });
 
   // Split the headline so the last word carries the accent.
   const words = AR_HERO.headline.split(" ");
@@ -74,9 +78,9 @@ export function GccArabicLanding() {
               </div>
               <motion.div
                 className="gx-hero-visual"
-                initial={reduced ? false : { opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1.1, delay: 0.25, ease: EASE }}
+                transition={reduced ? INSTANT : { duration: 1.1, delay: 0.25, ease: EASE }}
               >
                 <LiveCallConsole showGloss={false} />
               </motion.div>
