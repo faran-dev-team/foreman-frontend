@@ -31,4 +31,6 @@ yarn-error.log*
 
 # clerk
 .clerk/
+
+# local env files (restored after the 2026-11 malware cleanup)
 config.bat
